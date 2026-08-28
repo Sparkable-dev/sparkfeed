@@ -19,6 +19,7 @@ services:
   app:
     build:
       context: .
+      dockerfile: Dockerfile.community
     image: ghcr.io/sparkable-dev/sparkfeed:${SPARKFEED_VERSION:-local}
     restart: unless-stopped
     depends_on:

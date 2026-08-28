@@ -1,6 +1,7 @@
 # Railway deployment config for the SparkFeed app (repo root service).
 #
-# Force Railpack so Railway does not auto-detect the Community Dockerfile.
+# Force Railpack. The Community Dockerfile lives under docker/ so Railway does
+# not auto-detect it as this service's builder.
 # Railway's config values are case-sensitive and must use `RAILPACK`.
 # Railpack detects Bun from bun.lock and installs dependencies before the build.
 #
@@ -10,9 +11,9 @@
 # Demo mode bypasses auth, seeds rss-demo.db, and locks structural mutations.
 # Beta needs DATABASE_URL and BETTER_AUTH_SECRET.
 #
-# These preview services intentionally run Vite's development server, matching
-# their deployment behavior before the repository split. The host and port
-# flags are required so Railway can reach the process.
+# `bun run build` emits a self-contained Nitro server at
+# .output/server/index.mjs. Nitro reads Railway's PORT and listens on all
+# interfaces.
 
 [build]
 builder = "RAILPACK"
@@ -26,7 +27,7 @@ buildCommand = "bun run build"
 #
 # db:migrate no-ops when VITE_DEMO_MODE=true, so both services can share this
 # command. Without demo mode it requires DATABASE_URL and fails hard.
-startCommand = "bun run db:migrate && bun run dev -- --host 0.0.0.0 --port $PORT"
+startCommand = "bun run db:migrate && node .output/server/index.mjs"
 healthcheckPath = "/api/health"
 healthcheckTimeout = 300
 restartPolicyType = "ON_FAILURE"

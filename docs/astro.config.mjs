@@ -55,7 +55,7 @@ export default defineConfig({
 				},
 			],
 			social: [
-				{ icon: 'github', label: 'GitHub', href: 'https://github.com/Sparkable-dev/sparkfeed-app' },
+				{ icon: 'github', label: 'GitHub', href: 'https://github.com/Sparkable-dev/sparkfeed' },
 				{ icon: 'linkedin', label: 'LinkedIn', href: 'https://www.linkedin.com/company/sparkable-dev/' },
 			],
 			defaultLocale: 'root',
@@ -92,7 +92,7 @@ export default defineConfig({
 			// (src/components/PageSidebar.astro). Starlight appends `entry.filePath`
 			// (e.g. src/content/docs/…) to this base.
 			editLink: {
-				baseUrl: 'https://github.com/Sparkable-dev/sparkfeed-app/edit/main/docs/',
+				baseUrl: 'https://github.com/Sparkable-dev/sparkfeed/edit/main/docs/',
 			},
 			// Code-block chrome is configured here, not patched in CSS. The previous
 			// approach hid the frame header from the stylesheet, which for untitled

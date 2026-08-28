@@ -8,34 +8,30 @@
 [Website](https://sparkfeed.dev) · [Documentation](https://sparkfeed.dev/docs) · [Security](./.github/SECURITY.md)
 </div>
 
-Sparkfeed follows RSS and Atom feeds, watches sites that do not publish a feed, and keeps the results in workspaces. It includes sharing, full-text reading, Spark AI, a REST API, API keys, and MCP.
+Sparkfeed follows RSS and Atom feeds, monitors sites that do not publish a feed, and brings the results into shared workspaces. It combines focused reading with source discovery, website monitoring, Spark AI, sharing, a REST API, and MCP.
 
-The Community Edition contains the complete product under `AGPL-3.0-only`. Sparkable sells managed hosting and support, not a separate closed feature edition.
+![Sparkfeed Community Edition home screen](.github/assets/sparkfeed-home.jpg)
 
-> Sparkfeed is preparing its first public beta. Interfaces can change before `1.0.0`. Spark AI and the reader are beta features.
+> Sparkfeed is preparing for its first public beta. APIs and interfaces can change before `1.0.0`.
 
-## Repository layout
+## What Sparkfeed includes
 
-The application and its documentation live in one repository. The documentation site installs and deploys independently.
+- RSS and Atom subscriptions, plus website monitoring when no feed exists
+- Home, Today, All articles, Favorites, source health, search, and a full-text reader
+- Folders, shared workspaces, invitations, and public feed or folder links
+- Spark AI with workspace-aware tools and saved chat history
+- Source discovery and bulk URL or OPML input
+- Workspace-scoped API keys for the REST API and MCP server
 
-```text
-sparkfeed-app/
-├── src/                 TanStack Start application
-├── drizzle/             PostgreSQL migrations
-├── scripts/             Migration and validation scripts
-├── docs/                Astro Starlight documentation
-└── workers/docs-proxy/  Documentation proxy worker
-```
-
-You need only the repository root to run Community Edition.
+Community Edition includes the core product under `AGPL-3.0-only`. It supports up to 10 registered people and does not depend on Sparkable's hosted billing or platform-administration systems. Sparkable's commercial service sells managed hosting, operations, provider credits, support, and isolated deployments for larger organizations.
 
 ## Start with Docker Compose
 
-Install Docker with the Compose plugin, then run:
+Install Docker with the Compose plugin, then clone the repository:
 
 ```bash
-git clone https://github.com/Sparkable-dev/sparkfeed-app.git
-cd sparkfeed-app
+git clone https://github.com/Sparkable-dev/sparkfeed.git
+cd sparkfeed
 cp .env.example .env
 ```
 
@@ -60,16 +56,16 @@ Start Sparkfeed and PostgreSQL:
 docker compose up --build
 ```
 
-Open [http://localhost:3000](http://localhost:3000). The first account becomes the instance owner. Public registration closes after that account unless you set `ALLOW_REGISTRATION=true`.
+Open [http://localhost:3000](http://localhost:3000). The first account becomes the instance owner. Later accounts need an invitation unless you set `ALLOW_REGISTRATION=true`.
 
-The Compose file does not expose PostgreSQL to the host. It stores database files in the `sparkfeed-postgres` volume and applies pending migrations before the application starts.
+The Compose file keeps PostgreSQL private to the Compose network. It stores database files in the `sparkfeed-postgres` volume and applies pending migrations before the application starts.
 
 ## Run from source
 
 Install Bun, Node.js 22, and PostgreSQL 16 or later. Create a PostgreSQL database and set `DATABASE_URL` in `.env.local`.
 
 ```bash
-bun install
+bun install --frozen-lockfile
 cp .env.example .env.local
 bun run db:migrate
 bun run dev
@@ -84,11 +80,11 @@ Do not use `db:push` for a deployed database. It changes the schema without upda
 Demo mode uses an isolated local SQLite file. It does not require PostgreSQL, authentication, email, or an AI provider.
 
 ```bash
-bun install
+bun install --frozen-lockfile
 VITE_DEMO_MODE=true DEMO_MODE=true bun run dev
 ```
 
-Demo mode seeds sample content and blocks mutations. It does not share data with a Community installation.
+Demo mode seeds sample content and blocks structural mutations. It does not share data with a Community installation.
 
 ## Configure Community access
 
@@ -109,9 +105,24 @@ Spark AI needs at least one operator-owned provider key:
 - `AI_GATEWAY_API_KEY`
 - `OPENROUTER_API_KEY`
 
-Invitation, verification, and password-reset email needs either Resend or SMTP. See [.env.example](./.env.example) for the complete reference.
+Invitation, verification, and password-reset email needs either Resend or SMTP. See [.env.example](./.env.example) for the complete environment reference.
 
 REST and MCP use workspace-scoped API keys created in **Developer → API keys**. Community Edition does not apply hosted-plan checks to these capabilities.
+
+## Repository layout
+
+The application and its documentation live in this repository. The documentation site installs and deploys independently.
+
+```text
+sparkfeed/
+├── src/                 TanStack Start application
+├── drizzle/             PostgreSQL migrations
+├── scripts/             Migration and validation scripts
+├── docs/                Astro Starlight documentation
+└── workers/docs-proxy/  Documentation proxy worker
+```
+
+The application uses React 19, TanStack Start, PostgreSQL, Drizzle ORM, Better Auth, Tailwind CSS, and the Vercel AI SDK. The documentation site uses Astro Starlight.
 
 ## Application commands
 
@@ -139,6 +150,6 @@ Follow the [backup and restore guide](https://sparkfeed.dev/docs/advanced/export
 
 ## License and trademarks
 
-Sparkfeed code is available under the [GNU Affero General Public License version 3](./LICENSE). If you modify Sparkfeed and let users interact with it over a network, provide those users the corresponding source for your version.
+Sparkfeed code is available under the [GNU Affero General Public License version 3](./LICENSE). If you modify Sparkfeed and let users interact with it over a network, provide those users with the corresponding source for your version.
 
 The software license does not grant rights to the SparkFeed or Sparkable names and logos. Read [TRADEMARKS.md](./.github/TRADEMARKS.md) and [ASSETS.md](./.github/ASSETS.md) before redistributing branded or visual material.

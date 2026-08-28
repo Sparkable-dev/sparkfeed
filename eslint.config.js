@@ -17,17 +17,10 @@ export default [
       "**/.astro/**",
       "src/routeTree.gen.ts",
       /*
-        The same boundary tsconfig draws. `landing` and `docs` are separate
-        deployables with their own package.json and their own lint script;
-        `scripts` and `workers` are excluded from the tsconfig project, so the
-        type-aware rules cannot parse them at all and every file in them
-        reported a parser error rather than anything about the code.
-
-        This is a scope decision, not a clean bill of health: `landing` has 24
-        outstanding problems of its own, mostly `any` and setState-in-effect in
-        its animation components.
+        The same boundary tsconfig draws. `docs` is a separate deployable with
+        its own package.json. `scripts` and `workers` are excluded from the
+        tsconfig project, so the type-aware rules cannot parse them.
       */
-      "landing/**",
       "docs/**",
       "scripts/**",
       "workers/**",

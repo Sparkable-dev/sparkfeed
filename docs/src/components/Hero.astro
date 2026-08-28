@@ -1,0 +1,72 @@
+---
+/* Starlight `Hero` override. Replaces the stock centred hero + illustration
+   with a Vercel-style split: copy and actions on the left, a real Expressive
+   Code terminal on the right.
+   Styles: src/styles/landing.css (── HERO).
+
+   Two things worth knowing before editing:
+
+   1. Starlight's built-in 404 page also uses `template: splash` + `hero`, so
+      this component runs there too. It has no terminal content and no actions,
+      hence the `is404` branch — without it the 404 page renders a split layout
+      with an empty right column.
+
+   2. The <h1> must keep `id="_top"` and `data-page-title`. Starlight's skip
+      link targets that id (PAGE_TITLE_ID in the package's constants.ts) and
+      the mobile TOC reads the data attribute. `@astrojs/starlight/constants`
+      is not a public export, so the literal is inlined rather than imported. */
+import { Code } from '@astrojs/starlight/components';
+import Icon from './landing/Icon.astro';
+
+const { entry } = Astro.locals.starlightRoute;
+const { data } = entry;
+const { title = data.title, tagline, actions = [] } = data.hero || {};
+
+const is404 = entry.id === '404' || entry.id.endsWith('/404');
+
+const quickstart = `git clone https://github.com/Sparkable-dev/sparkfeed-app.git
+cd SparkFeed
+bun install
+bun dev`;
+---
+
+{
+	is404 ? (
+		<div class="sf-hero sf-hero--simple">
+			<h1 id="_top" data-page-title set:html={title} />
+			{tagline && <p class="sf-hero-tagline" set:html={tagline} />}
+		</div>
+	) : (
+		<div class="sf-hero">
+			<div class="sf-hero-copy">
+				<h1 id="_top" data-page-title set:html={title} />
+				{tagline && <p class="sf-hero-tagline" set:html={tagline} />}
+				{actions.length > 0 && (
+					<div class="sf-hero-actions">
+						{actions.map(({ link, text, variant = 'primary' }) => {
+							const external = /^https?:/.test(String(link));
+							return (
+								<a
+									class:list={['sf-hero-btn', `is-${variant}`]}
+									href={link}
+									{...(external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
+								>
+									<span set:html={text} />
+									<Icon name={external ? 'arrow-up-right' : 'arrow-right'} />
+								</a>
+							);
+						})}
+					</div>
+				)}
+			</div>
+
+			<div class="sf-hero-code">
+				{/* `wrap`: the clone URL is 54 characters and the code column is ~440px
+				    wide once the nav sidebar is on the page, so without it the command
+				    is silently clipped mid-URL. Wrapping is preferable to a scrollbar
+				    for a block whose whole job is to be copied. */}
+				<Code code={quickstart} lang="bash" frame="terminal" title="Quickstart" wrap />
+			</div>
+		</div>
+	)
+}

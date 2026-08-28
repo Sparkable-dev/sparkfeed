@@ -1,0 +1,52 @@
+---
+/*
+  Breadcrumb trail for the top bar, derived from the sidebar tree so it stays
+  correct automatically as pages are added or moved between groups.
+*/
+import type { StarlightRouteData } from '@astrojs/starlight/route-data';
+
+type SidebarEntry = StarlightRouteData['sidebar'][number];
+
+const { entry, sidebar, siteTitleHref } = Astro.locals.starlightRoute;
+
+/** Group labels leading to the currently viewed page, outermost first. */
+function trailToCurrent(entries: SidebarEntry[]): string[] | undefined {
+	for (const item of entries) {
+		if (item.type === 'link') {
+			if (item.isCurrent) return [];
+		} else {
+			const nested = trailToCurrent(item.entries);
+			if (nested) return [item.label, ...nested];
+		}
+	}
+	return undefined;
+}
+
+/** True on the docs landing page, where a `Docs / Docs` trail would be noise. */
+const isHome = entry.id === '' || entry.id === 'index';
+const groups = trailToCurrent(sidebar) ?? [];
+---
+
+<nav class="sf-breadcrumbs" aria-label="Breadcrumb">
+	<ol>
+		{
+			isHome ? (
+				<li aria-current="page">
+					<span>Docs</span>
+				</li>
+			) : (
+				<>
+					<li>
+						<a href={siteTitleHref}>Docs</a>
+					</li>
+					{groups.map((label) => (
+						<li>{label}</li>
+					))}
+					<li aria-current="page">
+						<span>{entry.data.title}</span>
+					</li>
+				</>
+			)
+		}
+	</ol>
+</nav>

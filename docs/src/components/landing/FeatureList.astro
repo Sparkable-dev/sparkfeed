@@ -1,0 +1,43 @@
+---
+/* Two-column feature rows. Styles: src/styles/landing.css (── FEATURE LIST).
+
+   This replaces the `- **Label** — description` bullet lists the page used to
+   carry. Label and description are separate fields, so the pattern that needed
+   an em-dash to separate them no longer exists. */
+import { Badge } from '@astrojs/starlight/components';
+import Icon from './Icon.astro';
+import type { LandingIcon } from './icons';
+
+export interface FeatureItem {
+	icon: LandingIcon;
+	label: string;
+	description: string;
+	badge?: string;
+}
+
+interface Props {
+	items: FeatureItem[];
+	/* Column count from `md` up. Pick the one that divides the item count
+	   evenly, or the last row orphans. */
+	cols?: 2 | 3;
+}
+
+const { items, cols = 2 } = Astro.props;
+---
+
+<ul class="sf-features not-content" data-cols={cols}>
+	{
+		items.map(({ icon, label, description, badge }) => (
+			<li class="sf-feature">
+				<span class="sf-feature-icon"><Icon name={icon} /></span>
+				<div class="sf-feature-text">
+					<p class="sf-feature-label">
+						{label}
+						{badge && <Badge text={badge} variant="caution" />}
+					</p>
+					<p class="sf-feature-desc">{description}</p>
+				</div>
+			</li>
+		))
+	}
+</ul>

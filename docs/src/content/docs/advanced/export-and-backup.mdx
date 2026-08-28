@@ -1,0 +1,42 @@
+---
+title: Export and backup
+description: Protect a Sparkfeed PostgreSQL database and export user-managed feed data.
+---
+
+Use OPML export for a portable list of subscriptions. Use a PostgreSQL backup to protect the complete instance, including users, workspaces, articles, reading state, shares, keys, and saved chats.
+
+Back up PostgreSQL before every application upgrade and before changing migrations.
+
+## Compose backup
+
+```bash
+docker compose exec -T postgres pg_dump -U sparkfeed -d sparkfeed -Fc > sparkfeed.backup
+```
+
+Store the backup outside the Docker volume.
+
+## Restore a Compose backup
+
+Stop the application before restoring:
+
+```bash
+docker compose stop app
+docker compose exec -T postgres dropdb -U sparkfeed --if-exists sparkfeed
+docker compose exec -T postgres createdb -U sparkfeed sparkfeed
+docker compose exec -T postgres pg_restore -U sparkfeed -d sparkfeed --clean --if-exists < sparkfeed.backup
+docker compose start app
+```
+
+Test the restored instance before deleting the previous database or backup.
+
+## Standard PostgreSQL backup
+
+```bash
+pg_dump "$DATABASE_URL" -Fc > sparkfeed.backup
+```
+
+Restore into an empty database with `pg_restore`, then start the matching Sparkfeed version. Apply newer migrations only after the restored version works.
+
+## Demo mode
+
+Demo mode stores disposable sample data in `rss-demo.db`. Delete the file to rebuild and reseed it. Do not use demo mode for durable data.

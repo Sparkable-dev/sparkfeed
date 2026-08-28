@@ -1,0 +1,138 @@
+---
+title: AI Providers
+description: Configure Spark AI with Vercel AI SDK Gateway, OpenAI, or OpenRouter. Switch providers by setting a single API key.
+sidebar:
+  order: 1
+---
+
+import { Aside, Badge } from '@astrojs/starlight/components';
+
+Spark AI, SparkFeed's built-in chat that lets you ask questions about your feeds, is powered by the **Vercel AI SDK**. You choose which AI provider to use by setting the appropriate API key. No code changes required.
+
+## Provider priority
+
+SparkFeed checks for API keys in this order and uses the **first one found**:
+
+```txt frame="none"
+OPENAI_API_KEY  →  AI_GATEWAY_API_KEY  →  OPENROUTER_API_KEY
+```
+
+Set exactly one key (or multiple, in which case the first match wins). If no key is set, the AI chat panel is disabled at runtime.
+
+## Option 1: OpenAI
+
+Best for most users. Straightforward, well-documented, and the default small/large model pairing is cost-efficient.
+
+```env
+# .env.local
+OPENAI_API_KEY=sk-...
+```
+
+Get a key at [platform.openai.com/api-keys](https://platform.openai.com/api-keys).
+
+**Default models used:**
+- Small (fast, cheap): `gpt-4o-mini`
+- Large (high-quality): `gpt-4o`
+
+## Option 2: Vercel AI SDK Gateway
+
+<Badge text="Recommended for Vercel users" variant="note" />
+
+The Vercel AI Gateway is a unified proxy that gives you access to multiple model providers through a single API key, with built-in usage tracking.
+
+```env
+# .env.local
+AI_GATEWAY_API_KEY=...
+```
+
+Get a key in your [Vercel dashboard → AI → Gateway](https://vercel.com/docs/ai/ai-gateway).
+
+**Default models used:**
+- Small: `openai/gpt-4o-mini`
+- Large: `openai/gpt-4o`
+
+## Option 3: OpenRouter
+
+Access 200+ models from a single API key, including Claude, Gemini, DeepSeek, Llama, and more.
+
+```env
+# .env.local
+OPENROUTER_API_KEY=sk-or-...
+```
+
+Get a key at [openrouter.ai/keys](https://openrouter.ai/keys).
+
+**Default models used:**
+- Small: `openai/gpt-4o-mini`
+- Large: `openai/gpt-4o`
+
+<Aside type="note" title="Model selection">
+  The model registry lives in `src/config/ai-models.json`. It defines available models per provider with labels, tiers (`small` / `large`), and context windows. The default model for each provider is picked automatically based on the provider detected at startup.
+</Aside>
+
+## Override the model
+
+Set `AI_MODEL` to any model ID supported by your chosen provider:
+
+```env
+# .env.local
+OPENAI_API_KEY=sk-...
+AI_MODEL=gpt-4o                     # override: use large model by default
+```
+
+```env
+AI_GATEWAY_API_KEY=...
+AI_MODEL=anthropic/claude-3-5-haiku  # Claude via gateway
+```
+
+```env
+OPENROUTER_API_KEY=sk-or-...
+AI_MODEL=deepseek/deepseek-chat-v3   # DeepSeek via OpenRouter
+```
+
+<Aside type="caution" title="Avoid very expensive models">
+  Models like Claude Opus or GPT-4.5 are significantly more expensive and offer diminishing returns for summarizing RSS articles. Stick to `gpt-4o` / `gpt-4o-mini` or equivalent mid-tier models unless you have a specific reason.
+</Aside>
+
+## Available models reference
+
+The full model registry is at `src/config/ai-models.json`. Supported providers and their included models:
+
+### OpenAI
+| Model ID | Tier | Context |
+|----------|------|---------|
+| `gpt-4o-mini` | Small | 128k |
+| `gpt-4o` | Large | 128k |
+
+### Vercel AI Gateway / OpenRouter: Claude
+| Model ID | Tier | Context |
+|----------|------|---------|
+| `anthropic/claude-3-5-haiku-20241022` | Small | 200k |
+| `anthropic/claude-3-7-sonnet-20250219` | Large | 200k |
+
+### Vercel AI Gateway / OpenRouter: DeepSeek
+| Model ID | Tier | Context |
+|----------|------|---------|
+| `deepseek/deepseek-chat-v3` | Small | 64k |
+| `deepseek/deepseek-r1` | Large | 64k |
+
+### OpenRouter: MiniMax & Kimi
+| Model ID | Tier | Context |
+|----------|------|---------|
+| `minimax/minimax-01` | Small | 1M |
+| `moonshotai/kimi-k2` | Large | 128k |
+
+## How the AI chat works
+
+When you send a message in the Spark AI panel:
+
+1. The client sends the message + your `workspaceId` to `/api/ai`
+2. The server queries your articles for context (latest articles from your feeds)
+3. The message + article context is streamed to the selected model
+4. The response streams back to the UI with source citations
+
+The AI only has access to articles stored in your database. It does not fetch the internet on your behalf.
+
+## No key set?
+
+If no AI key is configured, the Spark AI panel remains visible but chat is disabled at the API level. Set any key from the options above to activate it.

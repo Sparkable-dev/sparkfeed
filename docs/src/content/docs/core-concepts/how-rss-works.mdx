@@ -1,0 +1,105 @@
+---
+title: How RSS Works
+description: A beginner-friendly explanation of RSS feeds, why they exist, and how SparkFeed uses them.
+sidebar:
+  order: 1
+---
+
+import { Aside } from "@astrojs/starlight/components"
+
+## What is RSS?
+
+**RSS** stands for **Really Simple Syndication**. It's an open, standardized format that websites use to publish lists of their newest content.
+
+Think of it like a newspaper subscription. Instead of visiting the website, the website delivers new content directly to your reader.
+
+An RSS feed is just an XML file that a website publishes at a fixed URL. For example:
+
+```txt
+https://css-tricks.com/feed/
+https://hnrss.org/frontpage
+https://blog.samaltman.com/feed
+```
+
+Each feed contains a list of **items** (articles, posts, episodes), each with a title, description, link, and publication date.
+
+<Aside type="note" title="Atom is the same idea">
+  **Atom** is a similar standard that serves the same purpose as RSS. SparkFeed
+  supports both RSS 2.0 and Atom 1.0 feeds seamlessly.
+</Aside>
+
+## The RSS XML Format
+
+Here's what an RSS feed actually looks like under the hood:
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>My Tech Blog</title>
+    <link>https://myblog.com</link>
+    <description>Posts about software development</description>
+
+    <item>
+      <title>Understanding React Server Components</title>
+      <link>https://myblog.com/posts/rsc</link>
+      <description>A deep dive into RSC...</description>
+      <pubDate>Mon, 14 Apr 2026 09:00:00 GMT</pubDate>
+      <guid>https://myblog.com/posts/rsc</guid>
+    </item>
+
+    <item>
+      <title>Why SQLite is Underrated</title>
+      <link>https://myblog.com/posts/sqlite</link>
+      <description>SQLite isn't just for small apps...</description>
+      <pubDate>Sat, 12 Apr 2026 12:00:00 GMT</pubDate>
+      <guid>https://myblog.com/posts/sqlite</guid>
+    </item>
+  </channel>
+</rss>
+```
+
+## Why RSS Matters
+
+RSS solves a fundamental problem: **the web has too much information published in too many places**.
+
+Without RSS, staying current means:
+
+- Manually checking each website
+- Relying on social media algorithms to surface content
+- Using email newsletters (mixed with promotions)
+
+With RSS:
+
+- **You choose** which sources to follow
+- **No algorithm** decides what you see. You see everything, in chronological order
+- **No account required** on the websites you follow
+
+## How SparkFeed Uses RSS
+
+When you add a feed to SparkFeed:
+
+1. **Fetch:** SparkFeed makes an HTTP GET request to the feed URL
+2. **Parse:** The XML response is parsed into structured article objects
+3. **Deduplicate:** Articles already in the database are skipped (using the `guid` field)
+4. **Store:** New articles are saved to PostgreSQL
+5. **Display:** The React frontend reads from the database and renders the articles
+
+```txt frame="none"
+Feed URL → HTTP GET → XML Response → Parse → PostgreSQL → React UI
+```
+
+The Sparkfeed server performs the fetch. Your hosting provider and the source site can observe
+the request.
+
+## Common Questions
+
+**Can I follow a YouTube channel via RSS?**
+Yes! YouTube publishes RSS feeds for every channel:
+`https://www.youtube.com/feeds/videos.xml?channel_id=YOUR_CHANNEL_ID`
+
+**Can I follow a newsletter?**
+If the newsletter publishes an RSS feed (many do), yes. Services like [Kill the Newsletter](https://kill-the-newsletter.com/) can also convert email newsletters into RSS feeds.
+
+**What about podcasts?**
+Podcast feeds are RSS feeds. SparkFeed can ingest them as articles, though a dedicated podcast player is better for audio streaming.

@@ -1,0 +1,1236 @@
+{
+  "version": 1,
+  "categories": [
+    {
+      "slug": "ai",
+      "name": "AI & Machine Learning",
+      "blurb": "The labs, the research, and the people shipping it.",
+      "items": [
+        {
+          "kind": "collection",
+          "slug": "ai-openai",
+          "name": "OpenAI",
+          "description": "Research, product launches and policy from OpenAI.",
+          "siteUrl": "https://openai.com",
+          "accent": "#10a37f",
+          "feeds": [
+            {
+              "slug": "ai-openai-news",
+              "name": "OpenAI News",
+              "description": "Announcements, launches and company updates.",
+              "siteUrl": "https://openai.com/news/",
+              "url": "https://openai.com/news/rss.xml",
+              "icon": "ai-openai-news.png"
+            }
+          ],
+          "cover": "ai-openai.png"
+        },
+        {
+          "kind": "collection",
+          "slug": "ai-google",
+          "name": "Google AI",
+          "description": "DeepMind and Google Research, in one folder.",
+          "siteUrl": "https://deepmind.google",
+          "accent": "#4285f4",
+          "feeds": [
+            {
+              "slug": "ai-google-deepmind",
+              "name": "Google DeepMind",
+              "description": "Research and announcements from DeepMind.",
+              "siteUrl": "https://deepmind.google/discover/blog/",
+              "url": "https://deepmind.google/blog/rss.xml",
+              "icon": "ai-google-deepmind.png"
+            },
+            {
+              "slug": "ai-google-research",
+              "name": "Google Research",
+              "description": "Papers and engineering from Google's research teams.",
+              "siteUrl": "https://research.google/blog/",
+              "url": "https://research.google/blog/rss/",
+              "icon": "ai-google-research.png"
+            }
+          ],
+          "cover": "ai-google.png"
+        },
+        {
+          "kind": "feed",
+          "slug": "ai-huggingface",
+          "name": "Hugging Face",
+          "description": "Open models, datasets and the tooling around them.",
+          "siteUrl": "https://huggingface.co/blog",
+          "url": "https://huggingface.co/blog/feed.xml",
+          "icon": "ai-huggingface.png"
+        },
+        {
+          "kind": "feed",
+          "slug": "ai-import-ai",
+          "name": "Import AI",
+          "description": "Jack Clark's weekly read on where AI progress is going.",
+          "siteUrl": "https://jack-clark.net",
+          "url": "https://jack-clark.net/feed/",
+          "icon": "ai-import-ai.png"
+        },
+        {
+          "kind": "feed",
+          "slug": "ai-simon-willison",
+          "name": "Simon Willison",
+          "description": "Hands-on notes on LLMs, tooling and what actually works.",
+          "siteUrl": "https://simonwillison.net",
+          "url": "https://simonwillison.net/atom/everything/",
+          "icon": "ai-simon-willison.png"
+        },
+        {
+          "kind": "feed",
+          "slug": "ai-ahead-of-ai",
+          "name": "Ahead of AI",
+          "description": "Sebastian Raschka on machine learning research.",
+          "siteUrl": "https://magazine.sebastianraschka.com",
+          "url": "https://magazine.sebastianraschka.com/feed",
+          "icon": "ai-ahead-of-ai.png"
+        },
+        {
+          "kind": "feed",
+          "slug": "ai-bair",
+          "name": "Berkeley AI Research",
+          "description": "Research notes from the BAIR lab.",
+          "siteUrl": "https://bair.berkeley.edu/blog/",
+          "url": "https://bair.berkeley.edu/blog/feed.xml",
+          "icon": "ai-bair.png"
+        }
+      ]
+    },
+    {
+      "slug": "technology",
+      "name": "Technology",
+      "blurb": "What shipped, what broke, and what it means.",
+      "items": [
+        {
+          "kind": "collection",
+          "slug": "tech-the-verge",
+          "name": "The Verge",
+          "description": "Technology, science and culture reporting.",
+          "siteUrl": "https://www.theverge.com",
+          "accent": "#5200ff",
+          "feeds": [
+            {
+              "slug": "tech-the-verge-main",
+              "name": "The Verge",
+              "description": "Everything from The Verge newsroom.",
+              "siteUrl": "https://www.theverge.com/rss/index.xml",
+              "url": "https://www.theverge.com/rss/index.xml",
+              "icon": "tech-the-verge-main.png"
+            },
+            {
+              "slug": "tech-verge-tech",
+              "name": "The Verge — Tech",
+              "description": "Hardware, software and the companies behind them.",
+              "siteUrl": "https://www.theverge.com/rss/tech/index.xml",
+              "url": "https://www.theverge.com/rss/tech/index.xml",
+              "icon": "tech-verge-tech.png"
+            },
+            {
+              "slug": "tech-verge-ai",
+              "name": "The Verge — AI",
+              "description": "AI coverage from The Verge newsroom.",
+              "siteUrl": "https://www.theverge.com/rss/ai-artificial-intelligence/index.xml",
+              "url": "https://www.theverge.com/rss/ai-artificial-intelligence/index.xml",
+              "icon": "tech-verge-ai.png"
+            }
+          ],
+          "cover": "tech-the-verge.png"
+        },
+        {
+          "kind": "collection",
+          "slug": "tech-ars-technica",
+          "name": "Ars Technica",
+          "description": "Deep technical reporting on computing and science.",
+          "siteUrl": "https://arstechnica.com",
+          "accent": "#ff4e00",
+          "feeds": [
+            {
+              "slug": "tech-ars-main",
+              "name": "Ars Technica",
+              "description": "Full firehose from Ars Technica.",
+              "siteUrl": "https://arstechnica.com",
+              "url": "https://arstechnica.com/feed/"
+            },
+            {
+              "slug": "tech-ars-gadgets",
+              "name": "Ars Technica — Gadgets",
+              "description": "Hardware reviews and teardowns.",
+              "siteUrl": "https://feeds.arstechnica.com/arstechnica/gadgets",
+              "url": "https://feeds.arstechnica.com/arstechnica/gadgets"
+            },
+            {
+              "slug": "tech-ars-techlab",
+              "name": "Ars Technica — Tech Lab",
+              "description": "Infrastructure, security and deep systems reporting.",
+              "siteUrl": "https://feeds.arstechnica.com/arstechnica/technology-lab",
+              "url": "https://feeds.arstechnica.com/arstechnica/technology-lab"
+            }
+          ]
+        },
+        {
+          "kind": "feed",
+          "slug": "tech-hacker-news",
+          "name": "Hacker News",
+          "description": "The front page, for better and worse.",
+          "siteUrl": "https://news.ycombinator.com",
+          "url": "https://news.ycombinator.com/rss",
+          "icon": "tech-hacker-news.png"
+        },
+        {
+          "kind": "feed",
+          "slug": "tech-techcrunch",
+          "name": "TechCrunch",
+          "description": "Funding rounds, launches and industry news.",
+          "siteUrl": "https://techcrunch.com",
+          "url": "https://techcrunch.com/feed/",
+          "icon": "tech-techcrunch.png"
+        },
+        {
+          "kind": "feed",
+          "slug": "tech-404-media",
+          "name": "404 Media",
+          "description": "Journalist-owned reporting on technology and power.",
+          "siteUrl": "https://www.404media.co",
+          "url": "https://www.404media.co/rss/",
+          "icon": "tech-404-media.png"
+        },
+        {
+          "kind": "feed",
+          "slug": "tech-rest-of-world",
+          "name": "Rest of World",
+          "description": "Technology reporting from outside Silicon Valley.",
+          "siteUrl": "https://restofworld.org",
+          "url": "https://restofworld.org/feed/latest",
+          "icon": "tech-rest-of-world.png"
+        },
+        {
+          "kind": "feed",
+          "slug": "tech-wired",
+          "name": "WIRED",
+          "description": "Technology, culture and the future.",
+          "siteUrl": "https://www.wired.com",
+          "url": "https://www.wired.com/feed/rss",
+          "icon": "tech-wired.png"
+        }
+      ]
+    },
+    {
+      "slug": "startups",
+      "name": "Startups & Venture",
+      "blurb": "Building companies, raising money, and the strategy behind both.",
+      "items": [
+        {
+          "kind": "feed",
+          "slug": "startups-yc-blog",
+          "name": "Y Combinator",
+          "description": "Essays and advice from YC and its founders.",
+          "siteUrl": "https://www.ycombinator.com/blog",
+          "url": "https://www.ycombinator.com/blog/feed",
+          "accent": "#ff6600",
+          "icon": "startups-yc-blog.png"
+        },
+        {
+          "kind": "feed",
+          "slug": "startups-stratechery",
+          "name": "Stratechery",
+          "description": "Ben Thompson on the strategy behind tech businesses.",
+          "siteUrl": "https://stratechery.com",
+          "url": "https://stratechery.com/feed/",
+          "icon": "startups-stratechery.png"
+        },
+        {
+          "kind": "feed",
+          "slug": "startups-paul-graham",
+          "name": "Paul Graham",
+          "description": "Essays on startups, work and thinking clearly.",
+          "siteUrl": "https://paulgraham.com",
+          "url": "http://www.aaronsw.com/2002/feeds/pgessays.rss",
+          "icon": "startups-paul-graham.png"
+        },
+        {
+          "kind": "feed",
+          "slug": "startups-both-sides",
+          "name": "Both Sides of the Table",
+          "description": "Mark Suster on venture from both founder and investor seats.",
+          "siteUrl": "https://bothsidesofthetable.com",
+          "url": "https://medium.com/feed/both-sides-of-the-table",
+          "icon": "startups-both-sides.png"
+        },
+        {
+          "kind": "feed",
+          "slug": "startups-sifted",
+          "name": "Sifted",
+          "description": "European startup and venture reporting.",
+          "siteUrl": "https://sifted.eu",
+          "url": "https://sifted.eu/feed",
+          "icon": "startups-sifted.png"
+        },
+        {
+          "kind": "feed",
+          "slug": "startups-first-round",
+          "name": "First Round Review",
+          "description": "Long-form operating advice from company builders.",
+          "siteUrl": "https://review.firstround.com",
+          "url": "https://review.firstround.com/glossary/rss/",
+          "icon": "startups-first-round.png"
+        },
+        {
+          "kind": "feed",
+          "slug": "startups-not-boring",
+          "name": "Not Boring",
+          "description": "Packy McCormick on strategy and the companies building it.",
+          "siteUrl": "https://www.notboring.co",
+          "url": "https://www.notboring.co/feed",
+          "icon": "startups-not-boring.png"
+        },
+        {
+          "kind": "feed",
+          "slug": "startups-tomtunguz",
+          "name": "Tomasz Tunguz",
+          "description": "Data-driven notes on SaaS metrics and venture.",
+          "siteUrl": "https://tomtunguz.com",
+          "url": "https://tomtunguz.com/index.xml",
+          "icon": "startups-tomtunguz.png"
+        }
+      ]
+    },
+    {
+      "slug": "business",
+      "name": "Business & Finance",
+      "blurb": "Markets, economics and the people explaining them properly.",
+      "items": [
+        {
+          "kind": "feed",
+          "slug": "business-marginal-revolution",
+          "name": "Marginal Revolution",
+          "description": "Tyler Cowen and Alex Tabarrok on economics and everything else.",
+          "siteUrl": "https://marginalrevolution.com",
+          "url": "https://marginalrevolution.com/feed",
+          "icon": "business-marginal-revolution.png"
+        },
+        {
+          "kind": "feed",
+          "slug": "business-calculated-risk",
+          "name": "Calculated Risk",
+          "description": "Housing, employment and the US economy in charts.",
+          "siteUrl": "https://www.calculatedriskblog.com",
+          "url": "http://feeds.feedburner.com/CalculatedRisk",
+          "icon": "business-calculated-risk.png"
+        },
+        {
+          "kind": "feed",
+          "slug": "business-economist-finance",
+          "name": "The Economist — Finance",
+          "description": "Finance and economics coverage from The Economist.",
+          "siteUrl": "https://www.economist.com/finance-and-economics/rss.xml",
+          "url": "https://www.economist.com/finance-and-economics/rss.xml",
+          "icon": "business-economist-finance.png"
+        },
+        {
+          "kind": "feed",
+          "slug": "business-ft-companies",
+          "name": "Financial Times — Companies",
+          "description": "Company and markets reporting from the FT.",
+          "siteUrl": "https://www.ft.com/companies?format=rss",
+          "url": "https://www.ft.com/companies?format=rss"
+        },
+        {
+          "kind": "feed",
+          "slug": "business-noahpinion",
+          "name": "Noahpinion",
+          "description": "Noah Smith on economics, policy and industry.",
+          "siteUrl": "https://www.noahpinion.blog",
+          "url": "https://www.noahpinion.blog/feed",
+          "icon": "business-noahpinion.png"
+        },
+        {
+          "kind": "feed",
+          "slug": "business-net-interest",
+          "name": "Net Interest",
+          "description": "Marc Rubinstein on the business of finance.",
+          "siteUrl": "https://www.netinterest.co",
+          "url": "https://www.netinterest.co/feed",
+          "icon": "business-net-interest.png"
+        }
+      ]
+    },
+    {
+      "slug": "engineering",
+      "name": "Engineering",
+      "blurb": "Languages, infrastructure and how large systems actually behave.",
+      "items": [
+        {
+          "kind": "collection",
+          "slug": "eng-github",
+          "name": "GitHub",
+          "description": "Engineering, product and changelog from GitHub.",
+          "siteUrl": "https://github.blog",
+          "accent": "#8957e5",
+          "feeds": [
+            {
+              "slug": "eng-github-blog",
+              "name": "The GitHub Blog",
+              "description": "Product news and engineering write-ups.",
+              "siteUrl": "https://github.blog",
+              "url": "https://github.blog/feed/",
+              "icon": "eng-github-blog.png"
+            },
+            {
+              "slug": "eng-github-changelog",
+              "name": "GitHub Changelog",
+              "description": "Every shipped change, as it lands.",
+              "siteUrl": "https://github.blog/changelog/feed/",
+              "url": "https://github.blog/changelog/feed/"
+            }
+          ],
+          "cover": "eng-github.png"
+        },
+        {
+          "kind": "collection",
+          "slug": "eng-cloudflare",
+          "name": "Cloudflare",
+          "description": "Deep engineering posts on networking and the edge.",
+          "siteUrl": "https://blog.cloudflare.com",
+          "accent": "#f6821f",
+          "feeds": [
+            {
+              "slug": "eng-cloudflare-blog",
+              "name": "The Cloudflare Blog",
+              "description": "Outage post-mortems, protocol work and performance.",
+              "siteUrl": "https://blog.cloudflare.com",
+              "url": "https://blog.cloudflare.com/rss/",
+              "icon": "eng-cloudflare-blog.png"
+            },
+            {
+              "slug": "eng-cloudflare-dev",
+              "name": "Cloudflare — Developers",
+              "description": "Workers, edge runtimes and developer platform.",
+              "siteUrl": "https://blog.cloudflare.com/tag/developers/rss/",
+              "url": "https://blog.cloudflare.com/tag/developers/rss/",
+              "icon": "eng-cloudflare-dev.png"
+            }
+          ],
+          "cover": "eng-cloudflare.png"
+        },
+        {
+          "kind": "feed",
+          "slug": "eng-go-blog",
+          "name": "The Go Blog",
+          "description": "Language design and releases from the Go team.",
+          "siteUrl": "https://go.dev/blog/",
+          "url": "https://go.dev/blog/feed.atom",
+          "icon": "eng-go-blog.png"
+        },
+        {
+          "kind": "feed",
+          "slug": "eng-rust-blog",
+          "name": "Rust Blog",
+          "description": "Releases and RFCs from the Rust project.",
+          "siteUrl": "https://blog.rust-lang.org",
+          "url": "https://blog.rust-lang.org/feed.xml",
+          "icon": "eng-rust-blog.png"
+        },
+        {
+          "kind": "feed",
+          "slug": "eng-julia-evans",
+          "name": "Julia Evans",
+          "description": "Debugging, networking and systems, explained clearly.",
+          "siteUrl": "https://jvns.ca",
+          "url": "https://jvns.ca/atom.xml",
+          "icon": "eng-julia-evans.png"
+        },
+        {
+          "kind": "feed",
+          "slug": "eng-netflix-tech",
+          "name": "Netflix TechBlog",
+          "description": "Scale, streaming and platform engineering at Netflix.",
+          "siteUrl": "https://netflixtechblog.com",
+          "url": "https://netflixtechblog.com/feed",
+          "icon": "eng-netflix-tech.png"
+        },
+        {
+          "kind": "feed",
+          "slug": "eng-stripe",
+          "name": "Stripe Blog — Engineering",
+          "description": "Payments infrastructure at scale.",
+          "siteUrl": "https://stripe.com/blog/engineering",
+          "url": "https://stripe.dev/blog/feed",
+          "icon": "eng-stripe.png"
+        }
+      ]
+    },
+    {
+      "slug": "security",
+      "name": "Security",
+      "blurb": "Breaches, vulnerabilities and the people tracking them. No single source covers this.",
+      "items": [
+        {
+          "kind": "feed",
+          "slug": "sec-krebs",
+          "name": "Krebs on Security",
+          "description": "Brian Krebs on cybercrime and the industry around it.",
+          "siteUrl": "https://krebsonsecurity.com",
+          "url": "https://krebsonsecurity.com/feed/",
+          "icon": "sec-krebs.png"
+        },
+        {
+          "kind": "feed",
+          "slug": "sec-schneier",
+          "name": "Schneier on Security",
+          "description": "Bruce Schneier on security, privacy and policy.",
+          "siteUrl": "https://www.schneier.com",
+          "url": "https://www.schneier.com/feed/",
+          "icon": "sec-schneier.png"
+        },
+        {
+          "kind": "feed",
+          "slug": "sec-troy-hunt",
+          "name": "Troy Hunt",
+          "description": "Breaches, passwords and the state of web security.",
+          "siteUrl": "https://www.troyhunt.com",
+          "url": "https://www.troyhunt.com/rss/",
+          "icon": "sec-troy-hunt.png"
+        },
+        {
+          "kind": "feed",
+          "slug": "sec-the-record",
+          "name": "The Record",
+          "description": "Cybersecurity news reporting from Recorded Future.",
+          "siteUrl": "https://therecord.media",
+          "url": "https://therecord.media/feed",
+          "icon": "sec-the-record.png"
+        },
+        {
+          "kind": "feed",
+          "slug": "sec-cisa",
+          "name": "CISA Advisories",
+          "description": "Official US advisories on active vulnerabilities.",
+          "siteUrl": "https://www.cisa.gov/news-events/cybersecurity-advisories",
+          "url": "https://www.cisa.gov/rss.xml",
+          "icon": "sec-cisa.png"
+        },
+        {
+          "kind": "feed",
+          "slug": "sec-google-security",
+          "name": "Google Online Security",
+          "description": "Security engineering and threat research from Google.",
+          "siteUrl": "https://security.googleblog.com",
+          "url": "https://blog.google/security/rss/",
+          "icon": "sec-google-security.png"
+        },
+        {
+          "kind": "feed",
+          "slug": "sec-risky-business",
+          "name": "Risky Business News",
+          "description": "Daily cybersecurity news, briskly written.",
+          "siteUrl": "https://news.risky.biz",
+          "url": "https://news.risky.biz/rss/",
+          "icon": "sec-risky-business.png"
+        }
+      ]
+    },
+    {
+      "slug": "healthcare",
+      "name": "Healthcare",
+      "blurb": "Medicine, biotech and health policy from people who read the papers.",
+      "items": [
+        {
+          "kind": "collection",
+          "slug": "health-stat",
+          "name": "STAT News",
+          "description": "Reporting on medicine, biotech and the business of health.",
+          "siteUrl": "https://www.statnews.com",
+          "accent": "#e5342e",
+          "feeds": [
+            {
+              "slug": "health-stat-main",
+              "name": "STAT News",
+              "description": "Health, medicine and scientific discovery.",
+              "siteUrl": "https://www.statnews.com",
+              "url": "https://www.statnews.com/feed/",
+              "icon": "health-stat-main.png"
+            },
+            {
+              "slug": "health-stat-pharma",
+              "name": "STAT — Pharmalot",
+              "description": "Drug pricing, approvals and the pharma industry.",
+              "siteUrl": "https://www.statnews.com/category/pharmalot/feed/",
+              "url": "https://www.statnews.com/category/pharmalot/feed/",
+              "icon": "health-stat-pharma.png"
+            },
+            {
+              "slug": "health-stat-tech",
+              "name": "STAT — Health Tech",
+              "description": "Technology reshaping care delivery.",
+              "siteUrl": "https://www.statnews.com/category/health-tech/feed/",
+              "url": "https://www.statnews.com/category/health-tech/feed/",
+              "icon": "health-stat-tech.png"
+            }
+          ],
+          "cover": "health-stat.png"
+        },
+        {
+          "kind": "feed",
+          "slug": "health-ground-truths",
+          "name": "Ground Truths",
+          "description": "Eric Topol on medical research and what it actually shows.",
+          "siteUrl": "https://erictopol.substack.com",
+          "url": "https://erictopol.substack.com/feed",
+          "icon": "health-ground-truths.png"
+        },
+        {
+          "kind": "feed",
+          "slug": "health-kff",
+          "name": "KFF Health News",
+          "description": "Independent reporting on US health policy and costs.",
+          "siteUrl": "https://kffhealthnews.org/feed/",
+          "url": "https://kffhealthnews.org/feed/"
+        },
+        {
+          "kind": "feed",
+          "slug": "health-endpoints",
+          "name": "Endpoints News",
+          "description": "Biopharma news, trials and approvals.",
+          "siteUrl": "https://endpts.com",
+          "url": "https://endpoints.news/feed/"
+        },
+        {
+          "kind": "feed",
+          "slug": "health-nature-medicine",
+          "name": "Nature Medicine",
+          "description": "Peer-reviewed biomedical research.",
+          "siteUrl": "https://www.nature.com/nm/",
+          "url": "https://www.nature.com/nm.rss",
+          "icon": "health-nature-medicine.png"
+        },
+        {
+          "kind": "feed",
+          "slug": "health-medpage",
+          "name": "MedPage Today",
+          "description": "Clinical news for practising physicians.",
+          "siteUrl": "https://www.medpagetoday.com/rss/headlines.xml",
+          "url": "https://www.medpagetoday.com/rss/headlines.xml",
+          "icon": "health-medpage.png"
+        },
+        {
+          "kind": "feed",
+          "slug": "health-sbm",
+          "name": "Science-Based Medicine",
+          "description": "Evidence, and what the evidence actually supports.",
+          "siteUrl": "https://sciencebasedmedicine.org/feed/",
+          "url": "https://sciencebasedmedicine.org/feed/"
+        }
+      ]
+    },
+    {
+      "slug": "marketing",
+      "name": "Marketing & Growth",
+      "blurb": "Acquisition, positioning and the craft of getting people to care.",
+      "items": [
+        {
+          "kind": "collection",
+          "slug": "marketing-hubspot",
+          "name": "HubSpot",
+          "description": "Marketing, sales and service playbooks from HubSpot.",
+          "siteUrl": "https://blog.hubspot.com",
+          "accent": "#ff7a59",
+          "feeds": [
+            {
+              "slug": "marketing-hubspot-marketing",
+              "name": "HubSpot Marketing",
+              "description": "Tactics, research and campaign breakdowns.",
+              "siteUrl": "https://blog.hubspot.com/marketing",
+              "url": "https://blog.hubspot.com/marketing/rss.xml",
+              "icon": "marketing-hubspot-marketing.png"
+            },
+            {
+              "slug": "marketing-hubspot-sales",
+              "name": "HubSpot Sales",
+              "description": "Pipeline, outreach and closing.",
+              "siteUrl": "https://blog.hubspot.com/sales/rss.xml",
+              "url": "https://blog.hubspot.com/sales/rss.xml",
+              "icon": "marketing-hubspot-sales.png"
+            },
+            {
+              "slug": "marketing-hubspot-service",
+              "name": "HubSpot Service",
+              "description": "Support, retention and customer success.",
+              "siteUrl": "https://blog.hubspot.com/service/rss.xml",
+              "url": "https://blog.hubspot.com/service/rss.xml",
+              "icon": "marketing-hubspot-service.png"
+            }
+          ],
+          "cover": "marketing-hubspot.png"
+        },
+        {
+          "kind": "feed",
+          "slug": "marketing-seth-godin",
+          "name": "Seth Godin",
+          "description": "Short daily posts on marketing and doing work that matters.",
+          "siteUrl": "https://seths.blog",
+          "url": "https://seths.blog/feed/",
+          "icon": "marketing-seth-godin.png"
+        },
+        {
+          "kind": "feed",
+          "slug": "marketing-ahrefs",
+          "name": "Ahrefs Blog",
+          "description": "SEO research backed by their own data.",
+          "siteUrl": "https://ahrefs.com/blog",
+          "url": "https://ahrefs.com/blog/feed/",
+          "icon": "marketing-ahrefs.png"
+        },
+        {
+          "kind": "feed",
+          "slug": "marketing-lennys-newsletter",
+          "name": "Lenny's Newsletter",
+          "description": "Product and growth advice from operators who have done it.",
+          "siteUrl": "https://www.lennysnewsletter.com",
+          "url": "https://www.lennysnewsletter.com/feed",
+          "icon": "marketing-lennys-newsletter.png"
+        },
+        {
+          "kind": "feed",
+          "slug": "marketing-moz",
+          "name": "Moz Blog",
+          "description": "SEO research, tooling and technical guides.",
+          "siteUrl": "https://moz.com/blog",
+          "url": "https://moz.com/feeds/blog.rss",
+          "icon": "marketing-moz.png"
+        },
+        {
+          "kind": "feed",
+          "slug": "marketing-marketing-brew",
+          "name": "Marketing Brew",
+          "description": "Advertising, brand and media industry news.",
+          "siteUrl": "https://www.marketingbrew.com",
+          "url": "https://www.marketingbrew.com/feed.xml",
+          "icon": "marketing-marketing-brew.png"
+        }
+      ]
+    },
+    {
+      "slug": "gaming",
+      "name": "Gaming",
+      "blurb": "Games, the people who make them, and the industry around both.",
+      "items": [
+        {
+          "kind": "collection",
+          "slug": "gaming-eurogamer",
+          "name": "Eurogamer",
+          "description": "News, reviews and features from the Eurogamer network.",
+          "siteUrl": "https://www.eurogamer.net",
+          "accent": "#ff4747",
+          "feeds": [
+            {
+              "slug": "gaming-eurogamer-news",
+              "name": "Eurogamer",
+              "description": "Games news and reviews.",
+              "siteUrl": "https://www.eurogamer.net/feed",
+              "url": "https://www.eurogamer.net/feed",
+              "icon": "gaming-eurogamer-news.png"
+            },
+            {
+              "slug": "gaming-vg247",
+              "name": "VG247",
+              "description": "Breaking games news, from the same network.",
+              "siteUrl": "https://www.vg247.com/feed",
+              "url": "https://www.vg247.com/feed",
+              "icon": "gaming-vg247.png"
+            }
+          ],
+          "cover": "gaming-eurogamer.png"
+        },
+        {
+          "kind": "feed",
+          "slug": "gaming-polygon",
+          "name": "Polygon",
+          "description": "Games, film and the culture around them.",
+          "siteUrl": "https://www.polygon.com",
+          "url": "https://www.polygon.com/feed/",
+          "icon": "gaming-polygon.png"
+        },
+        {
+          "kind": "feed",
+          "slug": "gaming-rps",
+          "name": "Rock Paper Shotgun",
+          "description": "PC gaming, written with a personality.",
+          "siteUrl": "https://www.rockpapershotgun.com",
+          "url": "https://www.rockpapershotgun.com/feed",
+          "icon": "gaming-rps.png"
+        },
+        {
+          "kind": "feed",
+          "slug": "gaming-aftermath",
+          "name": "Aftermath",
+          "description": "Worker-owned games reporting, no publisher pressure.",
+          "siteUrl": "https://aftermath.site",
+          "url": "https://aftermath.site/rss/",
+          "icon": "gaming-aftermath.png"
+        },
+        {
+          "kind": "feed",
+          "slug": "gaming-gamesindustry",
+          "name": "GamesIndustry.biz",
+          "description": "The business side: funding, layoffs, platforms.",
+          "siteUrl": "https://www.gamesindustry.biz",
+          "url": "https://www.gamesindustry.biz/feed",
+          "icon": "gaming-gamesindustry.png"
+        },
+        {
+          "kind": "feed",
+          "slug": "gaming-pcgamer",
+          "name": "PC Gamer",
+          "description": "Hardware, reviews and PC-first coverage.",
+          "siteUrl": "https://www.pcgamer.com",
+          "url": "https://www.pcgamer.com/feeds.xml",
+          "icon": "gaming-pcgamer.png"
+        },
+        {
+          "kind": "feed",
+          "slug": "gaming-kotaku",
+          "name": "Kotaku",
+          "description": "Games, culture and the internet around them.",
+          "siteUrl": "https://kotaku.com/rss",
+          "url": "https://kotaku.com/feed",
+          "icon": "gaming-kotaku.png"
+        }
+      ]
+    },
+    {
+      "slug": "crypto",
+      "name": "Crypto",
+      "blurb": "Reporting, primary sources and the critics. Not a pitch deck.",
+      "items": [
+        {
+          "kind": "collection",
+          "slug": "crypto-coindesk",
+          "name": "CoinDesk",
+          "description": "Markets, policy and industry reporting.",
+          "siteUrl": "https://www.coindesk.com",
+          "accent": "#f7931a",
+          "feeds": [
+            {
+              "slug": "crypto-coindesk-main",
+              "name": "CoinDesk",
+              "description": "Daily crypto and markets coverage.",
+              "siteUrl": "https://www.coindesk.com",
+              "url": "https://www.coindesk.com/arc/outboundfeeds/rss",
+              "icon": "crypto-coindesk-main.png"
+            },
+            {
+              "slug": "crypto-theblock",
+              "name": "The Block",
+              "description": "Research-led reporting on the industry.",
+              "siteUrl": "https://www.theblock.co",
+              "url": "https://www.theblock.co/rss.xml",
+              "icon": "crypto-theblock.png"
+            }
+          ],
+          "cover": "crypto-coindesk.png"
+        },
+        {
+          "kind": "feed",
+          "slug": "crypto-citation-needed",
+          "name": "Citation Needed",
+          "description": "Molly White's critical read on the industry.",
+          "siteUrl": "https://www.citationneeded.news",
+          "url": "https://www.citationneeded.news/rss/",
+          "icon": "crypto-citation-needed.png"
+        },
+        {
+          "kind": "feed",
+          "slug": "crypto-web3-going-great",
+          "name": "Web3 Is Going Just Great",
+          "description": "A running tally of what went wrong.",
+          "siteUrl": "https://web3isgoinggreat.com",
+          "url": "https://www.web3isgoinggreat.com/feed.xml",
+          "icon": "crypto-web3-going-great.png"
+        },
+        {
+          "kind": "feed",
+          "slug": "crypto-vitalik",
+          "name": "Vitalik Buterin",
+          "description": "Primary writing from Ethereum's co-founder.",
+          "siteUrl": "https://vitalik.eth.limo",
+          "url": "https://vitalik.eth.limo/feed.xml"
+        },
+        {
+          "kind": "feed",
+          "slug": "crypto-decrypt",
+          "name": "Decrypt",
+          "description": "News and explainers across crypto and web3.",
+          "siteUrl": "https://decrypt.co",
+          "url": "https://decrypt.co/feed",
+          "icon": "crypto-decrypt.png"
+        },
+        {
+          "kind": "feed",
+          "slug": "crypto-bankless",
+          "name": "Bankless",
+          "description": "Industry commentary and market analysis.",
+          "siteUrl": "https://www.bankless.com",
+          "url": "https://www.bankless.com/rss/feed",
+          "icon": "crypto-bankless.png"
+        },
+        {
+          "kind": "feed",
+          "slug": "crypto-cointelegraph",
+          "name": "Cointelegraph",
+          "description": "High-volume crypto news coverage.",
+          "siteUrl": "https://cointelegraph.com/rss",
+          "url": "https://cointelegraph.com/rss",
+          "icon": "crypto-cointelegraph.png"
+        }
+      ]
+    },
+    {
+      "slug": "science",
+      "name": "Science & Space",
+      "blurb": "Research, discovery and everything above the atmosphere.",
+      "items": [
+        {
+          "kind": "collection",
+          "slug": "science-nasa",
+          "name": "NASA",
+          "description": "Missions, imagery and research from NASA.",
+          "siteUrl": "https://www.nasa.gov",
+          "accent": "#0b3d91",
+          "feeds": [
+            {
+              "slug": "science-nasa-news",
+              "name": "NASA Breaking News",
+              "description": "Mission updates and announcements.",
+              "siteUrl": "https://www.nasa.gov/news-release/feed/",
+              "url": "https://www.nasa.gov/news-release/feed/"
+            },
+            {
+              "slug": "science-nasa-image",
+              "name": "NASA Image of the Day",
+              "description": "One picture, most days.",
+              "siteUrl": "https://www.nasa.gov/feeds/iotd-feed/",
+              "url": "https://www.nasa.gov/feeds/iotd-feed/"
+            }
+          ],
+          "cover": "science-nasa.png"
+        },
+        {
+          "kind": "feed",
+          "slug": "science-quanta",
+          "name": "Quanta Magazine",
+          "description": "The best science writing on the internet, arguably.",
+          "siteUrl": "https://www.quantamagazine.org",
+          "url": "https://www.quantamagazine.org/quanta/feed/",
+          "icon": "science-quanta.png"
+        },
+        {
+          "kind": "feed",
+          "slug": "science-phys-org",
+          "name": "Phys.org",
+          "description": "Broad daily coverage across the sciences.",
+          "siteUrl": "https://phys.org",
+          "url": "https://phys.org/rss-feed/",
+          "icon": "science-phys-org.png"
+        },
+        {
+          "kind": "feed",
+          "slug": "science-sciencedaily",
+          "name": "ScienceDaily",
+          "description": "Research summaries across every field.",
+          "siteUrl": "https://www.sciencedaily.com",
+          "url": "https://www.sciencedaily.com/rss/all.xml",
+          "icon": "science-sciencedaily.png"
+        },
+        {
+          "kind": "feed",
+          "slug": "science-nautilus",
+          "name": "Nautilus",
+          "description": "Long-form science with a literary streak.",
+          "siteUrl": "https://nautil.us",
+          "url": "https://nautil.us/feed",
+          "icon": "science-nautilus.png"
+        },
+        {
+          "kind": "feed",
+          "slug": "science-space-com",
+          "name": "Space.com",
+          "description": "Launches, missions and astronomy news.",
+          "siteUrl": "https://www.space.com/feeds/all",
+          "url": "https://www.space.com/feeds.xml",
+          "icon": "science-space-com.png"
+        }
+      ]
+    },
+    {
+      "slug": "design",
+      "name": "Design & Product",
+      "blurb": "Interface craft, research and how products get decided.",
+      "items": [
+        {
+          "kind": "collection",
+          "slug": "design-smashing",
+          "name": "Smashing Magazine",
+          "description": "Front-end craft, accessibility and design systems.",
+          "siteUrl": "https://www.smashingmagazine.com",
+          "accent": "#e85c33",
+          "feeds": [
+            {
+              "slug": "design-smashing-main",
+              "name": "Smashing Magazine",
+              "description": "Deep articles on building for the web.",
+              "siteUrl": "https://www.smashingmagazine.com",
+              "url": "https://www.smashingmagazine.com/feed/",
+              "icon": "design-smashing-main.png"
+            }
+          ],
+          "cover": "design-smashing.png"
+        },
+        {
+          "kind": "feed",
+          "slug": "design-nngroup",
+          "name": "Nielsen Norman Group",
+          "description": "Usability research, evidence over opinion.",
+          "siteUrl": "https://www.nngroup.com/feed/rss/",
+          "url": "https://www.nngroup.com/feed/rss/"
+        },
+        {
+          "kind": "feed",
+          "slug": "design-ux-collective",
+          "name": "UX Collective",
+          "description": "Curated writing from working designers.",
+          "siteUrl": "https://uxdesign.cc",
+          "url": "https://uxdesign.cc/feed",
+          "icon": "design-ux-collective.png"
+        },
+        {
+          "kind": "feed",
+          "slug": "design-alistapart",
+          "name": "A List Apart",
+          "description": "Standards, craft and the web as a medium.",
+          "siteUrl": "https://alistapart.com",
+          "url": "https://alistapart.com/main/feed/",
+          "icon": "design-alistapart.png"
+        },
+        {
+          "kind": "feed",
+          "slug": "design-julie-zhuo",
+          "name": "The Looking Glass",
+          "description": "Julie Zhuo on design leadership and management.",
+          "siteUrl": "https://lg.substack.com",
+          "url": "https://lg.substack.com/feed",
+          "icon": "design-julie-zhuo.png"
+        },
+        {
+          "kind": "feed",
+          "slug": "design-css-tricks",
+          "name": "CSS-Tricks",
+          "description": "Front-end technique, still going.",
+          "siteUrl": "https://css-tricks.com",
+          "url": "https://css-tricks.com/feed/",
+          "icon": "design-css-tricks.png"
+        }
+      ]
+    },
+    {
+      "slug": "climate",
+      "name": "Climate & Energy",
+      "blurb": "The transition, the technology and the politics of both.",
+      "items": [
+        {
+          "kind": "feed",
+          "slug": "climate-heatmap",
+          "name": "Heatmap News",
+          "description": "Reporting on climate as a business and political story.",
+          "siteUrl": "https://heatmap.news",
+          "url": "https://heatmap.news/feeds/feed.rss",
+          "icon": "climate-heatmap.png"
+        },
+        {
+          "kind": "feed",
+          "slug": "climate-carbon-brief",
+          "name": "Carbon Brief",
+          "description": "Climate science and policy, heavy on the data.",
+          "siteUrl": "https://www.carbonbrief.org",
+          "url": "https://www.carbonbrief.org/feed",
+          "icon": "climate-carbon-brief.png"
+        },
+        {
+          "kind": "feed",
+          "slug": "climate-volts",
+          "name": "Volts",
+          "description": "David Roberts on decarbonisation, in detail.",
+          "siteUrl": "https://www.volts.wtf",
+          "url": "https://www.volts.wtf/feed",
+          "icon": "climate-volts.png"
+        },
+        {
+          "kind": "feed",
+          "slug": "climate-grist",
+          "name": "Grist",
+          "description": "Climate, justice and solutions.",
+          "siteUrl": "https://grist.org",
+          "url": "https://grist.org/feed/",
+          "icon": "climate-grist.png"
+        },
+        {
+          "kind": "feed",
+          "slug": "climate-guardian-env",
+          "name": "Guardian Environment",
+          "description": "Daily environment reporting.",
+          "siteUrl": "https://www.theguardian.com/environment/rss",
+          "url": "https://www.theguardian.com/uk/environment/rss",
+          "icon": "climate-guardian-env.png"
+        },
+        {
+          "kind": "feed",
+          "slug": "climate-e360",
+          "name": "Yale Environment 360",
+          "description": "Analysis and long-form on the environment.",
+          "siteUrl": "https://e360.yale.edu/feed.rss",
+          "url": "https://e360.yale.edu/feed.xml"
+        },
+        {
+          "kind": "feed",
+          "slug": "climate-latitude",
+          "name": "Latitude Media",
+          "description": "Energy transition business and technology.",
+          "siteUrl": "https://www.latitudemedia.com/news/rss.xml",
+          "url": "https://www.latitudemedia.com/feed/"
+        }
+      ]
+    },
+    {
+      "slug": "ideas",
+      "name": "Longform & Ideas",
+      "blurb": "Essays worth the time. The audience that never left RSS.",
+      "items": [
+        {
+          "kind": "feed",
+          "slug": "ideas-aeon",
+          "name": "Aeon",
+          "description": "Philosophy, science and culture, at length.",
+          "siteUrl": "https://aeon.co",
+          "url": "https://aeon.co/feed.rss"
+        },
+        {
+          "kind": "feed",
+          "slug": "ideas-astral-codex",
+          "name": "Astral Codex Ten",
+          "description": "Scott Alexander on almost everything.",
+          "siteUrl": "https://www.astralcodexten.com",
+          "url": "https://www.astralcodexten.com/feed",
+          "icon": "ideas-astral-codex.png"
+        },
+        {
+          "kind": "feed",
+          "slug": "ideas-farnam-street",
+          "name": "Farnam Street",
+          "description": "Mental models, decisions and thinking well.",
+          "siteUrl": "https://fs.blog",
+          "url": "https://fs.blog/feed/",
+          "icon": "ideas-farnam-street.png"
+        },
+        {
+          "kind": "feed",
+          "slug": "ideas-works-in-progress",
+          "name": "Works in Progress",
+          "description": "Essays on progress, science and why things improve.",
+          "siteUrl": "https://worksinprogress.co",
+          "url": "https://worksinprogress.co/rss.xml",
+          "icon": "ideas-works-in-progress.png"
+        },
+        {
+          "kind": "feed",
+          "slug": "ideas-marginalian",
+          "name": "The Marginalian",
+          "description": "Maria Popova on books, art and meaning.",
+          "siteUrl": "https://www.themarginalian.org",
+          "url": "https://feeds.feedburner.com/brainpickings/rss",
+          "icon": "ideas-marginalian.png"
+        },
+        {
+          "kind": "feed",
+          "slug": "ideas-longreads",
+          "name": "Longreads",
+          "description": "The best long journalism, curated.",
+          "siteUrl": "https://longreads.com",
+          "url": "https://longreads.com/feed/",
+          "icon": "ideas-longreads.png"
+        }
+      ]
+    },
+    {
+      "slug": "education",
+      "name": "Education",
+      "blurb": "Teaching, learning science and the institutions around them.",
+      "items": [
+        {
+          "kind": "feed",
+          "slug": "education-hechinger",
+          "name": "The Hechinger Report",
+          "description": "Nonprofit investigative reporting on education.",
+          "siteUrl": "https://hechingerreport.org",
+          "url": "https://hechingerreport.org/feed/",
+          "icon": "education-hechinger.png"
+        },
+        {
+          "kind": "feed",
+          "slug": "education-edsurge",
+          "name": "EdSurge",
+          "description": "Education technology and the classroom.",
+          "siteUrl": "https://www.edsurge.com/articles_rss",
+          "url": "https://www.edsurge.com/articles_rss",
+          "icon": "education-edsurge.png"
+        },
+        {
+          "kind": "feed",
+          "slug": "education-inside-higher-ed",
+          "name": "Inside Higher Ed",
+          "description": "Higher education news and policy.",
+          "siteUrl": "https://www.insidehighered.com",
+          "url": "https://www.insidehighered.com/rss.xml",
+          "icon": "education-inside-higher-ed.png"
+        },
+        {
+          "kind": "feed",
+          "slug": "education-cult-of-pedagogy",
+          "name": "Cult of Pedagogy",
+          "description": "Jennifer Gonzalez on teaching craft.",
+          "siteUrl": "https://www.cultofpedagogy.com",
+          "url": "https://www.cultofpedagogy.com/sample-page/feed/",
+          "icon": "education-cult-of-pedagogy.png"
+        },
+        {
+          "kind": "feed",
+          "slug": "education-class-central",
+          "name": "Class Central",
+          "description": "Online courses and the MOOC landscape.",
+          "siteUrl": "https://www.classcentral.com/report/feed/",
+          "url": "https://www.classcentral.com/report/feed/",
+          "icon": "education-class-central.png"
+        },
+        {
+          "kind": "feed",
+          "slug": "education-ness-labs",
+          "name": "Ness Labs",
+          "description": "Learning, focus and how minds actually work.",
+          "siteUrl": "https://nesslabs.com",
+          "url": "https://nesslabs.com/feed",
+          "icon": "education-ness-labs.png"
+        },
+        {
+          "kind": "feed",
+          "slug": "education-larry-cuban",
+          "name": "Larry Cuban",
+          "description": "School reform and classroom practice, from a historian.",
+          "siteUrl": "https://larrycuban.wordpress.com/feed/",
+          "url": "https://larrycuban.wordpress.com/feed/",
+          "icon": "education-larry-cuban.png"
+        }
+      ]
+    }
+  ]
+}

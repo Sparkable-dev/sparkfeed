@@ -1,0 +1,27 @@
+---
+/* A landing-page section: optional heading, optional one-line lead, slot.
+   Styles: src/styles/landing.css (── SECTIONS).
+
+   `variant="band"` draws a full border box instead of relying on the divider
+   rule between adjacent sections, so the scroll does not read as one uniform
+   stack of card grids.
+
+   The <h2> is deliberately a real heading: this page is a splash template, so
+   Starlight renders no table of contents, but the heading level still carries
+   the document outline for screen readers and for Pagefind's result snippets. */
+interface Props {
+	title?: string;
+	lead?: string;
+	id?: string;
+	variant?: 'plain' | 'band';
+	class?: string;
+}
+
+const { title, lead, id, variant = 'plain', class: className } = Astro.props;
+---
+
+<section class:list={['sf-section', className]} data-variant={variant}>
+	{title && <h2 class="sf-section-title" id={id}>{title}</h2>}
+	{lead && <p class="sf-section-lead">{lead}</p>}
+	<div class="sf-section-body"><slot /></div>
+</section>

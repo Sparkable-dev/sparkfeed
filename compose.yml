@@ -1,0 +1,45 @@
+name: sparkfeed
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: sparkfeed
+      POSTGRES_USER: sparkfeed
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sparkfeed -d sparkfeed"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - sparkfeed-postgres:/var/lib/postgresql/data
+
+  app:
+    build:
+      context: .
+    image: ghcr.io/sparkable-dev/sparkfeed:${SPARKFEED_VERSION:-local}
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      DATABASE_URL: postgresql://sparkfeed:${POSTGRES_PASSWORD}@postgres:5432/sparkfeed
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?Set BETTER_AUTH_SECRET in .env}
+      APP_URL: ${APP_URL:-http://localhost:3000}
+      BETTER_AUTH_URL: ${BETTER_AUTH_URL:-http://localhost:3000}
+      ALLOW_REGISTRATION: ${ALLOW_REGISTRATION:-false}
+      WORKSPACE_CREATION_POLICY: ${WORKSPACE_CREATION_POLICY:-owner-only}
+      HOST: 0.0.0.0
+      PORT: 3000
+      VITE_DEMO_MODE: "false"
+      DEMO_MODE: "false"
+    ports:
+      - "${SPARKFEED_PORT:-3000}:3000"
+
+volumes:
+  sparkfeed-postgres:

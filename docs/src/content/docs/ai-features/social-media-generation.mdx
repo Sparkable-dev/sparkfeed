@@ -1,0 +1,93 @@
+---
+title: Social Media Post Generation
+description: Turn your reading into content. How SparkFeed's AI will generate LinkedIn posts, tweets, and more from your feeds.
+sidebar:
+  order: 2
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+<Aside type="caution" title="This feature is not yet available">
+  Social Media Post Generation is planned for a future release. This page describes the intended feature design.
+</Aside>
+
+## The Idea
+
+Content creators and thought leaders spend hours every week:
+
+1. Reading articles across many sources
+2. Synthesizing insights
+3. Crafting LinkedIn posts, tweets, or newsletters from that research
+
+SparkFeed will automate the bridge between **reading** and **content creation**.
+
+## The Core Workflow
+
+```txt frame="none"
+Read 10 blogs → Select relevant articles → AI generates a post → Edit & publish
+```
+
+Here's a concrete example:
+
+**You read these 5 articles this week:**
+- "The death of third-party cookies" (TechCrunch)
+- "First-party data strategies for 2026" (Marketing Week)
+- "How Safari handles user tracking" (WebKit Blog)
+- "Advertisers shift to contextual targeting" (Digiday)
+- "Privacy regulations tighten in the EU" (Reuters)
+
+**SparkFeed generates this LinkedIn post:**
+
+> 🔒 The cookie era is ending. Here's what you need to know:
+>
+> Third-party cookies in Chrome are officially deprecated. Advertisers who relied on cross-site tracking are scrambling to adapt.
+>
+> The winners? Brands with strong first-party data strategies. If you've been building direct relationships with your audience, this is your moment.
+>
+> Key takeaways:
+> → Contextual targeting is back and more sophisticated than ever
+> → EU regulations are accelerating the timeline globally
+> → Safari already blocks 99% of third-party trackers
+>
+> The privacy-first web is here. Ready or not.
+>
+> #MarTech #Privacy #DigitalMarketing
+
+## Post Formats
+
+The generator will support multiple content formats:
+
+| Format | Platform | Style |
+|--------|----------|-------|
+| **LinkedIn post** | LinkedIn | Professional, insight-led, 150–300 words |
+| **Thread** | X (Twitter) | Punchy, numbered points, under 280 chars each |
+| **Newsletter paragraph** | Substack / Beehiiv | Editorial voice, conversational |
+| **Key takeaways** | Any | Bulleted summary, 5–7 points |
+| **Executive brief** | Internal use | Formal, concise, business-focused |
+
+## How to Trigger Generation
+
+The planned UX will work like this:
+
+1. Select articles in the article list (checkboxes)
+2. Click **"Generate Post"** in the toolbar
+3. Choose the format (LinkedIn, Thread, etc.)
+4. Review and edit the AI-generated draft
+5. Copy to clipboard or share directly (where API access is available)
+
+## Quality Controls
+
+The AI post generator will include guardrails:
+
+- **Source attribution:** Always cites the original articles it drew from
+- **Fact preservation:** Doesn't invent statistics or quote fabrications
+- **Tone selector:** Choose Professional, Conversational, or Provocative
+- **Length control:** Specify target word count
+
+<Aside type="tip">
+  The best workflow is to curate your feeds around a specific niche, let SparkFeed surface the most important articles, and use the generator as a **first draft**, not a final product. Your editing and perspective are what make the content valuable.
+</Aside>
+
+## Privacy Considerations
+
+If using a local AI provider (Ollama), all generation happens on your machine, so your article content is never transmitted. If using a cloud API (OpenAI, Anthropic), article content is sent to that provider per their terms of service.

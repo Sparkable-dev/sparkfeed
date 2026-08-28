@@ -1,0 +1,23 @@
+---
+title: Performance and maintenance
+description: Keep a PostgreSQL-backed Sparkfeed instance responsive.
+---
+
+Start with PostgreSQL defaults and measure before tuning.
+
+## Database
+
+- Keep PostgreSQL on supported storage with enough free space.
+- Run regular logical backups.
+- Monitor connection count, slow queries, table growth, and failed migrations.
+- Let PostgreSQL autovacuum run. Do not disable it for Sparkfeed tables.
+
+## Feed ingestion
+
+Feed polling uses conditional requests when sources support them. Sites without RSS need more network and parsing work. Increase refresh frequency only after measuring CPU, memory, and outbound traffic.
+
+## Application
+
+Run the production Nitro build rather than the Vite development server. Keep application and PostgreSQL latency low, and cap container memory high enough for article parsing and AI tool responses.
+
+Demo-mode performance does not represent a PostgreSQL Community installation.

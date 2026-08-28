@@ -1,0 +1,113 @@
+---
+title: Feed Fetching Logic
+description: Internal documentation on how SparkFeed fetches RSS and Atom feeds, covering HTTP strategy, retries, and error handling.
+sidebar:
+  order: 1
+---
+
+## Overview
+
+Feed fetching is the process of making HTTP requests to RSS/Atom feed URLs and retrieving their XML content.
+
+SparkFeed's fetcher lives in `src/server/lib/feed-fetcher.ts`.
+
+## HTTP Request Configuration
+
+All feed requests are made with `undici` (Node.js's built-in HTTP client):
+
+```typescript
+// src/server/lib/feed-fetcher.ts
+import { fetch } from 'undici';
+
+export async function fetchFeed(url: string): Promise<string> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 10_000); // 10s timeout
+
+  try {
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'SparkFeed/1.0 (https://github.com/sparkfeed/sparkfeed)',
+        'Accept': 'application/rss+xml, application/atom+xml, application/xml, text/xml, */*',
+      },
+      signal: controller.signal,
+    });
+
+    if (!response.ok) {
+      throw new FeedFetchError(`HTTP ${response.status}: ${response.statusText}`, url);
+    }
+
+    return await response.text();
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+```
+
+## Retry Strategy
+
+Failed requests are retried with exponential backoff:
+
+```typescript
+export async function fetchFeedWithRetry(url: string, maxRetries = 3): Promise<string> {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      return await fetchFeed(url);
+    } catch (error) {
+      if (attempt === maxRetries) throw error;
+
+      const delay = Math.min(1000 * 2 ** attempt, 30_000); // max 30s
+      await sleep(delay);
+    }
+  }
+  throw new Error('Unreachable');
+}
+```
+
+| Attempt | Delay |
+|---------|-------|
+| 1st retry | 2 seconds |
+| 2nd retry | 4 seconds |
+| 3rd retry | 8 seconds |
+
+## Conditional Requests
+
+To avoid re-downloading unchanged feeds, SparkFeed uses HTTP caching headers:
+
+```typescript
+// Store ETag and Last-Modified from previous response
+const stored = await db.select().from(feedCache).where(eq(feedCache.feedId, feedId));
+
+const headers: Record<string, string> = { /* ... base headers */ };
+
+if (stored?.etag) headers['If-None-Match'] = stored.etag;
+if (stored?.lastModified) headers['If-Modified-Since'] = stored.lastModified;
+
+const response = await fetch(url, { headers });
+
+if (response.status === 304) {
+  // Not Modified: no new content
+  return null;
+}
+```
+
+This reduces bandwidth and respects feed servers that support conditional requests.
+
+## Concurrent Fetching
+
+Multiple feeds are fetched in parallel with a concurrency limit:
+
+```typescript
+import PQueue from 'p-queue';
+
+const queue = new PQueue({ concurrency: 5 });
+
+export async function refreshFeeds(feeds: Feed[]) {
+  await Promise.all(
+    feeds.map((feed) =>
+      queue.add(() => fetchAndStore(feed))
+    )
+  );
+}
+```
+
+With `concurrency: 5`, up to 5 feeds are fetched simultaneously, then the next batch starts. This balances speed with politeness to feed servers.

@@ -1,0 +1,122 @@
+---
+title: State Management (Zustand)
+description: How SparkFeed manages client-side state with Zustand, a minimal, flexible state management library.
+sidebar:
+  order: 4
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+## State Architecture
+
+SparkFeed separates state into two categories:
+
+| Category | Tool | Examples |
+|----------|------|---------|
+| **Server state** | TanStack Query | Feed list, articles, database data |
+| **Client state** | Zustand | Sidebar open/closed, selected article, UI theme |
+
+Server state (data that comes from the database) is handled by TanStack Query. Client state (ephemeral UI state) is handled by Zustand.
+
+## Why Zustand?
+
+[Zustand](https://zustand-demo.pmnd.rs/) is a minimal state management library for React:
+
+- **Tiny:** Under 1KB gzipped
+- **No boilerplate:** No actions, reducers, or middleware required
+- **React-friendly:** Works natively with hooks
+- **TypeScript-first:** Full type inference
+
+Compared to Redux, Zustand needs ~90% less code for the same functionality.
+
+## The UI Store
+
+SparkFeed's main UI store:
+
+```typescript
+// src/client/stores/ui.store.ts
+import { create } from 'zustand';
+
+interface UIStore {
+  // Sidebar
+  sidebarOpen: boolean;
+  toggleSidebar: () => void;
+  setSidebarOpen: (open: boolean) => void;
+
+  // Selected article
+  selectedArticleId: number | null;
+  setSelectedArticle: (id: number | null) => void;
+
+  // Reading pane
+  readingPaneVisible: boolean;
+  setReadingPaneVisible: (visible: boolean) => void;
+}
+
+export const useUIStore = create<UIStore>((set) => ({
+  sidebarOpen: true,
+  toggleSidebar: () => set((state) => ({ sidebarOpen: !state.sidebarOpen })),
+  setSidebarOpen: (open) => set({ sidebarOpen: open }),
+
+  selectedArticleId: null,
+  setSelectedArticle: (id) => set({ selectedArticleId: id }),
+
+  readingPaneVisible: false,
+  setReadingPaneVisible: (visible) => set({ readingPaneVisible: visible }),
+}));
+```
+
+## Using the Store in Components
+
+```tsx
+// In a component
+import { useUIStore } from '@/stores/ui.store';
+
+export function SidebarToggle() {
+  const { sidebarOpen, toggleSidebar } = useUIStore();
+
+  return (
+    <button onClick={toggleSidebar} aria-label="Toggle sidebar">
+      {sidebarOpen ? <PanelLeftClose /> : <PanelLeftOpen />}
+    </button>
+  );
+}
+```
+
+Zustand is selector-based, so components only re-render when the specific state they use changes.
+
+## Combining Server and Client State
+
+TanStack Query manages server state with caching and invalidation:
+
+```tsx
+// ArticleList.tsx: combining both stores
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useUIStore } from '@/stores/ui.store';
+
+export function ArticleList({ feedId }: { feedId: number }) {
+  const { selectedArticleId, setSelectedArticle } = useUIStore();
+
+  const { data, isLoading } = useQuery({
+    queryKey: ['articles', feedId],
+    queryFn: () => fetchArticles(feedId),
+  });
+
+  return (
+    <ul>
+      {data?.articles.map((article) => (
+        <li
+          key={article.id}
+          onClick={() => setSelectedArticle(article.id)}
+          data-selected={article.id === selectedArticleId}
+        >
+          {article.title}
+        </li>
+      ))}
+    </ul>
+  );
+}
+```
+
+<Aside type="note">
+  TanStack Query handles caching, refetching, and synchronization with the server. Zustand handles pure UI state that doesn't need to be persisted or fetched. Keeping them separate prevents overfetching and unnecessary re-renders.
+</Aside>

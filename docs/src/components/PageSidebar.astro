@@ -1,0 +1,192 @@
+---
+/*
+  Override of Starlight's `PageSidebar` (the right rail). Keeps the stock TOC —
+  mobile dropdown + desktop "On this page" panel — and appends a page-actions
+  block below it (desktop only): "Edit this page on GitHub" and "Scroll to top",
+  modelled on the AI Elements reference.
+*/
+import MobileTableOfContents from 'virtual:starlight/components/MobileTableOfContents';
+import TableOfContents from 'virtual:starlight/components/TableOfContents';
+
+const { editUrl, toc } = Astro.locals.starlightRoute;
+---
+
+{
+	toc && (
+		<>
+			<div class="lg:sl-hidden">
+				<MobileTableOfContents />
+			</div>
+			<div class="right-sidebar-panel sl-hidden lg:sl-block">
+				<div class="sl-container">
+					<TableOfContents />
+
+					<div class="sf-page-actions">
+						{editUrl && (
+							<a class="sf-page-action" href={editUrl.href} target="_blank" rel="noopener noreferrer">
+								<svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor" aria-hidden="true">
+									<path d="M12 2C6.48 2 2 6.58 2 12.25c0 4.53 2.87 8.37 6.84 9.73.5.1.68-.22.68-.49 0-.24-.01-.88-.01-1.72-2.78.62-3.37-1.22-3.37-1.22-.46-1.18-1.11-1.49-1.11-1.49-.91-.63.07-.62.07-.62 1 .07 1.53 1.05 1.53 1.05.89 1.57 2.34 1.12 2.91.85.09-.66.35-1.12.63-1.38-2.22-.26-4.56-1.14-4.56-5.05 0-1.12.39-2.03 1.03-2.75-.1-.26-.45-1.3.1-2.71 0 0 .84-.28 2.75 1.05a9.35 9.35 0 0 1 5 0c1.91-1.33 2.75-1.05 2.75-1.05.55 1.41.2 2.45.1 2.71.64.72 1.03 1.63 1.03 2.75 0 3.92-2.34 4.78-4.57 5.04.36.32.68.94.68 1.9 0 1.37-.01 2.48-.01 2.82 0 .27.18.6.69.49A10.02 10.02 0 0 0 22 12.25C22 6.58 17.52 2 12 2Z" />
+								</svg>
+								<span>Edit this page on GitHub</span>
+							</a>
+						)}
+
+						<sf-scroll-top>
+							<button type="button" class="sf-page-action">
+								<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+									<circle cx="12" cy="12" r="9" />
+									<path d="m8 12 4-4 4 4M12 16V8" />
+								</svg>
+								<span>Scroll to top</span>
+							</button>
+						</sf-scroll-top>
+					</div>
+				</div>
+			</div>
+		</>
+	)
+}
+
+<script>
+	class ScrollTop extends HTMLElement {
+		constructor() {
+			super();
+			this.querySelector('button')?.addEventListener('click', () => {
+				const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+				window.scrollTo({ top: 0, behavior: reduce ? 'auto' : 'smooth' });
+			});
+		}
+	}
+
+	customElements.define('sf-scroll-top', ScrollTop);
+
+	/*
+	  Bent "on this page" rail (Fumadocs "clerk" style). The rail is one SVG path
+	  that runs vertically through the headings and curves between indent levels
+	  (h2 → h3 → …). It's drawn twice: a faint full rail, and an accent copy
+	  clipped to the active heading's band via a CSS-variable clip-path. As
+	  Starlight moves `aria-current`, we update the band and the clip-path
+	  transition glides the highlight along the bends.
+	*/
+	const RAIL_BASE = 2;
+	function railOffset(depth: number): number {
+		// depth 0 = h2, 1 = h3, 2+ = deeper. ~10px indent per level.
+		if (depth <= 0) return RAIL_BASE;
+		if (depth === 1) return RAIL_BASE + 10;
+		return RAIL_BASE + 20;
+	}
+
+	function initTocRail() {
+		const nav = document.querySelector<HTMLElement>('.right-sidebar-panel starlight-toc nav');
+		if (!nav) return;
+		const links = [...nav.querySelectorAll<HTMLAnchorElement>('a')];
+		if (!links.length) return;
+
+		const layer = document.createElement('div');
+		layer.className = 'sf-toc-rail';
+		nav.appendChild(layer);
+
+		/** Nesting depth of a TOC link (top-level ul = 0). */
+		const depthOf = (link: HTMLElement): number => {
+			let depth = 0;
+			let el = link.parentElement;
+			while (el && el !== nav) {
+				if (el.tagName === 'UL') depth++;
+				el = el.parentElement;
+			}
+			return Math.max(0, depth - 1);
+		};
+
+		let positions: [top: number, bottom: number][] = [];
+		let ready = false;
+
+		const build = () => {
+			let w = 0;
+			let h = 0;
+			let d = '';
+			positions = [];
+			let prev: [number, number, number] | null = null;
+
+			links.forEach((a, i) => {
+				const cs = getComputedStyle(a);
+				const x = railOffset(depthOf(a)) + 0.5;
+				const top = a.offsetTop + parseFloat(cs.paddingTop);
+				const bottom = a.offsetTop + a.clientHeight - parseFloat(cs.paddingBottom);
+				w = Math.max(w, x + 4);
+				h = Math.max(h, bottom);
+
+				if (i === 0 || !prev) {
+					d += `M${x} ${top} L${x} ${bottom}`;
+				} else {
+					const [ux, , ub] = prev;
+					const mid = (ub + top) / 2;
+					// Smooth vertical-tangent bezier between indent levels.
+					d += ` C${ux} ${mid} ${x} ${mid} ${x} ${top} L${x} ${bottom}`;
+				}
+				positions.push([top, bottom]);
+				prev = [x, top, bottom];
+			});
+
+			layer.style.width = `${w}px`;
+			layer.style.height = `${h}px`;
+			layer.innerHTML =
+				`<svg class="sf-toc-rail-svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" aria-hidden="true">` +
+				`<path class="sf-toc-rail-line" d="${d}" /></svg>` +
+				`<svg class="sf-toc-rail-svg sf-toc-rail-active" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" aria-hidden="true">` +
+				`<path class="sf-toc-rail-hl" d="${d}" /></svg>`;
+		};
+
+		const move = () => {
+			const activeSvg = layer.querySelector<SVGElement>('.sf-toc-rail-active');
+			if (!activeSvg) return;
+			const active = nav.querySelector<HTMLAnchorElement>('a[aria-current="true"]');
+			const i = active ? links.indexOf(active) : -1;
+			if (i < 0) {
+				activeSvg.style.opacity = '0';
+				return;
+			}
+			const [top, bottom] = positions[i];
+			activeSvg.style.setProperty('--track-top', `${top}px`);
+			activeSvg.style.setProperty('--track-bottom', `${bottom}px`);
+			activeSvg.style.opacity = '1';
+			if (!ready) {
+				requestAnimationFrame(() => {
+					activeSvg.setAttribute('data-ready', '');
+					ready = true;
+				});
+			}
+		};
+
+		build();
+		move();
+
+		new MutationObserver(move).observe(nav, {
+			subtree: true,
+			attributes: true,
+			attributeFilter: ['aria-current'],
+		});
+
+		let resizeTimer: ReturnType<typeof setTimeout>;
+		window.addEventListener('resize', () => {
+			clearTimeout(resizeTimer);
+			resizeTimer = setTimeout(() => {
+				ready = false;
+				build();
+				move();
+			}, 150);
+		});
+	}
+
+	initTocRail();
+</script>
+
+{/*
+	No <style> block. The rules that used to live here targeted Starlight's own
+	`.right-sidebar-panel` / `.sl-container` — not markup this component owns —
+	and were declared inside `@layer starlight.core` purely so the global sheet
+	could out-rank them. They now live once, in src/styles/layout.css.
+
+	They were also unreachable: `.right-sidebar-panel` carries `sl-hidden
+	lg:sl-block`, so it is display:none below 72rem, and at 72rem and above
+	layout.css overrode both the panel padding and the container width anyway.
+*/}

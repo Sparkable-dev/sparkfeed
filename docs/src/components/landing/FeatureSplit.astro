@@ -1,0 +1,27 @@
+---
+/* Bordered band: prose on the left, a code sample on the right, divided by a
+   vertical hairline. Styles: src/styles/landing.css (── FEATURE SPLIT).
+
+   This is the one section on the page that is neither a card grid nor a list,
+   which is the point: it breaks the rhythm partway down the scroll. */
+import { Code } from '@astrojs/starlight/components';
+
+interface Props {
+	title: string;
+	code: string;
+	lang?: string;
+	frameTitle?: string;
+}
+
+const { title, code, lang = 'bash', frameTitle } = Astro.props;
+---
+
+<section class="sf-split">
+	<div class="sf-split-copy">
+		<h2 class="sf-split-title">{title}</h2>
+		<div class="sf-split-body"><slot /></div>
+	</div>
+	<div class="sf-split-code">
+		<Code code={code} lang={lang} frame="terminal" title={frameTitle} />
+	</div>
+</section>

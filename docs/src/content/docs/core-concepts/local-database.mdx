@@ -1,0 +1,18 @@
+---
+title: Instance data
+description: Where a Community Edition installation stores Sparkfeed data.
+---
+
+A Community Edition instance stores durable data in the PostgreSQL database configured by `DATABASE_URL`.
+
+The database contains:
+
+- Accounts, sessions, workspaces, members, and invitations.
+- Feeds, watched pages, folders, and articles.
+- Reading state, sharing settings, and API keys.
+- Saved Spark AI threads and messages.
+- Cached catalogue and feed-health data.
+
+Back up PostgreSQL before an upgrade. Follow the [export and backup guide](/docs/advanced/export-and-backup/) for Compose and standard PostgreSQL commands.
+
+Demo mode uses a separate SQLite file. Deleting `rss-demo.db` resets only demo data.

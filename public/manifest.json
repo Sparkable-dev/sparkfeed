@@ -1,0 +1,27 @@
+{
+  "short_name": "Sparkfeed",
+  "name": "Sparkfeed",
+  "description": "Your feeds, in one calm place.",
+  "icons": [
+    {
+      "src": "favicon.svg",
+      "type": "image/svg+xml",
+      "sizes": "any",
+      "purpose": "any"
+    },
+    {
+      "src": "logo192.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "logo512.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ],
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#4F29F6",
+  "background_color": "#181818"
+}

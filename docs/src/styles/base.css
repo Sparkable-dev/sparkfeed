@@ -1,0 +1,80 @@
+/* ==========================================================================
+   Global element defaults, motion policy, focus policy.
+   No component styles and no layout geometry live here.
+   ========================================================================== */
+
+body {
+  font-family: var(--sl-font);
+  font-feature-settings: 'liga' 1, 'kern' 1, 'calt' 1;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background: var(--sf-bg);
+}
+
+/* ── Motion ────────────────────────────────────────────────────────────────
+   Smooth scrolling is opt-in for users who tolerate motion; it used to be
+   unconditional. */
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms;
+    animation-iteration-count: 1;
+    transition-duration: 0.01ms;
+    scroll-behavior: auto;
+  }
+}
+
+/* The header is fixed, so an in-page anchor would otherwise land underneath
+   it. Applies to TOC clicks and to deep links arriving from outside. */
+:target {
+  scroll-margin-block-start: calc(var(--sl-nav-height) + var(--sf-space-4));
+}
+
+/* ── Focus ────────────────────────────────────────────────────────────────
+   Every browser we support already restricts the UA ring to :focus-visible,
+   so no `:focus { outline: none }` suppressor is needed — and the old one
+   risked stripping the ring entirely on browsers that need it most. */
+:focus-visible {
+  outline: 2px solid var(--sf-accent);
+  outline-offset: 2px;
+  border-radius: var(--sf-radius-xs);
+}
+
+/* Controls that already clip to their own radius keep it, so the ring hugs
+   the shape instead of drawing a smaller rounded rect inside it. */
+:is(a, button, summary, .sf-menu-link, .sf-brand, .sf-group-summary):focus-visible {
+  border-radius: inherit;
+}
+
+::selection {
+  background: var(--sf-selection-bg);
+  color: var(--sf-fg-strong);
+}
+
+/* ── Scrollbars ────────────────────────────────────────────────────────────
+   Global thin bar. The sidebar's auto-hiding variant is in components.css and
+   deliberately overrides this for its own scroll region. */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--sf-scrollbar);
+  border-radius: var(--sf-radius-full);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--sf-fg-subtle);
+}

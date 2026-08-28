@@ -1,0 +1,16 @@
+.git
+.github
+.output
+.tanstack
+.astro
+.wrangler
+node_modules
+docs/node_modules
+docs/dist
+*.db
+*.db-*
+*.log
+.env
+.env.*
+!.env.example
+SPARKFEED-EDITION-DECISIONS.md

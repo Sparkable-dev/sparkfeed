@@ -1,0 +1,85 @@
+---
+title: Responsive Design
+description: How SparkFeed's interface adapts to different screen sizes and devices.
+sidebar:
+  order: 4
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+## Built for Every Screen
+
+SparkFeed is designed to work seamlessly on any device you use: desktop, tablet, or mobile.
+
+## Breakpoints
+
+| Breakpoint | Width | Layout |
+|------------|-------|--------|
+| Mobile | < 768px | Single column, bottom nav |
+| Tablet | 768px – 1024px | Sidebar + Article list |
+| Desktop | > 1024px | Full three-panel layout |
+
+## Mobile Layout
+
+On mobile, the three-panel layout collapses into a focused single-column experience:
+
+```txt frame="none"
+┌──────────────────────┐
+│   Header (minimal)   │
+├──────────────────────┤
+│                      │
+│   Article List       │
+│   (or Reader)        │
+│                      │
+├──────────────────────┤
+│  Home | Feeds | Star │  ← Bottom navigation
+└──────────────────────┘
+```
+
+Key mobile behaviors:
+
+- **Swipe right** to go back to the article list
+- **Swipe left** to open the reader for the next article
+- **Pull to refresh** the current feed
+- **Bottom sheet** replaces modal dialogs
+
+## Touch Optimizations
+
+All interactive elements are designed for touch:
+
+- Minimum touch target size: **44×44px** (Apple HIG / WCAG recommendation)
+- Touch areas extend beyond visual boundaries using CSS `padding`
+- No hover-only states. All hover effects have touch-equivalent interactions
+
+## Responsive Typography
+
+Text scales appropriately on smaller screens:
+
+```css
+/* Example: reading view font size */
+.article-reader {
+  font-size: clamp(15px, 2.2vw, 17px);
+  line-height: 1.75;
+  max-width: min(680px, 100%);
+}
+```
+
+`clamp()` ensures text is never too small on tiny screens or too large on huge monitors.
+
+## Testing Responsiveness
+
+During development, test the UI at:
+
+- **375px:** iPhone SE (smallest common size)
+- **768px:** iPad portrait
+- **1280px:** Standard laptop
+- **1920px:** Full HD desktop
+
+```bash
+# Open Chrome DevTools → Device Mode (Ctrl+Shift+M)
+# Or test on a real device via local network access
+```
+
+<Aside type="tip">
+  When running `npm run dev`, you can access SparkFeed from any device on your local network using your machine's local IP address (e.g., `http://192.168.1.x:3000`).
+</Aside>

@@ -1,0 +1,60 @@
+---
+title: Trend Detection
+description: Upcoming AI feature that surfaces emerging trends across your feeds before they go mainstream.
+sidebar:
+  order: 3
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+<Aside type="caution" title="This feature is not yet available">
+  Trend Detection is in the design phase. This page outlines the planned functionality.
+</Aside>
+
+## What is Trend Detection?
+
+Trend Detection analyzes articles across all your feeds and identifies **topics that appear repeatedly** in a short period of time.
+
+If 10 articles across your feeds mention "Model Context Protocol" in the same week, that's a signal. It's becoming important in your niche.
+
+## How It Works
+
+The detection pipeline will:
+
+1. **Extract topics** from new articles using keyword extraction or NLP
+2. **Track frequency:** how often each topic appears across feeds and over time
+3. **Score velocity:** topics growing rapidly in mentions score higher
+4. **Surface emerging trends:** notify you through a dedicated "Trending" section
+
+## The "Trending Now" View
+
+A new section in the sidebar will show your personalized trending topics:
+
+```txt frame="none"
+📈 Trending This Week
+
+  1. Model Context Protocol        ████████  14 mentions
+  2. SQLite in production          ██████    11 mentions
+  3. React Server Components       █████     9 mentions
+  4. AI agent frameworks           ████      7 mentions
+  5. Distributed SQLite (Turso)    ███       5 mentions
+```
+
+These trends are derived *only* from your own feeds. No external data, no "what's trending on the internet."
+
+## Why This Matters
+
+Standard RSS reading is chronological. Trend detection adds a **topic layer**:
+
+- **Spot emerging technologies** before they're mainstream
+- **Identify consensus:** when many smart people write about the same thing, pay attention
+- **Plan your content:** trend data tells you what your audience cares about right now
+- **Reduce FOMO:** confidence that you haven't missed anything important
+
+## Personalization
+
+Because trends are computed from *your* feeds, they're uniquely relevant to your interests. A developer following tech blogs will see different trends than a marketer following advertising publications.
+
+<Aside type="note">
+  Trend Detection works best when you follow 15+ feeds. With more sources, the signal-to-noise ratio improves significantly.
+</Aside>

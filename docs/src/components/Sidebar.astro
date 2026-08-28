@@ -1,0 +1,273 @@
+---
+/*
+  Override of Starlight's `Sidebar`, restyled after shadcn/ui `sidebar-01`/`sidebar-03`.
+
+  Adds a `SidebarHeader` block (brand + search) above the navigation and swaps
+  Starlight's default sublist for our own (see `SidebarSublist.astro`).
+  Scroll/open-state persistence is preserved by keeping `SidebarPersister`.
+*/
+import config from 'virtual:starlight/user-config';
+import Search from 'virtual:starlight/components/Search';
+import MobileMenuFooter from '@astrojs/starlight/components/MobileMenuFooter.astro';
+import SidebarPersister from '@astrojs/starlight/components/SidebarPersister.astro';
+import SidebarSublist from './SidebarSublist.astro';
+/* The brand mark, shared byte-for-byte with the marketing site
+   Sparkfeed brand mark. Rendered as an <img> rather than
+   inlined: the file carries `<linearGradient id="sfDisc">` / `id="sfOrb"`, and
+   an <img> keeps those IDs in their own document so they can never collide with
+   another copy of the logo on the same page. */
+import logoMark from '../assets/logo-mark.svg';
+
+const { sidebar, siteTitleHref } = Astro.locals.starlightRoute;
+
+/** Mirrors Starlight's own check in `Header.astro`. */
+const shouldRenderSearch =
+	config.pagefind || config.components.Search !== '@astrojs/starlight/components/Search.astro';
+
+/** Shown in the sidebar header. Bump alongside the app release. */
+const DOCS_VERSION = 'v1.0';
+
+/**
+ * The docs are two sites in one frame: prose, and the generated API reference.
+ * Which one you are in is derived from the URL rather than stored, so a deep
+ * link lands in the right mode with the right sidebar and the right tick in the
+ * brand menu.
+ */
+const API_SEGMENT = '/api-reference';
+const isApiMode = Astro.url.pathname.includes(API_SEGMENT);
+
+const apiHref = `${import.meta.env.BASE_URL.replace(/\/$/, '')}${API_SEGMENT}/authentication/`;
+
+/** Entries whose links live under /api-reference, and the rest. */
+const inApiSection = (entry: any): boolean => {
+        if (entry.type === 'link') return entry.href.includes(API_SEGMENT);
+        return Array.isArray(entry.entries) && entry.entries.some(inApiSection);
+};
+const visibleSidebar = sidebar.filter((entry: any) =>
+        isApiMode ? inApiSection(entry) : !inApiSection(entry)
+);
+
+const mode = isApiMode
+        ? { title: 'API Reference', meta: 'REST API v1' }
+        : { title: 'Documentation', meta: `Sparkfeed ${DOCS_VERSION}` };
+---
+
+<div class="sf-sidebar-header">
+	{/*
+		The brand tile is a menu trigger rather than a link. Before this, the docs
+		had NO route back to the marketing site: Starlight computes `siteTitleHref`
+		as `formatPath('/')`, which with `base: '/docs'` resolves to `/docs/` — so
+		clicking the logo kept you inside the docs.
+
+		"Go to app" is intentionally present but disabled. There is no hosted app
+		yet (the marketing site's only CTA is /contact-us), and advertising a
+		destination that 404s is worse than showing it as pending.
+	*/}
+	<sf-brand-menu class="sf-brand-menu">
+		<button
+			type="button"
+			class="sf-brand"
+			aria-haspopup="menu"
+			aria-expanded="false"
+			aria-controls="sf-brand-menu-list"
+		>
+			<img class="sf-brand-mark" src={logoMark.src} alt="" width="32" height="32" aria-hidden="true" />
+			<span class="sf-brand-text">
+				<span class="sf-brand-title">{mode.title}</span>
+				<span class="sf-brand-meta">{mode.meta}</span>
+			</span>
+			<svg class="sf-brand-caret" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+				<path d="m7 15 5 5 5-5" />
+				<path d="m7 9 5-5 5 5" />
+			</svg>
+		</button>
+
+		<div class="sf-brand-menu-list" id="sf-brand-menu-list" role="menu" hidden>
+			<a
+				class="sf-brand-menu-item"
+				role="menuitem"
+				href={siteTitleHref}
+				aria-current={isApiMode ? undefined : 'page'}
+			>
+				<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+					<path d="M12 7v14" />
+					<path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3Z" />
+				</svg>
+				<span class="sf-brand-menu-label">Documentation</span>
+				{!isApiMode && (
+					<svg class="sf-brand-menu-check" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+						<path d="M20 6 9 17l-5-5" />
+					</svg>
+				)}
+			</a>
+
+			{/* A real anchor, not a disabled span: the menu's keyboard handler
+			    filters to `:not([aria-disabled])`, so anything else is skipped by
+			    the arrow keys. */}
+			<a class="sf-brand-menu-item" role="menuitem" href={apiHref} aria-current={isApiMode ? 'page' : undefined}>
+				<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+					<path d="m18 16 4-4-4-4" />
+					<path d="m6 8-4 4 4 4" />
+					<path d="m14.5 4-5 16" />
+				</svg>
+				<span class="sf-brand-menu-label">API Reference</span>
+				{isApiMode && (
+					<svg class="sf-brand-menu-check" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+						<path d="M20 6 9 17l-5-5" />
+					</svg>
+				)}
+			</a>
+
+			{/* Root-relative on purpose: docs are served from the same origin as the
+			    marketing site (sparkfeed.dev/docs via workers/docs-proxy), so this
+			    survives preview deploys. It 404s under `astro dev`, which only
+			    serves the docs app — that is expected locally. */}
+			<a class="sf-brand-menu-item" role="menuitem" href="/">
+				<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+					<path d="M15 21v-8H9v8" />
+					<path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+				</svg>
+				<span class="sf-brand-menu-label">Main site</span>
+			</a>
+
+			<span class="sf-brand-menu-item" role="menuitem" aria-disabled="true" tabindex="-1">
+				<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+					<rect x="3" y="3" width="7" height="7" rx="1.5" />
+					<rect x="14" y="3" width="7" height="7" rx="1.5" />
+					<rect x="3" y="14" width="7" height="7" rx="1.5" />
+					<rect x="14" y="14" width="7" height="7" rx="1.5" />
+				</svg>
+				<span class="sf-brand-menu-label">Go to app</span>
+				<span class="sf-brand-menu-badge">Coming soon</span>
+			</span>
+		</div>
+	</sf-brand-menu>
+
+	{
+		shouldRenderSearch && (
+			<div class="sf-sidebar-search print:hidden">
+				<Search />
+			</div>
+		)
+	}
+</div>
+
+<div class="sf-sidebar-scroll">
+	<SidebarPersister>
+		<SidebarSublist sublist={visibleSidebar} />
+	</SidebarPersister>
+
+	<div class="md:sl-hidden">
+		<MobileMenuFooter />
+	</div>
+</div>
+
+<script>
+	/*
+	  Starlight's built-in scroll persistence targets the whole sidebar pane, but
+	  the nav now scrolls in its own region (`.sf-sidebar-scroll`), so on load we
+	  bring the current page's link into view only if it's off-screen.
+	*/
+	function revealActiveNavItem() {
+		const scroll = document.querySelector<HTMLElement>('.sf-sidebar-scroll');
+		const active = scroll?.querySelector<HTMLElement>('a[aria-current="page"]');
+		if (!scroll || !active) return;
+		const c = scroll.getBoundingClientRect();
+		const a = active.getBoundingClientRect();
+		if (a.top >= c.top && a.bottom <= c.bottom) return; // already visible
+		scroll.scrollTop += a.top - c.top - (scroll.clientHeight - active.clientHeight) / 2;
+	}
+
+	revealActiveNavItem();
+
+	/*
+	  Brand dropdown. Same web-component pattern as `sf-sidebar-toggle` and
+	  `sf-theme-select`, so it needs no framework and no hydration directive.
+
+	  The popover is `position: absolute` inside `.sf-sidebar-header`, which does
+	  not clip — `.sidebar-pane` is the only `overflow: hidden` ancestor and the
+	  menu is well inside its bounds.
+	*/
+	class BrandMenu extends HTMLElement {
+		private trigger = this.querySelector<HTMLButtonElement>('.sf-brand')!;
+		private list = this.querySelector<HTMLElement>('.sf-brand-menu-list')!;
+
+		/** Only enabled entries take focus; "Go to app" is skipped until it ships. */
+		private get items() {
+			return [
+				...this.list.querySelectorAll<HTMLElement>(
+					'.sf-brand-menu-item:not([aria-disabled="true"])'
+				),
+			];
+		}
+
+		constructor() {
+			super();
+
+			this.trigger.addEventListener('click', () => this.toggle());
+
+			this.addEventListener('keydown', (event) => {
+				const items = this.items;
+				switch (event.key) {
+					case 'Escape':
+						if (this.isOpen) {
+							event.preventDefault();
+							this.close({ restoreFocus: true });
+						}
+						break;
+					case 'ArrowDown':
+					case 'ArrowUp': {
+						event.preventDefault();
+						if (!this.isOpen) return this.open(event.key === 'ArrowDown' ? 0 : -1);
+						const current = items.indexOf(document.activeElement as HTMLElement);
+						const delta = event.key === 'ArrowDown' ? 1 : -1;
+						const next = (current + delta + items.length) % items.length;
+						items[next]?.focus();
+						break;
+					}
+					case 'Home':
+						if (this.isOpen) { event.preventDefault(); items[0]?.focus(); }
+						break;
+					case 'End':
+						if (this.isOpen) { event.preventDefault(); items[items.length - 1]?.focus(); }
+						break;
+					case 'Tab':
+						this.close();
+						break;
+				}
+			});
+
+			// Pointer and focus escapes. Both are cheap no-ops while closed.
+			document.addEventListener('pointerdown', (event) => {
+				if (this.isOpen && !this.contains(event.target as Node)) this.close();
+			});
+			document.addEventListener('focusin', (event) => {
+				if (this.isOpen && !this.contains(event.target as Node)) this.close();
+			});
+		}
+
+		private get isOpen() {
+			return !this.list.hidden;
+		}
+
+		private toggle() {
+			this.isOpen ? this.close({ restoreFocus: true }) : this.open();
+		}
+
+		private open(focusIndex?: number) {
+			this.list.hidden = false;
+			this.trigger.setAttribute('aria-expanded', 'true');
+			if (focusIndex === undefined) return;
+			const items = this.items;
+			items.at(focusIndex)?.focus();
+		}
+
+		private close({ restoreFocus = false } = {}) {
+			this.list.hidden = true;
+			this.trigger.setAttribute('aria-expanded', 'false');
+			if (restoreFocus) this.trigger.focus();
+		}
+	}
+
+	customElements.define('sf-brand-menu', BrandMenu);
+</script>

@@ -1,0 +1,87 @@
+name: Application
+
+on:
+  pull_request:
+    paths-ignore:
+      - "docs/**"
+      - "workers/docs-proxy/**"
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - "docs/**"
+      - "workers/docs-proxy/**"
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: sparkfeed_ci
+          POSTGRES_USER: sparkfeed
+          POSTGRES_PASSWORD: sparkfeed-ci-password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U sparkfeed -d sparkfeed_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://sparkfeed:sparkfeed-ci-password@127.0.0.1:5432/sparkfeed_ci
+      BETTER_AUTH_SECRET: ci-only-better-auth-secret-that-is-not-used-outside-ci
+      APP_URL: http://127.0.0.1:3000
+      ALLOW_REGISTRATION: "false"
+      WORKSPACE_CREATION_POLICY: owner-only
+      VITE_DEMO_MODE: "false"
+      DEMO_MODE: "false"
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v6
+
+      - name: Install Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: .node-version
+          package-manager-cache: false
+
+      - name: Install Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.6
+
+      - name: Install dependencies
+        run: bun ci
+
+      - name: Audit dependencies
+        run: bun audit
+
+      - name: Apply migrations
+        run: bun run db:migrate
+
+      - name: Lint
+        run: bun run lint
+
+      - name: Typecheck
+        run: bun run typecheck
+
+      - name: Test
+        run: bun run test
+
+      - name: Build production server
+        run: bun run build
+
+  container:
+    runs-on: ubuntu-latest
+    needs: validate
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v6
+
+      - name: Build image
+        run: docker build --tag sparkfeed:${{ github.sha }} .

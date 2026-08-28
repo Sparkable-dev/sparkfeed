@@ -1,0 +1,163 @@
+{
+  "$comment": [
+    "Spark AI model catalogue (v2). This file is the SERVER-SIDE ALLOWLIST as well as the",
+    "source for the model picker — a model id arriving from the client is only ever accepted",
+    "if it appears in `models[]`, and an effort only if it appears in that model's `efforts[]`.",
+    "",
+    "Schema is model-first, not provider-first: the user picks a model, and `servedBy` maps it",
+    "to the id each provider uses for it (they differ — the gateway says `xai/grok-4.5` where",
+    "OpenRouter says `x-ai/grok-4.5`). Resolution walks `providers` by `priority`, keeps those",
+    "whose `envKey` is set AND which appear in the model's `servedBy`, and takes the first.",
+    "",
+    "`efforts` uses the AI SDK's provider-agnostic reasoning scale, passed to streamText as",
+    "`reasoning`. The SDK normalises it to each provider's native parameter, so there is no",
+    "per-vendor mapping here. A model with an empty `efforts` array does not support reasoning",
+    "control and its picker row has no submenu.",
+    "",
+    "Ids were verified against the live Vercel AI Gateway and OpenRouter model listings.",
+    "When adding a model, check both listings rather than guessing the slug."
+  ],
+
+  "version": "2",
+  "defaultModelId": "gpt-5.6-luna",
+
+  "efforts": [
+    { "id": "none", "label": "None", "hint": "No reasoning. Fastest." },
+    { "id": "minimal", "label": "Minimal", "hint": "Barely deliberates." },
+    { "id": "low", "label": "Low", "hint": "Quick answers." },
+    { "id": "medium", "label": "Medium", "hint": "Balanced." },
+    { "id": "high", "label": "High", "hint": "Thinks it through." },
+    { "id": "xhigh", "label": "Very high", "hint": "Deepest reasoning. Slowest." }
+  ],
+
+  "providers": [
+    {
+      "id": "openai",
+      "label": "OpenAI",
+      "envKey": "OPENAI_API_KEY",
+      "priority": 1
+    },
+    {
+      "id": "vercel-gateway",
+      "label": "Vercel AI Gateway",
+      "envKey": "AI_GATEWAY_API_KEY",
+      "priority": 2
+    },
+    {
+      "id": "openrouter",
+      "label": "OpenRouter",
+      "envKey": "OPENROUTER_API_KEY",
+      "priority": 3
+    }
+  ],
+
+  "models": [
+    {
+      "id": "gpt-5.6-luna",
+      "label": "GPT-5.6 Luna",
+      "group": "OpenAI",
+      "description": "Fast and cheap with a huge context window. The everyday default.",
+      "contextWindow": 1050000,
+      "efforts": ["none", "low", "medium", "high", "xhigh"],
+      "defaultEffort": "low",
+      "servedBy": {
+        "openai": "gpt-5.6-luna",
+        "vercel-gateway": "openai/gpt-5.6-luna",
+        "openrouter": "openai/gpt-5.6-luna"
+      }
+    },
+    {
+      "id": "gpt-5.6-sol",
+      "label": "GPT-5.6 Sol",
+      "group": "OpenAI",
+      "description": "Flagship. Best for long, multi-step work. Costs noticeably more.",
+      "contextWindow": 1050000,
+      "efforts": ["none", "low", "medium", "high", "xhigh"],
+      "defaultEffort": "medium",
+      "servedBy": {
+        "openai": "gpt-5.6-sol",
+        "vercel-gateway": "openai/gpt-5.6-sol",
+        "openrouter": "openai/gpt-5.6-sol"
+      }
+    },
+    {
+      "id": "gpt-5.4-mini",
+      "label": "GPT-5.4 Mini",
+      "group": "OpenAI",
+      "description": "Efficient mid-tier for high-volume, straightforward questions.",
+      "contextWindow": 400000,
+      "efforts": ["none", "low", "medium", "high", "xhigh"],
+      "defaultEffort": "low",
+      "servedBy": {
+        "openai": "gpt-5.4-mini",
+        "vercel-gateway": "openai/gpt-5.4-mini",
+        "openrouter": "openai/gpt-5.4-mini"
+      }
+    },
+    {
+      "id": "claude-sonnet-5",
+      "label": "Claude Sonnet 5",
+      "group": "Anthropic",
+      "description": "Strong all-rounder. Good judgement on writing and analysis.",
+      "contextWindow": 1000000,
+      "efforts": ["low", "medium", "high", "xhigh"],
+      "defaultEffort": "medium",
+      "servedBy": {
+        "vercel-gateway": "anthropic/claude-sonnet-5",
+        "openrouter": "anthropic/claude-sonnet-5"
+      }
+    },
+    {
+      "id": "claude-opus-5",
+      "label": "Claude Opus 5",
+      "group": "Anthropic",
+      "description": "Anthropic's most capable model. No reasoning-effort control.",
+      "contextWindow": 1000000,
+      "efforts": [],
+      "defaultEffort": null,
+      "servedBy": {
+        "vercel-gateway": "anthropic/claude-opus-5",
+        "openrouter": "anthropic/claude-opus-5"
+      }
+    },
+    {
+      "id": "gemini-3.5-flash",
+      "label": "Gemini 3.5 Flash",
+      "group": "Google",
+      "description": "Very fast with a large context window.",
+      "contextWindow": 1000000,
+      "efforts": ["minimal", "low", "medium", "high"],
+      "defaultEffort": "low",
+      "servedBy": {
+        "vercel-gateway": "google/gemini-3.5-flash",
+        "openrouter": "google/gemini-3.5-flash"
+      }
+    },
+    {
+      "id": "grok-4.5",
+      "label": "Grok 4.5",
+      "group": "xAI",
+      "description": "Frontier performance on knowledge work and STEM.",
+      "contextWindow": 500000,
+      "efforts": ["low", "medium", "high"],
+      "defaultEffort": "low",
+      "servedBy": {
+        "vercel-gateway": "xai/grok-4.5",
+        "openrouter": "x-ai/grok-4.5"
+      }
+    },
+    {
+      "id": "deepseek-v4-flash",
+      "label": "DeepSeek V4 Flash",
+      "group": "DeepSeek",
+      "description": "The cheapest option here by a wide margin. Reasoning is always on.",
+      "contextWindow": 1000000,
+      "efforts": ["high", "xhigh"],
+      "defaultEffort": "high",
+      "servedBy": {
+        "vercel-gateway": "deepseek/deepseek-v4-flash",
+        "openrouter": "deepseek/deepseek-v4-flash"
+      }
+    }
+  ]
+}

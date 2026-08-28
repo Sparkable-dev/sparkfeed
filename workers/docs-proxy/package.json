@@ -1,0 +1,14 @@
+{
+  "name": "sparkfeed-docs-proxy",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Cloudflare Worker that serves the SparkFeed docs at sparkfeed.dev/docs",
+  "scripts": {
+    "deploy": "wrangler deploy",
+    "dev": "wrangler dev",
+    "tail": "wrangler tail"
+  },
+  "devDependencies": {
+    "wrangler": "^4"
+  }
+}

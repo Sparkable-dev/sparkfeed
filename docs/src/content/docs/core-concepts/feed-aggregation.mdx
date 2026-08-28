@@ -1,0 +1,90 @@
+---
+title: Feed Aggregation
+description: Understand how SparkFeed fetches, parses, deduplicates, and stores articles from multiple feeds.
+sidebar:
+  order: 2
+---
+
+import { Aside } from "@astrojs/starlight/components"
+
+## What is Feed Aggregation?
+
+Feed aggregation is the process of collecting content from many RSS feeds and presenting it in a unified interface.
+
+Instead of visiting 20 different websites, SparkFeed fetches all their feeds and brings the content to you, sorted by date, organized by folder, and searchable across all sources.
+
+## The Aggregation Pipeline
+
+SparkFeed processes each feed through a multi-step pipeline:
+
+```txt frame="none"
+1. Schedule     → Determine which feeds need refreshing
+2. Fetch        → HTTP GET the feed URL
+3. Parse        → Convert XML/Atom to structured objects
+4. Deduplicate  → Skip articles already stored (by GUID)
+5. Normalize    → Standardize dates, clean HTML, extract metadata
+6. Store        → Insert new articles into PostgreSQL
+7. Notify       → Update the frontend (via query invalidation)
+```
+
+Each step is isolated, so a failure in one feed doesn't affect others.
+
+## Fetch Strategy
+
+SparkFeed uses a **pull-based** model: it actively fetches feeds rather than waiting for push notifications (WebSub/PubSubHubbub is planned for a future release).
+
+### When feeds are fetched
+
+- **On app start:** All feeds are checked for new articles
+- **On manual refresh:** When you click the refresh button for a feed or folder
+- **Scheduled refresh:** Background polling every 30 minutes (configurable)
+
+### Respecting rate limits
+
+SparkFeed adds a delay between batch fetches to avoid hammering servers with rapid requests. By default, it fetches up to **5 feeds concurrently** with a short pause between batches.
+
+<Aside type="note">
+  SparkFeed sends a standard `User-Agent` header so that servers can identify
+  requests. You can customize this in `.env` if needed.
+</Aside>
+
+## Deduplication
+
+Every RSS item has a unique identifier called a `guid` (or `id` in Atom). SparkFeed uses this to ensure the same article is never stored twice, even if it appears in multiple feed refreshes.
+
+```typescript
+// Simplified deduplication logic
+const existingGuids = await db
+  .select({ guid: articles.guid })
+  .from(articles)
+  .where(eq(articles.feedId, feedId))
+
+const newItems = parsedItems.filter(
+  (item) => !existingGuids.includes(item.guid)
+)
+```
+
+## Content Normalization
+
+Different feeds format their content differently. SparkFeed normalizes all incoming articles to a consistent internal schema:
+
+| Field         | Source                                 | Notes                       |
+| ------------- | -------------------------------------- | --------------------------- |
+| `title`       | `<title>`                              | Stripped of HTML            |
+| `url`         | `<link>`                               | The article's canonical URL |
+| `content`     | `<content:encoded>` or `<description>` | Sanitized HTML              |
+| `summary`     | `<description>`                        | Plain text fallback         |
+| `publishedAt` | `<pubDate>` or `<updated>`             | Parsed to ISO 8601          |
+| `guid`        | `<guid>` or `<id>`                     | Used for deduplication      |
+| `author`      | `<author>` or `<dc:creator>`           | Optional                    |
+
+## Error Handling
+
+If a feed fetch fails (network error, 404, invalid XML), SparkFeed:
+
+1. Logs the error to the console
+2. Records the failure timestamp in the database
+3. Continues processing other feeds
+4. Displays an error indicator on that feed in the UI
+
+Failed feeds are retried on the next scheduled refresh, with exponential backoff for repeated failures.

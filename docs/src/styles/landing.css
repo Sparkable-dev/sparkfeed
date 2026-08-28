@@ -1,0 +1,509 @@
+/* ==========================================================================
+   The /docs landing page: hero, section rhythm, nav cards, feature rows, the
+   split band, the comparison table and the closing CTA.
+
+   Markup: src/components/Hero.astro and src/components/landing/*.astro.
+
+   Loaded last, after components.css, for two reasons:
+
+     1. Everything here is page-scoped. Nothing in this file may affect the
+        other 40-odd doc pages — every selector is anchored to a `.sf-` class
+        that only the landing components emit.
+
+     2. Specificity. The landing components render INSIDE
+        `.sl-markdown-content`, so content.css's prose rules reach them.
+        Starlight's own markdown.css is neutralised by the `not-content` class
+        on the component wrappers, but content.css's rules for `ul`, `li`, `h2`
+        and `table` are deliberately unguarded, so the selectors below carry a
+        `.sl-markdown-content` prefix to out-rank them. Where a rule targets
+        markup outside the article (the hero) the prefix is absent, on purpose.
+
+   The hero is the exception to (2): Page.astro renders <Hero /> as a sibling
+   of <MarkdownContent>, not inside it.
+   ========================================================================== */
+
+/* ══ HERO ══════════════════════════════════════════════════════════════════
+   Markup: src/components/Hero.astro. Replaces the `.hero` block that used to
+   live in components.css.
+
+   The old headline was a violet gradient clipped to the text. Every reference
+   design this page is modelled on (Vercel, Stripe, Mintlify) sets a solid
+   near-white headline and spends its colour budget on the primary button
+   instead, which is the only thing on the page you are meant to click first. */
+.sf-hero {
+  display: grid;
+  grid-template-columns: 100%;
+  gap: var(--sf-space-8);
+  align-items: center;
+  padding-block: var(--sf-space-10) var(--sf-space-12);
+}
+
+.sf-hero h1 {
+  font-family: var(--sf-font-heading);
+  font-size: clamp(2.125rem, 1.5rem + 2.8vw, 3rem);
+  font-weight: 800;
+  line-height: 1.08;
+  letter-spacing: -0.035em;
+  color: var(--sf-fg-strong);
+  /* Forces "Sparkfeed Documentation" onto two lines without a <br>, which
+     would leak into <title> and the breadcrumb trail (both read `data.title`). */
+  max-width: 13ch;
+  text-wrap: balance;
+}
+
+.sf-hero-tagline {
+  margin-top: var(--sf-space-4);
+  max-width: 46ch;
+  font-size: var(--sf-text-lg);
+  line-height: var(--sf-leading-snug);
+  color: var(--sf-fg-muted);
+}
+
+.sf-hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sf-space-3);
+  margin-top: var(--sf-space-8);
+}
+
+/* Not Starlight's <LinkButton>: that component hardcodes `border-radius: 999rem`
+   and a 1rem font size. Shared with the CTA band at the foot of the page. */
+.sf-hero-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.6rem 1rem;
+  border: 1px solid transparent;
+  border-radius: var(--sf-radius-md);
+  font-size: var(--sf-text-md);
+  font-weight: 600;
+  line-height: 1.2;
+  text-decoration: none;
+  white-space: nowrap;
+  transition:
+    background var(--sf-dur-fast) var(--sf-ease),
+    border-color var(--sf-dur-fast) var(--sf-ease),
+    color var(--sf-dur-fast) var(--sf-ease);
+}
+
+.sf-hero-btn svg {
+  font-size: 1rem;
+  opacity: 0.75;
+}
+
+.sf-hero-btn.is-primary {
+  background: var(--sf-accent);
+  border-color: var(--sf-accent);
+  color: var(--sf-accent-fg);
+}
+
+.sf-hero-btn.is-primary:hover {
+  background: var(--sf-accent-hover);
+  border-color: var(--sf-accent-hover);
+}
+
+.sf-hero-btn.is-secondary,
+.sf-hero-btn.is-minimal {
+  background: var(--sf-surface);
+  border-color: var(--sf-border);
+  color: var(--sf-fg-strong);
+}
+
+.sf-hero-btn.is-secondary:hover,
+.sf-hero-btn.is-minimal:hover {
+  background: var(--sf-surface-hover);
+  border-color: var(--sf-border-strong);
+}
+
+/* The terminal card. Expressive Code owns the frame; only the outer geometry
+   is set here so the block cannot stretch taller than the copy beside it. */
+.sf-hero-code {
+  min-width: 0;
+}
+
+.sf-hero-code .expressive-code {
+  margin: 0;
+}
+
+/* The 404 page reuses this component with no terminal and no actions. */
+.sf-hero--simple {
+  justify-items: center;
+  text-align: center;
+  padding-block: var(--sf-space-16);
+}
+
+.sf-hero--simple h1 {
+  max-width: none;
+}
+
+.sf-hero--simple .sf-hero-tagline {
+  margin-inline: auto;
+}
+
+@media (min-width: 50rem) {
+  .sf-hero {
+    grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+    gap: var(--sf-space-12);
+    padding-block: var(--sf-space-12) var(--sf-space-16);
+  }
+}
+
+/* ══ SECTIONS ══════════════════════════════════════════════════════════════
+   Markup: src/components/landing/Section.astro.
+
+   Sections are separated by a hairline that spans the content column, which is
+   the divider rhythm the reference docs use in place of extra whitespace. The
+   rule sits on the section itself rather than on an <hr> so there is no element
+   in the DOM that exists purely to draw a line. */
+.sl-markdown-content .sf-section + .sf-section,
+.sl-markdown-content .sf-section + .sf-split,
+.sl-markdown-content .sf-split + .sf-section {
+  margin-top: var(--sf-space-16);
+  padding-top: var(--sf-space-16);
+  border-top: 1px solid var(--sf-border-subtle);
+}
+
+/* A band already draws its own box; a divider immediately above it reads as a
+   double rule. */
+.sl-markdown-content .sf-section[data-variant='band'] + .sf-section,
+.sl-markdown-content .sf-section + .sf-section[data-variant='band'],
+.sl-markdown-content .sf-split + .sf-section[data-variant='band'] {
+  border-top: 0;
+  padding-top: 0;
+  margin-top: var(--sf-space-12);
+}
+
+.sl-markdown-content .sf-section[data-variant='band'] {
+  padding: var(--sf-space-8);
+  border: 1px solid var(--sf-border-subtle);
+  border-radius: var(--sf-radius-xl);
+  background: var(--sf-bg-elevated);
+}
+
+/* Beats content.css's `:is(h2, .sl-heading-wrapper.level-h2)` rule, which is
+   three classes deep. The extra class on the element is what buys the tie. */
+.sl-markdown-content .sf-section > h2.sf-section-title,
+.sl-markdown-content .sf-split .sf-split-title {
+  margin-top: 0;
+  font-family: var(--sf-font-heading);
+  font-size: var(--sf-text-2xl);
+  font-weight: 700;
+  line-height: var(--sf-leading-tight);
+  letter-spacing: var(--sf-tracking-snug);
+  color: var(--sf-fg-strong);
+}
+
+.sl-markdown-content .sf-section-lead {
+  margin-top: var(--sf-space-3);
+  max-width: 68ch;
+  color: var(--sf-fg-muted);
+}
+
+.sl-markdown-content .sf-section-body {
+  margin-top: var(--sf-space-6);
+}
+
+/* The lead paragraph above "Start here", which has no heading of its own. It is
+   the only top-level element on the page that is not a section, so it needs its
+   own trailing space — the divider rule below does not apply to it. */
+.sl-markdown-content .sf-lead {
+  max-width: 72ch;
+  font-size: var(--sf-text-lg);
+  line-height: var(--sf-leading-snug);
+  color: var(--sf-fg-muted);
+}
+
+.sl-markdown-content .sf-lead + .sf-section {
+  margin-top: var(--sf-space-16);
+}
+
+/* ══ NAV CARDS ═════════════════════════════════════════════════════════════
+   Markup: src/components/landing/NavCard.astro + NavCardGrid.astro.
+
+   The anchor IS the card, so the hover state, the hit area and the focus ring
+   are the same box. base.css already gives :focus-visible a ring that inherits
+   the border radius, so nothing is needed here for keyboard users. */
+.sl-markdown-content .sf-navcard-grid {
+  display: grid;
+  grid-template-columns: 100%;
+  gap: var(--sf-space-4);
+}
+
+.sl-markdown-content .sf-navcard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sf-space-2);
+  padding: var(--sf-space-5);
+  border: 1px solid var(--sf-border-subtle);
+  border-radius: var(--sf-radius-lg);
+  background: var(--sf-surface);
+  color: inherit;
+  text-decoration: none;
+  transition:
+    border-color var(--sf-dur-fast) var(--sf-ease),
+    background var(--sf-dur-fast) var(--sf-ease),
+    transform var(--sf-dur-fast) var(--sf-ease),
+    box-shadow var(--sf-dur-fast) var(--sf-ease);
+}
+
+.sl-markdown-content .sf-navcard:hover {
+  border-color: var(--sf-border-strong);
+  background: var(--sf-surface-hover);
+  transform: translateY(-2px);
+  box-shadow: var(--sf-shadow-card);
+}
+
+.sf-navcard-icon {
+  display: flex;
+  font-size: 1.25rem;
+  color: var(--sf-fg-subtle);
+  transition: color var(--sf-dur-fast) var(--sf-ease);
+}
+
+.sf-navcard:hover .sf-navcard-icon {
+  color: var(--sf-accent-link);
+}
+
+.sf-navcard-title {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: var(--sf-space-2);
+  font-size: var(--sf-text-base);
+  font-weight: 600;
+  line-height: var(--sf-leading-tight);
+  color: var(--sf-fg-strong);
+}
+
+.sf-navcard-ext {
+  font-size: 0.85em;
+  color: var(--sf-fg-subtle);
+}
+
+.sf-navcard-desc {
+  font-size: var(--sf-text-md);
+  line-height: var(--sf-leading-snug);
+  color: var(--sf-fg-muted);
+  text-wrap: pretty;
+}
+
+@media (min-width: 50rem) {
+  .sl-markdown-content .sf-navcard-grid[data-cols='2'] {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .sl-markdown-content .sf-navcard-grid[data-cols='3'] {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+/* ══ FEATURE LIST ══════════════════════════════════════════════════════════
+   Markup: src/components/landing/FeatureList.astro.
+
+   Replaces the `- **Label** — description` bullets. The list markers are
+   removed rather than restyled: the icon column already signals "this is a
+   list of things", and a marker beside an icon reads as two bullets. */
+.sl-markdown-content .sf-features {
+  display: grid;
+  grid-template-columns: 100%;
+  gap: var(--sf-space-5) var(--sf-space-8);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sl-markdown-content .sf-features .sf-feature {
+  display: flex;
+  gap: var(--sf-space-3);
+  margin: 0;
+}
+
+.sf-feature-icon {
+  display: flex;
+  flex-shrink: 0;
+  margin-top: 0.15em;
+  font-size: 1.0625rem;
+  color: var(--sf-fg-subtle);
+}
+
+.sf-feature-text {
+  min-width: 0;
+}
+
+.sl-markdown-content .sf-feature-label {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0;
+  font-size: var(--sf-text-base);
+  font-weight: 600;
+  line-height: var(--sf-leading-tight);
+  color: var(--sf-fg-strong);
+}
+
+.sl-markdown-content .sf-feature-desc {
+  margin-top: 0.3rem;
+  font-size: var(--sf-text-md);
+  line-height: var(--sf-leading-snug);
+  color: var(--sf-fg-muted);
+  text-wrap: pretty;
+}
+
+@media (min-width: 50rem) {
+  .sl-markdown-content .sf-features[data-cols='2'] {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .sl-markdown-content .sf-features[data-cols='3'] {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+/* ══ FEATURE SPLIT ═════════════════════════════════════════════════════════
+   Markup: src/components/landing/FeatureSplit.astro.
+
+   The one section that is neither a grid nor a list. The vertical hairline
+   between the two halves is a border on the code column, so it disappears by
+   itself when the band stacks at narrow widths. */
+.sl-markdown-content .sf-split {
+  display: grid;
+  grid-template-columns: 100%;
+  border: 1px solid var(--sf-border-subtle);
+  border-radius: var(--sf-radius-xl);
+  background: var(--sf-bg-elevated);
+  overflow: hidden;
+}
+
+.sf-split-copy {
+  padding: var(--sf-space-8);
+}
+
+.sl-markdown-content .sf-split-body {
+  margin-top: var(--sf-space-4);
+  max-width: 44ch;
+  color: var(--sf-fg-muted);
+}
+
+.sl-markdown-content .sf-split-body > :first-child {
+  margin-top: 0;
+}
+
+.sf-split-code {
+  min-width: 0;
+  padding: var(--sf-space-8);
+  border-top: 1px solid var(--sf-border-subtle);
+}
+
+@media (min-width: 50rem) {
+  .sl-markdown-content .sf-split {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr);
+    align-items: center;
+  }
+
+  .sf-split-code {
+    border-top: 0;
+    border-inline-start: 1px solid var(--sf-border-subtle);
+  }
+}
+
+/* ══ CODE FRAMES ON THE LANDING PAGE ═══════════════════════════════════════
+   astro.config.mjs sets `terminalTitlebarBorderBottomColor: 'transparent'` so
+   that untitled terminal frames elsewhere read as extra top padding rather than
+   as an empty window bar. Both frames on this page DO carry a title, so the
+   separator is restored for them only. */
+.sf-hero-code .expressive-code .frame.is-terminal .header,
+.sf-split-code .expressive-code .frame.is-terminal .header {
+  border-bottom: 1px solid var(--sf-border-subtle);
+}
+
+/* ══ COMPARISON TABLE ══════════════════════════════════════════════════════
+   Scoped to `.sf-compare` so none of this reaches the tables on the other doc
+   pages, which keep the neutral treatment in content.css.
+
+   Starlight sets `display: block; overflow: auto` on the <table> itself so wide
+   tables scroll. That is undone here: a `display: block` table wraps its rows in
+   an anonymous table box that shrink-wraps, so a 7-column comparison ends up
+   hugging the left half of the column with dead space beside it.
+
+   The scroller moves to `.sf-section-body` instead, and the table goes back to
+   `display: table` so `width: 100%` actually distributes the columns. Block
+   children of a scroll container size to the container's width rather than to
+   its scroll width, so the footnotes and the closing paragraph below the table
+   stay at column width on narrow screens instead of being dragged out to
+   `min-width`. */
+.sl-markdown-content .sf-compare .sf-section-body {
+  overflow-x: auto;
+}
+
+.sl-markdown-content .sf-compare table {
+  display: table;
+  width: 100%;
+  /* Below this the seven columns stop being legible, so scroll instead. */
+  min-width: 44rem;
+  border-collapse: collapse;
+  font-size: var(--sf-text-md);
+}
+
+.sl-markdown-content .sf-compare :is(th, td) {
+  padding: var(--sf-space-3) var(--sf-space-4);
+  border-bottom: 1px solid var(--sf-border-subtle);
+  white-space: nowrap;
+}
+
+.sl-markdown-content .sf-compare th {
+  font-size: var(--sf-text-sm);
+  font-weight: 600;
+  color: var(--sf-fg-muted);
+}
+
+/* The feature column is the row label, not data. */
+.sl-markdown-content .sf-compare :is(th, td):first-child {
+  padding-inline-start: 0;
+  text-align: start;
+  color: var(--sf-fg-strong);
+  font-weight: 600;
+}
+
+.sl-markdown-content .sf-compare thead th:first-child {
+  color: var(--sf-fg-muted);
+  font-weight: 600;
+}
+
+.sl-markdown-content .sf-compare tbody tr:last-child :is(th, td) {
+  border-bottom: 0;
+}
+
+.sl-markdown-content .sf-compare .sf-compare-notes {
+  display: block;
+  margin-top: var(--sf-space-4);
+  font-size: var(--sf-text-sm);
+  line-height: var(--sf-leading-snug);
+  color: var(--sf-fg-subtle);
+}
+
+/* ══ CTA BAND ══════════════════════════════════════════════════════════════
+   Markup: src/components/landing/CtaBand.astro. */
+.sl-markdown-content .sf-cta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sf-space-5);
+  margin-top: var(--sf-space-12);
+  padding: var(--sf-space-8);
+  border: 1px solid var(--sf-border-subtle);
+  border-radius: var(--sf-radius-xl);
+  background: var(--sf-bg-elevated);
+}
+
+.sl-markdown-content .sf-cta-title {
+  margin: 0;
+  font-family: var(--sf-font-heading);
+  font-size: var(--sf-text-xl);
+  font-weight: 700;
+  line-height: var(--sf-leading-tight);
+  letter-spacing: var(--sf-tracking-snug);
+  color: var(--sf-fg-strong);
+}

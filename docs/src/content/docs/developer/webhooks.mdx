@@ -1,0 +1,45 @@
+---
+title: Webhooks
+description: Push new Sparkfeed articles to Slack, an automation platform, or your own endpoint. On the roadmap, not shipped yet.
+sidebar:
+  order: 3
+  badge:
+    text: Soon
+    variant: caution
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+<Aside type="caution" title="Not shipped yet">
+Webhooks are on the roadmap and are not available today. This page describes the intended design so you can plan around it. Nothing here is callable yet.
+</Aside>
+
+Webhooks are the push half of the integration story. [MCP](/docs/developer/mcp/) is pull: an agent asks when it wants something. Webhooks invert that, so a new article can reach Slack or an automation platform without anything having to poll.
+
+## What you will be able to do
+
+Register an HTTPS endpoint, choose which events reach it, and optionally scope it to a folder or feed. When an event fires, Sparkfeed will POST a signed JSON payload.
+
+Planned events:
+
+| Event | Fires when |
+|-------|-----------|
+| `article.created` | A refresh pulls in an article you have not seen |
+| `article.favorited` | An article is favorited, by you or by an agent |
+| `feed.failed` | A feed fails repeatedly and is auto-disabled |
+
+## Design notes
+
+These are decisions already made, so integrations built later do not have to be rewritten:
+
+- **Signed.** Every delivery carries an HMAC signature over the raw body, so you can verify it came from Sparkfeed rather than trusting the URL to stay secret.
+- **Payloads carry ids, not article bodies.** A webhook body will identify the article and include its title and link. Full text stays behind [`get_article`](/docs/developer/mcp/#reading-an-article), for the same reason list tools return snippets.
+- **Retried with backoff.** A non-2xx response is retried on a decaying schedule before the endpoint is marked unhealthy.
+- **Batched, not per-article.** A refresh that pulls thirty articles will deliver one payload containing thirty entries, not thirty requests.
+
+## Until then
+
+You can already push feeds outward using what exists today:
+
+- **Outbound RSS.** Every folder and feed can be published as an XML feed, which any automation platform can poll on a schedule. See [Custom Feeds](/docs/advanced/custom-feeds/).
+- **MCP on a timer.** An agent with a Sparkfeed key can be scheduled to call `search_articles` periodically and act on what is new. Polling rather than push, but no waiting required.

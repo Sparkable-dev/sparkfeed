@@ -1,0 +1,31 @@
+# Railway deployment config for the SparkFeed app (repo root service).
+#
+# Builder: Railpack (Railway's default, NO Docker — Nixpacks is deprecated).
+# Railpack auto-detects Bun from bun.lock and runs `bun install` before the
+# buildCommand below.
+#
+# Demo vs. production is NOT decided here — it is controlled entirely by the
+# VITE_DEMO_MODE environment variable in the Railway service:
+#   • VITE_DEMO_MODE=true  -> auth bypassed, seeded rss-demo.db, mutations locked
+#   • VITE_DEMO_MODE unset/false -> normal production (needs DATABASE_URL + BETTER_AUTH_SECRET)
+# Because VITE_* is inlined at build time, that variable must be set BEFORE the
+# build runs (i.e. present when you deploy), not added afterward.
+#
+# `vite build` (via the nitro() plugin in vite.config.ts) emits a self-contained
+# Node server at .output/server/index.mjs that listens on $PORT.
+
+[build]
+builder = "railpack"
+buildCommand = "bun run build"
+
+[deploy]
+# Migrations run before the server boots. If they fail the process exits
+# non-zero and the deploy fails, rather than booting against a schema the code
+# does not match. (That is exactly how beta broke: drizzle/0001 added
+# articles.content, nothing ever applied it, and every article read 500'd.)
+#
+# db:migrate no-ops when VITE_DEMO_MODE=true, so the demo service can share
+# this start command. Without demo mode it requires DATABASE_URL and fails hard.
+startCommand = "bun run db:migrate && node .output/server/index.mjs"
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 10

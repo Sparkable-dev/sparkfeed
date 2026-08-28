@@ -1,0 +1,83 @@
+---
+title: API Keys
+description: Create, scope, and revoke the API keys that authenticate the Sparkfeed MCP server.
+sidebar:
+  order: 2
+---
+
+import { Aside, Steps } from '@astrojs/starlight/components';
+
+API keys authenticate the [MCP server](/docs/developer/mcp/), and will authenticate the REST API when it ships. A key belongs to one workspace and carries the permissions you give it.
+
+## Create a key
+
+<Steps>
+
+1. **Open the Developer section**
+
+   In the app sidebar, expand **Developer** near the bottom, above your account, then choose **API keys**.
+
+2. **Create a new key**
+
+   Select **New key** and give it a name describing where it will be used, for example "Claude Code on my laptop". The name is only for you; it is how you tell keys apart when revoking one later.
+
+3. **Copy it immediately**
+
+   The key is shown once. Sparkfeed stores only a hash of it, so it cannot be shown again or recovered by support. Copy it before closing the dialog.
+
+4. **Add it to your client**
+
+   Follow the setup for your client in the [MCP guide](/docs/developer/mcp/#connect-a-client).
+
+</Steps>
+
+<Aside type="caution" title="Treat it like a password">
+Anyone holding a key can read everything in that workspace. Do not commit one to a repository or paste one into a shared document. If a key is exposed, revoke it and create a replacement.
+</Aside>
+
+## Key format
+
+Keys look like this:
+
+```
+sfk_live_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+```
+
+The `sfk_live_` prefix marks a production key. `sfk_demo_` marks the shared demo key, which production rejects outright even if it somehow reaches it.
+
+The API keys list shows only the first few characters, which is enough to identify a key without exposing it.
+
+## Scopes
+
+Every key carries `mcp` plus the scopes you grant. Tools are registered per scope, so a read-only key does not see the write tools at all.
+
+| Scope | Grants |
+|-------|--------|
+| `mcp` | Access to the MCP endpoint. Always present. |
+| `workspace:read` | Workspace info, folders, feeds |
+| `articles:read` | Search and full article text |
+| `articles:write` | Favorites and read state |
+
+New keys get read access plus `articles:write` by default, which is what an agent needs to triage a reading list. If a key is only ever going to summarize, leave the write scope off.
+
+## Revoke a key
+
+On the API keys page, select the trash icon next to a key and confirm. Revocation takes effect on the next request; anything using that key stops working immediately.
+
+Revoking does not delete the record. The name and last-used timestamp are retained so you can see what a key was doing before you removed it.
+
+## Auditing
+
+Each key shows when it was last used. A key you do not recognise, or one whose last-used time does not line up with your own activity, should be revoked and replaced.
+
+There is no way to recover a key's value, so "I lost it" and "it leaked" have the same fix: revoke, create a new one, update the client.
+
+## Self-hosting
+
+Keys are workspace-scoped rows in your own database, in the `api_keys` table. Only the sha256 hash is stored, alongside the display prefix, scopes, and timestamps. Nothing is sent anywhere else, and no external service is involved in verifying one.
+
+## Demo mode
+
+Keys cannot be created in demo mode. The demo database is temporary and reset regularly, so there is nowhere durable to store them.
+
+The demo MCP endpoint instead uses a shared, published, read-only key. See [Try it without an account](/docs/developer/mcp/#try-it-without-an-account).

@@ -1,0 +1,78 @@
+---
+/*
+  Replaces Starlight's `<select>` theme picker with a shadcn-style segmented
+  icon control: system / light / dark. Defaults to system.
+
+  Storage semantics match Starlight exactly — `starlight-theme` holds `'light'`
+  or `'dark'`, and an empty string for system — so the FOUC-preventing inline
+  script in Starlight's `ThemeProvider` stays in agreement with this control.
+*/
+---
+
+<sf-theme-select class="sf-theme-select" role="group" aria-label="Color theme">
+	<button type="button" data-theme-value="auto" aria-label="System theme" aria-pressed="false">
+		<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+			<rect x="2" y="3" width="20" height="14" rx="2" />
+			<path d="M8 21h8M12 17v4" />
+		</svg>
+	</button>
+	<button type="button" data-theme-value="light" aria-label="Light theme" aria-pressed="false">
+		<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+			<circle cx="12" cy="12" r="4" />
+			<path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41" />
+		</svg>
+	</button>
+	<button type="button" data-theme-value="dark" aria-label="Dark theme" aria-pressed="false">
+		<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+			<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" />
+		</svg>
+	</button>
+</sf-theme-select>
+
+<script>
+	type Theme = 'auto' | 'dark' | 'light';
+
+	/** Key in `localStorage` to store colour theme preference at. Shared with Starlight. */
+	const storageKey = 'starlight-theme';
+
+	const parseTheme = (theme: unknown): Theme =>
+		theme === 'auto' || theme === 'dark' || theme === 'light' ? theme : 'auto';
+
+	const loadTheme = (): Theme =>
+		parseTheme(typeof localStorage !== 'undefined' && localStorage.getItem(storageKey));
+
+	function storeTheme(theme: Theme): void {
+		if (typeof localStorage === 'undefined') return;
+		localStorage.setItem(storageKey, theme === 'light' || theme === 'dark' ? theme : '');
+	}
+
+	const getPreferredColorScheme = (): Theme =>
+		matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+
+	function onThemeChange(theme: Theme): void {
+		document.documentElement.dataset.theme = theme === 'auto' ? getPreferredColorScheme() : theme;
+		storeTheme(theme);
+		for (const control of document.querySelectorAll('sf-theme-select')) {
+			for (const button of control.querySelectorAll('button')) {
+				button.setAttribute('aria-pressed', String(button.dataset.themeValue === theme));
+			}
+		}
+	}
+
+	// Follow the OS when the user is on `auto`.
+	matchMedia('(prefers-color-scheme: light)').addEventListener('change', () => {
+		if (loadTheme() === 'auto') onThemeChange('auto');
+	});
+
+	class ThemeSelect extends HTMLElement {
+		constructor() {
+			super();
+			onThemeChange(loadTheme());
+			for (const button of this.querySelectorAll('button')) {
+				button.addEventListener('click', () => onThemeChange(parseTheme(button.dataset.themeValue)));
+			}
+		}
+	}
+
+	customElements.define('sf-theme-select', ThemeSelect);
+</script>

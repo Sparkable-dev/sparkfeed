@@ -1,0 +1,425 @@
+/* ==========================================================================
+   The article body — everything inside `.sl-markdown-content`, plus the page
+   title row.
+
+   Near-monochrome by design: the accent colour appears on links and nothing
+   else. Inline code, table headers, list markers, Steps numerals, blockquotes
+   and rules are all neutral. Semantic colour is confined to <Aside>, and even
+   there it is the muted hue families from tokens.css.
+
+   Vertical rhythm follows two rules:
+
+     P1  Space belongs to the element BELOW it. Everything here is margin-top;
+         nothing gets margin-bottom. Starlight's reset.css zeroes every default
+         margin, so adjacent-sibling margin-top is the only lever — mixing in
+         margin-bottom is what produced the uneven gaps this replaces.
+
+     P2  The gap ABOVE a heading is >=3x the gap below it. Proximity is what
+         makes a heading read as owning the content beneath it. The old sheet
+         was ~2:1 and compensated with a border-bottom; at 4:1 that border is
+         redundant, which is why it is gone.
+   ========================================================================== */
+
+/* ── Page title row ───────────────────────────────────────────────────────
+   Markup: src/components/PageTitle.astro. This <h1> lives OUTSIDE
+   `.sl-markdown-content`, which is why the old sheet had three speculative
+   `!important` selectors trying to reach it. */
+.sf-title-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sf-space-4);
+  flex-wrap: wrap;
+}
+
+.sf-title-row h1 {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  font-family: var(--sf-font-heading);
+  font-size: var(--sf-text-3xl);
+  font-weight: 700;
+  line-height: var(--sf-leading-tight);
+  letter-spacing: var(--sf-tracking-tight);
+  color: var(--sf-fg-strong);
+}
+
+/* ── Body ─────────────────────────────────────────────────────────────────
+   line-height is set here rather than on `--sl-line-height` so that Steps'
+   bullet geometry (Steps.astro reads it for --bullet-size) and Expressive
+   Code's line height stay untouched. */
+.sl-markdown-content {
+  font-size: var(--sf-text-base);
+  line-height: var(--sf-leading-body);
+  color: var(--sf-fg);
+  text-wrap: pretty;
+}
+
+/* ── Headings ─────────────────────────────────────────────────────────────
+   Sizes come from `--sl-text-h1..h6` in tokens.css. Only weight, colour and
+   tracking are set here.
+
+   Size alone stops discriminating below ~17px, so the ladder switches to
+   weight/colour at h4 and to case at h6. Six distinguishable levels. */
+.sl-markdown-content :is(h1, h2, h3, h4, h5, h6) {
+  font-family: var(--sf-font-heading);
+  line-height: var(--sf-leading-tight);
+  text-wrap: balance;
+  /* `-webkit-text-fill-color` is deliberately NOT set. It was a counter-hack
+     for the splash hero's gradient text, and that gradient is gone: the hero
+     is now src/components/Hero.astro with a solid headline. */
+}
+
+.sl-markdown-content h1 {
+  font-weight: 700;
+  letter-spacing: var(--sf-tracking-tight);
+  color: var(--sf-fg-strong);
+}
+
+.sl-markdown-content h2 {
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--sf-fg-heading);
+  /* No border-bottom. It was being painted on an inline box (the heading is
+     `display: inline` inside `.sl-heading-wrapper`), so it hugged the text
+     width instead of drawing a rule — one of the sources of the stray lines
+     this rewrite removes. The 3rem of air above is the separation. */
+}
+
+.sl-markdown-content h3 {
+  font-weight: 600;
+  letter-spacing: var(--sf-tracking-snug);
+  color: var(--sf-fg-heading);
+}
+
+.sl-markdown-content h4 {
+  font-weight: 600;
+  color: var(--sf-fg-title);
+}
+
+.sl-markdown-content h5 {
+  font-weight: 600;
+  color: var(--sf-fg);
+}
+
+.sl-markdown-content h6 {
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: var(--sf-tracking-wide);
+  color: var(--sf-fg-subtle);
+}
+
+/* ── Heading rhythm ───────────────────────────────────────────────────────
+   These MUST target `.sl-heading-wrapper.level-hN`, not the bare heading:
+   `anchor-links.css:79` sets the heading to `display: inline`, and vertical
+   margins do not apply to inline boxes. The old sheet's `h2 { margin-top:
+   2.4rem }` had been silently doing nothing.
+
+   Both selectors are listed so the rules keep working if `markdown.headingLinks`
+   is ever disabled (the heading-element half is simply inert while wrappers
+   exist). `:is()` takes its highest-specificity argument, giving (0,2,0) —
+   enough to beat markdown.css and anchor-links.css without `!important`. */
+.sl-markdown-content :is(h2, .sl-heading-wrapper.level-h2) {
+  margin-top: var(--sf-space-12);
+}
+
+.sl-markdown-content :is(h3, .sl-heading-wrapper.level-h3) {
+  margin-top: var(--sf-space-8);
+}
+
+.sl-markdown-content :is(h4, .sl-heading-wrapper.level-h4) {
+  margin-top: var(--sf-space-6);
+}
+
+.sl-markdown-content :is(h5, .sl-heading-wrapper.level-h5),
+.sl-markdown-content :is(h6, .sl-heading-wrapper.level-h6) {
+  margin-top: var(--sf-space-5);
+}
+
+/* Space BELOW a heading lives on the next sibling (P1). */
+.sl-markdown-content :is(h1, h2, h3, h4, h5, h6, .sl-heading-wrapper) + * {
+  margin-top: var(--sf-space-3);
+}
+
+/* A heading straight after another heading is a sub-section, not a new
+   section — no full break. */
+.sl-markdown-content
+  :is(h1, h2, h3, h4, h5, h6, .sl-heading-wrapper)
+  + :is(h1, h2, h3, h4, h5, h6, .sl-heading-wrapper) {
+  margin-top: var(--sf-space-6);
+}
+
+/* No leading gap at the top of the article. */
+.sl-markdown-content > :is(h1, h2, h3, h4, h5, h6, .sl-heading-wrapper):first-child {
+  margin-top: 0;
+}
+
+/* ── Links ────────────────────────────────────────────────────────────────
+   Visible as links WITHOUT hovering. The old sheet used
+   `text-decoration-color: transparent` revealed on hover, which made body
+   links indistinguishable from bold text — an accessibility defect, not a
+   style choice. The underline is muted so a link-dense paragraph doesn't
+   shimmer, and solidifies on hover. */
+.sl-markdown-content a:not(.sl-anchor-link, :where(.not-content *)) {
+  color: var(--sf-accent-link);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-decoration-color: color-mix(in srgb, currentColor 40%, transparent);
+  text-underline-offset: 0.18em;
+  text-decoration-skip-ink: auto;
+  transition:
+    color var(--sf-dur-fast) ease,
+    text-decoration-color var(--sf-dur-fast) ease;
+}
+
+.sl-markdown-content a:not(.sl-anchor-link, :where(.not-content *)):hover {
+  /* Starlight sends links to --sl-color-white on hover, which reads as "the
+     link stopped being a link". Deepen the accent instead. */
+  color: var(--sf-accent-hover);
+  text-decoration-color: currentColor;
+}
+
+/* Code inside a link keeps the link colour so the affordance survives. */
+.sl-markdown-content a code {
+  color: inherit;
+}
+
+/* Heading anchors. Starlight already hides these at opacity 0 and reveals
+   them on `.sl-heading-wrapper:hover`; the old sheet killed a working
+   deep-link affordance with three `!important`s. */
+.sl-markdown-content .sl-anchor-link {
+  color: var(--sf-fg-subtle);
+  text-decoration: none;
+}
+
+.sl-markdown-content .sl-anchor-link:hover {
+  color: var(--sf-accent-link);
+}
+
+/* ── Emphasis ─────────────────────────────────────────────────────────── */
+.sl-markdown-content strong {
+  /* The UA default `bolder` resolves to 700, which shouts against a 400 body. */
+  font-weight: 600;
+  color: var(--sf-fg-strong);
+}
+
+.sl-markdown-content mark {
+  background: var(--sf-mark-bg);
+  color: var(--sf-fg-strong);
+  border-radius: var(--sf-radius-xs);
+  padding: 0.05em 0.2em;
+}
+
+/* ── Lists ────────────────────────────────────────────────────────────── */
+.sl-markdown-content :is(ul, ol) {
+  padding-inline-start: var(--sf-space-5);
+}
+
+.sl-markdown-content :is(ul, ol) :is(ul, ol) {
+  margin-top: var(--sf-space-2);
+}
+
+.sl-markdown-content li::marker {
+  /* Was --sl-color-accent for both ul and ol, plus 600 weight on ol. A bullet
+     is punctuation, not emphasis. */
+  color: var(--sf-fg-subtle);
+  font-weight: 400;
+}
+
+.sl-markdown-content li + li {
+  margin-top: var(--sf-space-2);
+}
+
+.sl-markdown-content li > p {
+  margin-top: var(--sf-space-2);
+}
+
+/* ── Horizontal rules ─────────────────────────────────────────────────────
+   The content pass removes the ~150 `---` separators that were causing the
+   stray-line problem, but a rule is still a legitimate thing to write, and
+   previously it had NO styling at all — it fell through to the UA default.
+   Quiet hairline, real breathing room on both sides. */
+.sl-markdown-content hr {
+  height: 1px;
+  border: 0;
+  background: var(--sf-border);
+  margin-top: var(--sf-space-10);
+}
+
+.sl-markdown-content hr + * {
+  margin-top: var(--sf-space-10);
+}
+
+/* ── Blockquote ───────────────────────────────────────────────────────────
+   Also previously unstyled, so sample-output quotes read as an indented
+   paragraph. */
+.sl-markdown-content blockquote {
+  padding: var(--sf-space-1) 0 var(--sf-space-1) var(--sf-space-4);
+  border-inline-start: 2px solid var(--sf-border-strong);
+  color: var(--sf-fg-muted);
+  font-style: normal;
+}
+
+.sl-markdown-content blockquote > :first-child {
+  margin-top: 0;
+}
+
+/* ── Inline code ──────────────────────────────────────────────────────────
+   Neutral. Was indigo text on an indigo tint with an indigo border — three
+   colour decisions for what is really just "this is a literal". Starlight
+   supplies the background and padding from `--sl-color-bg-inline-code`, which
+   tokens.css re-points, so only the delta is written here. */
+.sl-markdown-content :not(pre) > code {
+  font-family: var(--sl-font-mono);
+  font-size: 0.85em;
+  font-weight: 400;
+  border: 0;
+  border-radius: var(--sf-radius-xs);
+  color: var(--sf-fg-strong);
+}
+
+/* ── Code blocks ──────────────────────────────────────────────────────────
+   Scoped away from Expressive Code. The old rule had no `.not-content` guard,
+   so its border and 0.55rem radius landed on every EC block and fought the
+   frame's own `calc(borderRadius + borderWidth)`. All EC chrome is configured
+   in astro.config.mjs; this is the fallback for any raw <pre> that bypasses
+   EC entirely. */
+.sl-markdown-content pre:not(:where(.not-content *)) {
+  font-family: var(--sl-font-mono);
+  font-size: var(--sf-text-md);
+  padding: var(--sf-space-3) var(--sf-space-4);
+  background: var(--sf-bg-elevated);
+  border: 1px solid var(--sf-border);
+  border-radius: var(--sf-radius-md);
+  overflow-x: auto;
+}
+
+/* ── Tables ───────────────────────────────────────────────────────────────
+   Neutral header: no uppercase, no accent text, no tinted background. A table
+   header is structure, not a callout. Starlight sets `display: block;
+   overflow: auto` so wide tables scroll — that is kept. */
+.sl-markdown-content table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--sf-text-md);
+  line-height: var(--sf-leading-snug);
+}
+
+.sl-markdown-content th {
+  padding: var(--sf-space-2) var(--sf-space-4);
+  font-size: var(--sf-text-sm);
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  text-align: start;
+  color: var(--sf-fg-strong);
+  background: transparent;
+  border-bottom: 1px solid var(--sf-border-strong);
+  white-space: nowrap;
+}
+
+.sl-markdown-content td {
+  padding: var(--sf-space-2) var(--sf-space-4);
+  color: var(--sf-fg);
+  border-bottom: 1px solid var(--sf-border-subtle);
+  vertical-align: baseline;
+}
+
+.sl-markdown-content tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.sl-markdown-content tbody tr:hover td {
+  background: var(--sf-surface-hover);
+}
+
+/* Zero the outer padding so the table optically aligns with the text column. */
+.sl-markdown-content :is(th, td):first-child {
+  padding-inline-start: 0;
+}
+
+.sl-markdown-content :is(th, td):last-child {
+  padding-inline-end: 0;
+}
+
+/* ── Media ────────────────────────────────────────────────────────────── */
+.sl-markdown-content img:not(:where(.not-content *)) {
+  border-radius: var(--sf-radius-md);
+  border: 1px solid var(--sf-border);
+  background: var(--sf-surface);
+}
+
+.sl-markdown-content figure {
+  margin: 0;
+}
+
+.sl-markdown-content figcaption {
+  margin-top: var(--sf-space-2);
+  font-size: var(--sf-text-xs);
+  line-height: var(--sf-leading-snug);
+  color: var(--sf-fg-subtle);
+  text-align: center;
+}
+
+/* ── Keyboard keys ────────────────────────────────────────────────────── */
+.sl-markdown-content kbd {
+  display: inline-block;
+  min-width: 1.5em;
+  padding: 0.1em 0.4em;
+  font-family: var(--sl-font);
+  font-size: 0.8em;
+  font-weight: 500;
+  line-height: 1.5;
+  text-align: center;
+  white-space: nowrap;
+  color: var(--sf-fg-strong);
+  background: var(--sf-surface);
+  border: 1px solid var(--sf-border-strong);
+  border-bottom-width: 2px;
+  border-radius: var(--sf-radius-xs);
+}
+
+/* ── Asides / callouts ────────────────────────────────────────────────────
+   Colour comes entirely from the muted `--sl-color-{blue,purple,orange,red}-*`
+   families re-pointed in tokens.css, which Starlight's own asides.css already
+   consumes. The five `[data-theme='light']` rules and their ten `!important`s
+   that used to live here were both the wrong hues (they assumed tip = green;
+   Starlight's tip is purple) and pure duplication — props.css already ships a
+   light ramp. Only shape and size are set here. */
+.sl-markdown-content .starlight-aside {
+  padding: var(--sf-space-3) var(--sf-space-4);
+  border-radius: var(--sf-radius-md);
+  border-inline-start-width: 2px;
+  font-size: var(--sf-text-md);
+  line-height: var(--sf-leading-snug);
+  color: var(--sf-fg);
+}
+
+.sl-markdown-content .starlight-aside__title {
+  font-size: var(--sf-text-md);
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+.sl-markdown-content .starlight-aside__icon {
+  opacity: 0.85;
+}
+
+.sl-markdown-content .starlight-aside > :nth-child(n + 2) {
+  margin-top: var(--sf-space-2);
+}
+
+/* ── Steps ────────────────────────────────────────────────────────────────
+   Starlight's default marker is already neutral (gray-6 fill, gray-5 ring).
+   Deleting the accent override that used to force it indigo restores that, so
+   nothing is written for the numeral itself — only the connecting guideline is
+   moved onto our border token. */
+.sl-steps > li::after {
+  background-color: var(--sf-border);
+}
+
+/* ── Details / disclosure ─────────────────────────────────────────────── */
+.sl-markdown-content details {
+  --sl-details-border-color: var(--sf-border-strong);
+  --sl-details-border-color--hover: var(--sf-fg-subtle);
+}

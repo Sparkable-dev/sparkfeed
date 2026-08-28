@@ -1,0 +1,83 @@
+---
+/*
+  shadcn-flavoured replacement for Starlight's built-in `SidebarSublist`.
+
+  Structure mirrors shadcn/ui `sidebar-03`:
+  - groups render as a `SidebarGroupLabel`-style header with a rotating caret
+  - their children render as a `SidebarMenuSub`, i.e. hung off a single
+    continuous guide rail so the hierarchy reads at a glance
+  Styling lives in `src/styles/custom.css` under the SIDEBAR section.
+*/
+import type { StarlightRouteData } from '@astrojs/starlight/route-data';
+import SidebarRestorePoint from '@astrojs/starlight/components/SidebarRestorePoint.astro';
+
+type SidebarEntry = StarlightRouteData['sidebar'][number];
+
+interface Props {
+	sublist: SidebarEntry[];
+	nested?: boolean;
+}
+
+/** True when any descendant of this group is the page currently being viewed. */
+function containsCurrent(entries: SidebarEntry[]): boolean {
+	return entries.some((entry) =>
+		entry.type === 'link' ? entry.isCurrent : containsCurrent(entry.entries)
+	);
+}
+
+const { sublist, nested } = Astro.props;
+---
+
+<ul class:list={['sf-menu', nested ? 'sf-menu--sub' : 'sf-menu--top']}>
+	{
+		sublist.map((entry) =>
+			entry.type === 'link' ? (
+				<li class="sf-menu-item">
+					<a
+						href={entry.href}
+						aria-current={entry.isCurrent ? 'page' : undefined}
+						class:list={['sf-menu-link', entry.attrs.class]}
+						{...entry.attrs}
+					>
+						<span>{entry.label}</span>
+						{/* Starlight's own sublist renders `sidebar.badge` from frontmatter;
+						    this override dropped it silently, so a page marked "Soon" looked
+						    shipped in the nav. */}
+						{entry.badge && (
+							<span
+								class:list={['sf-menu-badge', `sf-menu-badge--${entry.badge.variant}`]}
+								data-method={/^(GET|POST|PATCH|PUT|DELETE)$/.test(entry.badge.text) ? entry.badge.text : undefined}
+							>
+								{entry.badge.text}
+							</span>
+						)}
+					</a>
+				</li>
+			) : (
+				<li class="sf-menu-item">
+					<details class="sf-group" open={containsCurrent(entry.entries) || !entry.collapsed}>
+						<summary class="sf-group-summary">
+							<span class="sf-group-label">{entry.label}</span>
+							<svg
+								class="sf-caret"
+								viewBox="0 0 24 24"
+								width="14"
+								height="14"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2.25"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								aria-hidden="true"
+							>
+								<path d="m9 18 6-6-6-6" />
+							</svg>
+						</summary>
+						<SidebarRestorePoint />
+						<Astro.self sublist={entry.entries} nested />
+					</details>
+				</li>
+			)
+		)
+	}
+</ul>

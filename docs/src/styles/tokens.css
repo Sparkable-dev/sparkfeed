@@ -1,0 +1,295 @@
+/* ==========================================================================
+   Sparkfeed Docs — design tokens
+
+   This is the ONLY stylesheet allowed to contain literal colour values.
+
+   Two tiers:
+     1. Theme blocks declare `--sf-*` only.
+     2. One theme-agnostic block wires Starlight's `--sl-*` onto them.
+
+   That is the whole light-mode strategy: light mode re-points ~40 tokens and
+   never re-states a rule. If you find yourself writing `[data-theme='light']`
+   in any other file, the token is missing here.
+
+   None of our stylesheets are wrapped in `@layer`. Starlight puts all of its
+   own CSS (props/reset/core/content/components, including Expressive Code)
+   inside `@layer starlight.*`, and unlayered CSS beats every layer regardless
+   of specificity. That is why none of these files need `!important`.
+   ========================================================================== */
+
+/* Self-hosted, and the same two families the marketing site uses
+   Sparkfeed's visual system: Nunito Sans for UI/body, Noto Sans for
+   headings. Replaces the render-blocking Google Fonts request for Inter. */
+@import '@fontsource-variable/nunito-sans';
+@import '@fontsource-variable/noto-sans';
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap');
+
+/* ── Dark (default) ───────────────────────────────────────────────────────
+   Values are OKLCH and match the Sparkfeed marketing palette so the two
+   properties are literally the same colours rather than approximations. The
+   neutral ramp is zinc with a slight violet cast (hue ~286, chroma <=0.017);
+   the brand is violet at hue ~292. */
+:root,
+:root[data-theme='dark'] {
+  /* Neutral ramp */
+  --sf-n-1: oklch(0.871 0.006 286.286);
+  --sf-n-2: oklch(0.705 0.015 286.067);  /* landing --muted-foreground */
+  --sf-n-3: oklch(0.552 0.016 285.938);
+  --sf-n-4: oklch(0.442 0.017 285.786);
+  --sf-n-5: oklch(0.274 0.006 286.033);  /* landing --secondary/--muted */
+  --sf-n-6: oklch(0.21 0.006 285.885);   /* landing --card */
+  --sf-n-7: oklch(0.17 0.006 285.9);
+
+  /* Surfaces */
+  --sf-bg:             oklch(0.141 0.005 285.823);  /* landing --background */
+  --sf-bg-elevated:    oklch(0.175 0.006 285.9);    /* sidebar pane */
+  --sf-surface:        oklch(0.21 0.006 285.885);   /* landing --card */
+  --sf-surface-hover:  oklch(1 0 0 / 0.04);
+  --sf-surface-active: oklch(1 0 0 / 0.07);
+  --sf-surface-input:  oklch(1 0 0 / 0.03);
+  --sf-code-inline-bg: oklch(0.245 0.006 286);
+
+  /* Lines */
+  --sf-border-subtle: oklch(1 0 0 / 0.06);
+  --sf-border:        oklch(1 0 0 / 0.10);  /* landing --border */
+  --sf-border-strong: oklch(1 0 0 / 0.15);  /* landing --input */
+
+  /* Text */
+  --sf-fg-strong:  oklch(0.985 0 0);          /* landing --foreground */
+  --sf-fg-heading: oklch(0.93 0.004 286);
+  --sf-fg-title:   oklch(0.871 0.006 286.286);
+  --sf-fg:         oklch(0.79 0.012 286);     /* body — dimmed for long reads */
+  --sf-fg-muted:   oklch(0.705 0.015 286.067);
+  --sf-fg-subtle:  oklch(0.615 0.016 286);
+
+  /* Brand — links, the active TOC item, and focus rings. Nothing else. */
+  --sf-accent:       oklch(0.606 0.25 292.717);  /* landing --sidebar-primary */
+  --sf-accent-link:  oklch(0.72 0.17 292.5);
+  --sf-accent-hover: oklch(0.83 0.1 293);
+  --sf-accent-bg:    oklch(0.28 0.09 292.5);
+  /* Ink ON an accent fill (filled buttons). Genuinely theme-dependent rather
+     than a re-point, and both values are contrast-measured, not eyeballed:
+     the accent is mid-lightness in both themes, so neither black nor white
+     works for both. Dark accent (L 0.61) + pure black = 4.77:1; light accent
+     (L 0.54) + white = 5.89:1. Both clear WCAG AA for normal text.
+
+     Pure black rather than --sf-n-7: the near-black ramp value measures 4.35:1
+     here, which reads fine but fails AA at the 13px/600 the topbar CTA uses.
+     Anything filled with --sf-accent must take its text colour from here. */
+  --sf-accent-fg:    oklch(0 0 0);
+  --sf-selection-bg: oklch(0.606 0.25 292.717 / 0.25);
+  --sf-mark-bg:      oklch(0.606 0.25 292.717 / 0.25);
+
+  /* Current sidebar item. Dark leans on the raised background alone; light
+     needs the ink to carry the state because the tint is so faint. */
+  --sf-nav-active-fg: var(--sf-fg-strong);
+
+  --sf-scrollbar: oklch(0.33 0.008 286);
+  --sf-shadow-card: 0 6px 24px rgb(0 0 0 / 0.28);
+
+  /* Semantic hue modifiers. Applied to Starlight's own --sl-hue-* below.
+     Saturation is cut hard: these drive <Aside>, <Card> icons and <Badge>,
+     and Starlight's stock 82-100% is what made the page look like confetti. */
+  --sf-hue-low-s:  18%;  --sf-hue-low-l:  13%;
+  --sf-hue-mid-s:  32%;  --sf-hue-mid-l:  55%;
+  --sf-hue-high-s: 38%;  --sf-hue-high-l: 78%;
+}
+
+/* ── Light ──────────────────────────────────────────────────────────────── */
+/* `:root[data-theme='light']` is (0,2,0), so it beats the (0,1,0) dark block
+   above outright — this does not rely on source order. */
+:root[data-theme='light'] {
+  --sf-n-1: oklch(0.21 0.006 285.885);
+  --sf-n-2: oklch(0.37 0.013 285.805);
+  --sf-n-3: oklch(0.552 0.016 285.938);  /* landing --muted-foreground */
+  --sf-n-4: oklch(0.705 0.015 286.067);
+  --sf-n-5: oklch(0.92 0.004 286.32);    /* landing --border */
+  --sf-n-6: oklch(0.967 0.001 286.375);  /* landing --muted */
+  --sf-n-7: oklch(0.985 0 0);
+
+  --sf-bg:             oklch(1 0 0);              /* landing --background */
+  --sf-bg-elevated:    oklch(0.985 0 0);          /* landing --sidebar */
+  --sf-surface:        oklch(1 0 0);              /* landing --card */
+  --sf-surface-hover:  oklch(0.967 0.001 286.375);
+  --sf-surface-active: oklch(0.945 0.022 293);    /* faint brand tint */
+  --sf-surface-input:  oklch(1 0 0);
+  --sf-code-inline-bg: oklch(0.967 0.001 286.375);
+
+  --sf-border-subtle: oklch(0.962 0.002 286.3);
+  --sf-border:        oklch(0.92 0.004 286.32);   /* landing --border */
+  --sf-border-strong: oklch(0.87 0.006 286.3);
+
+  --sf-fg-strong:  oklch(0.141 0.005 285.823);    /* landing --foreground */
+  --sf-fg-heading: oklch(0.21 0.006 285.885);
+  --sf-fg-title:   oklch(0.3 0.008 285.9);
+  --sf-fg:         oklch(0.42 0.014 285.9);
+  --sf-fg-muted:   oklch(0.5 0.016 285.938);
+  --sf-fg-subtle:  oklch(0.552 0.016 285.938);
+
+  --sf-accent:       oklch(0.541 0.281 293.009);  /* landing --sidebar-primary */
+  --sf-accent-link:  oklch(0.491 0.27 292);       /* landing --theme-primary */
+  --sf-accent-hover: oklch(0.38 0.22 292.5);
+  --sf-accent-bg:    oklch(0.955 0.025 293);
+  --sf-accent-fg:    oklch(1 0 0);
+  --sf-selection-bg: oklch(0.491 0.27 292 / 0.16);
+  --sf-mark-bg:      oklch(0.491 0.27 292 / 0.18);
+
+  --sf-nav-active-fg: var(--sf-accent-hover);
+
+  --sf-scrollbar: oklch(0.85 0.006 286);
+  --sf-shadow-card: 0 6px 20px rgb(0 0 0 / 0.07);
+
+  --sf-hue-low-s:  40%;  --sf-hue-low-l:  97%;
+  --sf-hue-mid-s:  34%;  --sf-hue-mid-l:  56%;
+  --sf-hue-high-s: 38%;  --sf-hue-high-l: 32%;
+}
+
+/* ── Scales (theme-agnostic) ────────────────────────────────────────────── */
+:root {
+  /* Type. Size discriminates down to ~17px; below that the ladder switches to
+     weight/colour/case (see content.css). ~1.2 between adjacent steps. */
+  --sf-text-2xs:  0.6875rem;  /* 11px — badge, kbd shortcut, pagination label */
+  --sf-text-xs:   0.75rem;    /* 12px — TOC heading, figcaption, credit */
+  --sf-text-sm:   0.8125rem;  /* 13px — sidebar, breadcrumbs, th, h6 */
+  --sf-text-md:   0.875rem;   /* 14px — table body, aside body */
+  --sf-text-base: 1rem;       /* 16px — body copy */
+  --sf-text-lg:   1.0625rem;  /* 17px — h4 */
+  --sf-text-xl:   1.25rem;    /* 20px — h3 */
+  --sf-text-2xl:  1.5rem;     /* 24px — h2 */
+  --sf-text-3xl:  1.875rem;   /* 30px — h1 / page title */
+
+  --sf-leading-tight: 1.2;
+  --sf-leading-snug:  1.45;
+  --sf-leading-body:  1.7;
+
+  --sf-tracking-tight: -0.025em;
+  --sf-tracking-snug:  -0.015em;
+  --sf-tracking-wide:   0.06em;
+
+  /* Space — 4px grid. Replaces the ad-hoc 0.38/0.55/0.63/1.15/1.4/2.4rem set. */
+  --sf-space-1:  0.25rem;
+  --sf-space-2:  0.5rem;
+  --sf-space-3:  0.75rem;
+  --sf-space-4:  1rem;
+  --sf-space-5:  1.25rem;
+  --sf-space-6:  1.5rem;
+  --sf-space-8:  2rem;
+  --sf-space-10: 2.5rem;
+  --sf-space-12: 3rem;
+  --sf-space-16: 4rem;
+
+  /* Radius mirrors the Sparkfeed marketing site's 0.625rem base scale. */
+  --sf-radius-xs:   0.25rem;
+  --sf-radius-sm:   0.375rem;   /* landing --radius-sm */
+  --sf-radius-md:   0.5rem;     /* landing --radius-md */
+  --sf-radius-lg:   0.625rem;   /* landing --radius-lg / --radius */
+  --sf-radius-xl:   0.875rem;   /* landing --radius-xl */
+  --sf-radius-full: 999px;
+
+  /* Motion */
+  --sf-ease:     cubic-bezier(0.2, 0.8, 0.2, 1);
+  --sf-dur-fast: 0.15s;
+  --sf-dur-slow: 0.3s;
+
+  /* Layout */
+  --sl-sidebar-width: 16.5rem;
+  --sl-content-width: 42rem;
+  --sf-toc-width:     15.5rem;
+
+  /* ── Starlight mapping ──────────────────────────────────────────────────
+     `var()` resolves at use time against the element's own custom-property
+     values, so this single block is correct for BOTH themes. */
+  /* Same pairing as the marketing site: Nunito Sans for UI and body copy,
+     Noto Sans for headings. */
+  --sl-font:      'Nunito Sans Variable', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --sf-font-heading: 'Noto Sans Variable', var(--sl-font);
+  --sl-font-mono: 'JetBrains Mono', 'Fira Code', ui-monospace, monospace;
+
+  --sl-color-white:  var(--sf-fg-strong);
+  --sl-color-gray-1: var(--sf-n-1);
+  --sl-color-gray-2: var(--sf-n-2);
+  --sl-color-gray-3: var(--sf-n-3);
+  --sl-color-gray-4: var(--sf-n-4);
+  --sl-color-gray-5: var(--sf-n-5);
+  --sl-color-gray-6: var(--sf-n-6);
+  --sl-color-gray-7: var(--sf-n-7);
+  --sl-color-black:  var(--sf-bg);
+
+  --sl-color-bg:             var(--sf-bg);
+  --sl-color-bg-nav:         var(--sf-bg);
+  --sl-color-bg-sidebar:     var(--sf-bg-elevated);
+  --sl-color-bg-inline-code: var(--sf-code-inline-bg);
+
+  --sl-color-text:        var(--sf-fg);
+  --sl-color-text-accent: var(--sf-accent-link);
+
+  --sl-color-accent:      var(--sf-accent);
+  --sl-color-accent-low:  var(--sf-accent-bg);
+  --sl-color-accent-high: var(--sf-accent-hover);
+
+  --sl-color-hairline-light: var(--sf-border);
+  --sl-color-hairline:       var(--sf-border);
+  --sl-color-hairline-shade: var(--sf-border-subtle);
+
+  /* Heading sizes.
+     These must be set as tokens rather than as `.sl-markdown-content h2 {
+     font-size }` rules: Starlight wraps every content heading in
+     `<div class="sl-heading-wrapper level-hN">`, sets the heading itself to
+     `display: inline` (anchor-links.css:79), and mirrors the size onto the
+     wrapper (anchor-links.css:55-71) so the anchor icon scales with the text.
+     Re-pointing the token keeps all three in sync automatically.
+
+     Deliberately not responsive. props.css steps these up at 50em; the old
+     stylesheet pinned h3 to 1.05rem but left h4 on the token, so at desktop
+     h4 (1.5rem) rendered LARGER than h3. One flat ladder removes that class
+     of bug. `--sl-text-h6` is read at markdown.css:97 but never defined by
+     Starlight, so h6 silently inherited its parent's size. */
+  --sl-text-h1: var(--sf-text-3xl);
+  --sl-text-h2: var(--sf-text-2xl);
+  --sl-text-h3: var(--sf-text-xl);
+  --sl-text-h4: var(--sf-text-lg);
+  --sl-text-h5: 0.9375rem;
+  --sl-text-h6: var(--sf-text-sm);
+
+  /* The single lever for article vertical rhythm. reset.css zeroes every
+     default margin, so markdown.css's adjacent-sibling rules driven by this
+     value are where ALL block spacing comes from. See content.css. */
+  --sl-content-gap-y: var(--sf-space-5);
+
+  /* Muted semantic families. Overrides props.css:14-33 (dark) and :136-150
+     (light) in one place, for both themes at once, because the saturation and
+     lightness are themselves tokens. Drives <Aside> (asides.css:7-26),
+     <Card> icon tints, and <Badge> variants.
+     Note: Starlight's `tip` aside is PURPLE, `note` is blue, `caution` is
+     orange, `danger` is red. There is no green aside. */
+  --sl-color-blue-low:    hsl(var(--sl-hue-blue),   var(--sf-hue-low-s),  var(--sf-hue-low-l));
+  --sl-color-blue:        hsl(var(--sl-hue-blue),   var(--sf-hue-mid-s),  var(--sf-hue-mid-l));
+  --sl-color-blue-high:   hsl(var(--sl-hue-blue),   var(--sf-hue-high-s), var(--sf-hue-high-l));
+  --sl-color-purple-low:  hsl(var(--sl-hue-purple), var(--sf-hue-low-s),  var(--sf-hue-low-l));
+  --sl-color-purple:      hsl(var(--sl-hue-purple), var(--sf-hue-mid-s),  var(--sf-hue-mid-l));
+  --sl-color-purple-high: hsl(var(--sl-hue-purple), var(--sf-hue-high-s), var(--sf-hue-high-l));
+  --sl-color-green-low:   hsl(var(--sl-hue-green),  var(--sf-hue-low-s),  var(--sf-hue-low-l));
+  --sl-color-green:       hsl(var(--sl-hue-green),  var(--sf-hue-mid-s),  var(--sf-hue-mid-l));
+  --sl-color-green-high:  hsl(var(--sl-hue-green),  var(--sf-hue-high-s), var(--sf-hue-high-l));
+  --sl-color-orange-low:  hsl(var(--sl-hue-orange), var(--sf-hue-low-s),  var(--sf-hue-low-l));
+  --sl-color-orange:      hsl(var(--sl-hue-orange), var(--sf-hue-mid-s),  var(--sf-hue-mid-l));
+  --sl-color-orange-high: hsl(var(--sl-hue-orange), var(--sf-hue-high-s), var(--sf-hue-high-l));
+  --sl-color-red-low:     hsl(var(--sl-hue-red),    var(--sf-hue-low-s),  var(--sf-hue-low-l));
+  --sl-color-red:         hsl(var(--sl-hue-red),    var(--sf-hue-mid-s),  var(--sf-hue-mid-l));
+  --sl-color-red-high:    hsl(var(--sl-hue-red),    var(--sf-hue-high-s), var(--sf-hue-high-l));
+}
+
+/* Pagefind's UI stylesheet sets its own defaults on `:root`. `html:root` is
+   (0,1,1) so we win the tie without duplicating the block per theme — the
+   values below are tokens and flip on their own. */
+html:root {
+  --pagefind-ui-scale:         0.9;
+  --pagefind-ui-font:          var(--sl-font);
+  --pagefind-ui-text:          var(--sf-fg);
+  --pagefind-ui-background:    var(--sf-bg-elevated);
+  --pagefind-ui-border:        var(--sf-border-strong);
+  --pagefind-ui-border-width:  1px;
+  --pagefind-ui-border-radius: var(--sf-radius-md);
+  --pagefind-ui-primary:       var(--sf-accent);
+  --pagefind-ui-tag:           var(--sf-accent-bg);
+}

@@ -1,0 +1,114 @@
+---
+title: Backend (Nitro)
+description: How SparkFeed's backend API is built with Nitro, a fast, lightweight server toolkit.
+sidebar:
+  order: 2
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+## What is Nitro?
+
+[Nitro](https://nitro.unjs.io/) is a server toolkit from the [UnJS](https://unjs.io/) ecosystem. It powers the runtime behind Nuxt 3 and is designed to be:
+
+- **Fast:** Lightweight with minimal overhead
+- **Universal:** Runs on Node.js, Deno, Bun, Vercel, Cloudflare Workers, and more
+- **File-based routing:** API routes defined by file structure
+- **Auto-typed:** TypeScript support out of the box
+
+For SparkFeed, Nitro serves as the local API server that handles database operations and feed fetching.
+
+## API Structure
+
+```txt frame="none"
+src/server/
+├── api/
+│   ├── feeds/
+│   │   ├── index.get.ts     # GET /api/feeds lists all feeds
+│   │   ├── index.post.ts    # POST /api/feeds adds a feed
+│   │   └── [id]/
+│   │       ├── index.get.ts  # GET /api/feeds/:id
+│   │       ├── index.put.ts  # PUT /api/feeds/:id updates one
+│   │       ├── index.delete.ts # DELETE /api/feeds/:id
+│   │       └── refresh.post.ts # POST /api/feeds/:id/refresh
+│   ├── articles/
+│   │   ├── index.get.ts      # GET /api/articles
+│   │   └── [id]/
+│   │       ├── index.get.ts  # GET /api/articles/:id
+│   │       └── read.post.ts  # POST /api/articles/:id/read
+│   └── folders/
+│       ├── index.get.ts
+│       └── index.post.ts
+└── lib/
+    ├── rss-parser.ts         # RSS/Atom parsing logic
+    ├── feed-fetcher.ts       # HTTP fetching with retry
+    └── scheduler.ts          # Background refresh scheduling
+```
+
+## Example: Feed List Endpoint
+
+```typescript
+// src/server/api/feeds/index.get.ts
+import { db } from '@/db';
+import { feeds, folders } from '@/db/schema';
+import { eq } from 'drizzle-orm';
+
+export default defineEventHandler(async () => {
+  const allFeeds = await db
+    .select({
+      id: feeds.id,
+      title: feeds.title,
+      url: feeds.url,
+      faviconUrl: feeds.faviconUrl,
+      lastFetchedAt: feeds.lastFetchedAt,
+      folderName: folders.name,
+      folderId: feeds.folderId,
+    })
+    .from(feeds)
+    .leftJoin(folders, eq(feeds.folderId, folders.id))
+    .orderBy(feeds.title);
+
+  return { feeds: allFeeds };
+});
+```
+
+## Middleware
+
+Nitro middleware runs before all route handlers. SparkFeed uses it for:
+
+```typescript
+// src/server/middleware/cors.ts
+export default defineEventHandler((event) => {
+  setHeader(event, 'Access-Control-Allow-Origin', 'http://localhost:5173');
+  setHeader(event, 'Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE');
+});
+```
+
+## Background Scheduler
+
+The background feed refresh runs as a Nitro task:
+
+```typescript
+// src/server/lib/scheduler.ts
+export function startScheduler() {
+  // Refresh all feeds every 30 minutes
+  setInterval(async () => {
+    const activeFeeds = await db.select().from(feeds);
+    await refreshFeeds(activeFeeds);
+  }, 30 * 60 * 1000);
+}
+```
+
+<Aside type="note">
+  The scheduler only runs while the server is active. If you stop SparkFeed, feeds won't be refreshed until you restart it. This is intentional. No background processes run on your machine without the app running.
+</Aside>
+
+## API Conventions
+
+| Convention | Rule |
+|-----------|------|
+| Success response | `{ data }` or `{ feeds }`, etc. |
+| Error response | `{ error: { message, code } }` |
+| HTTP status codes | Standard (200, 201, 400, 404, 500) |
+| Content type | `application/json` |
+| Auth | None (local-only app) |

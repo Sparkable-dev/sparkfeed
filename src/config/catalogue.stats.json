@@ -1,0 +1,572 @@
+{
+  "ai-openai-news": {
+    "itemCount": 1110,
+    "latestTitle": "OpenAI News",
+    "checkedAt": "2026-08-05T11:35:48.770Z"
+  },
+  "ai-google-deepmind": {
+    "itemCount": 100,
+    "latestTitle": "Google DeepMind News",
+    "checkedAt": "2026-08-05T11:35:48.770Z"
+  },
+  "ai-google-research": {
+    "itemCount": 100,
+    "latestTitle": "The latest research from Google",
+    "checkedAt": "2026-08-05T11:35:48.770Z"
+  },
+  "ai-huggingface": {
+    "itemCount": 834,
+    "latestTitle": "Hugging Face - Blog",
+    "checkedAt": "2026-08-05T11:35:48.770Z"
+  },
+  "ai-import-ai": {
+    "itemCount": 10,
+    "latestTitle": "Import AI",
+    "checkedAt": "2026-08-05T11:35:48.770Z"
+  },
+  "ai-simon-willison": {
+    "itemCount": 30,
+    "latestTitle": "Simon Willison's Weblog",
+    "checkedAt": "2026-08-05T11:35:48.770Z"
+  },
+  "ai-ahead-of-ai": {
+    "itemCount": 20,
+    "latestTitle": "Ahead of AI",
+    "checkedAt": "2026-08-05T11:35:48.770Z"
+  },
+  "ai-bair": {
+    "itemCount": 10,
+    "latestTitle": "The Berkeley Artificial Intelligence Research Blog",
+    "checkedAt": "2026-08-05T11:35:48.770Z"
+  },
+  "tech-the-verge-main": {
+    "itemCount": 10,
+    "latestTitle": "The Verge",
+    "checkedAt": "2026-08-05T11:35:48.770Z"
+  },
+  "tech-verge-tech": {
+    "itemCount": 10,
+    "latestTitle": "Tech | The Verge",
+    "checkedAt": "2026-08-05T11:35:48.770Z"
+  },
+  "tech-verge-ai": {
+    "itemCount": 10,
+    "latestTitle": "AI | The Verge",
+    "checkedAt": "2026-08-05T11:35:48.770Z"
+  },
+  "tech-ars-main": {
+    "itemCount": 20,
+    "latestTitle": "Ars Technica",
+    "checkedAt": "2026-08-05T11:35:48.770Z"
+  },
+  "tech-ars-gadgets": {
+    "itemCount": 20,
+    "latestTitle": "Tech - Ars Technica",
+    "checkedAt": "2026-08-05T11:35:48.770Z"
+  },
+  "tech-ars-techlab": {
+    "itemCount": 20,
+    "latestTitle": "Biz & IT - Ars Technica",
+    "checkedAt": "2026-08-05T11:35:48.770Z"
+  },
+  "tech-hacker-news": {
+    "itemCount": 30,
+    "latestTitle": "Hacker News",
+    "checkedAt": "2026-08-05T11:35:48.770Z"
+  },
+  "tech-techcrunch": {
+    "itemCount": 20,
+    "latestTitle": "TechCrunch",
+    "checkedAt": "2026-08-05T11:35:48.770Z"
+  },
+  "tech-404-media": {
+    "itemCount": 15,
+    "latestTitle": "404 Media",
+    "checkedAt": "2026-08-05T11:35:48.770Z"
+  },
+  "tech-rest-of-world": {
+    "itemCount": 12,
+    "latestTitle": "Rest of World -",
+    "checkedAt": "2026-08-05T11:35:48.770Z"
+  },
+  "tech-wired": {
+    "itemCount": 50,
+    "latestTitle": "WIRED",
+    "checkedAt": "2026-08-05T11:35:48.770Z"
+  },
+  "startups-yc-blog": {
+    "itemCount": 15,
+    "latestTitle": "Y Combinator Blog",
+    "checkedAt": "2026-08-05T11:35:48.770Z"
+  },
+  "startups-stratechery": {
+    "itemCount": 10,
+    "latestTitle": "Stratechery by Ben Thompson",
+    "checkedAt": "2026-08-05T11:35:48.770Z"
+  },
+  "startups-paul-graham": {
+    "itemCount": 219,
+    "latestTitle": "Paul Graham: Essays",
+    "checkedAt": "2026-08-05T11:35:48.770Z"
+  },
+  "startups-both-sides": {
+    "itemCount": 10,
+    "latestTitle": "Both Sides of the Table - Medium",
+    "checkedAt": "2026-08-05T11:35:48.770Z"
+  },
+  "startups-sifted": {
+    "itemCount": 24,
+    "latestTitle": "Sifted",
+    "checkedAt": "2026-08-05T11:35:48.770Z"
+  },
+  "startups-first-round": {
+    "itemCount": 15,
+    "latestTitle": "First Round",
+    "checkedAt": "2026-08-05T11:35:48.770Z"
+  },
+  "startups-not-boring": {
+    "itemCount": 20,
+    "latestTitle": "Not Boring by Packy McCormick",
+    "checkedAt": "2026-08-05T11:35:48.770Z"
+  },
+  "startups-tomtunguz": {
+    "itemCount": 10,
+    "latestTitle": "Tomasz Tunguz",
+    "checkedAt": "2026-08-05T11:35:48.770Z"
+  },
+  "business-marginal-revolution": {
+    "itemCount": 15,
+    "latestTitle": "Marginal REVOLUTION",
+    "checkedAt": "2026-08-05T11:35:48.770Z"
+  },
+  "business-calculated-risk": {
+    "itemCount": 25,
+    "latestTitle": "Calculated Risk",
+    "checkedAt": "2026-08-05T11:35:48.770Z"
+  },
+  "business-economist-finance": {
+    "itemCount": 300,
+    "latestTitle": "Finance & economics",
+    "checkedAt": "2026-08-05T11:35:48.770Z"
+  },
+  "business-ft-companies": {
+    "itemCount": 25,
+    "latestTitle": "Companies",
+    "checkedAt": "2026-08-05T11:35:48.770Z"
+  },
+  "business-noahpinion": {
+    "itemCount": 20,
+    "latestTitle": "Noahpinion",
+    "checkedAt": "2026-08-05T11:35:48.770Z"
+  },
+  "business-net-interest": {
+    "itemCount": 20,
+    "latestTitle": "Net Interest",
+    "checkedAt": "2026-08-05T11:35:48.770Z"
+  },
+  "eng-github-blog": {
+    "itemCount": 10,
+    "latestTitle": "The GitHub Blog",
+    "checkedAt": "2026-08-05T11:35:48.770Z"
+  },
+  "eng-github-changelog": {
+    "itemCount": 10,
+    "latestTitle": "Archive: 2026 - GitHub Changelog",
+    "checkedAt": "2026-08-05T11:35:48.770Z"
+  },
+  "eng-cloudflare-blog": {
+    "itemCount": 20,
+    "latestTitle": "The Cloudflare Blog",
+    "checkedAt": "2026-08-05T11:35:48.770Z"
+  },
+  "eng-cloudflare-dev": {
+    "itemCount": 20,
+    "latestTitle": "Posts tagged \"Developers\"",
+    "checkedAt": "2026-08-05T11:35:48.770Z"
+  },
+  "eng-go-blog": {
+    "itemCount": 10,
+    "latestTitle": "The Go Blog",
+    "checkedAt": "2026-08-05T11:35:48.770Z"
+  },
+  "eng-rust-blog": {
+    "itemCount": 10,
+    "latestTitle": "Rust Blog",
+    "checkedAt": "2026-08-05T11:35:48.770Z"
+  },
+  "eng-julia-evans": {
+    "itemCount": 20,
+    "latestTitle": "Julia Evans",
+    "checkedAt": "2026-08-05T11:35:48.770Z"
+  },
+  "eng-netflix-tech": {
+    "itemCount": 10,
+    "latestTitle": "Netflix TechBlog - Medium",
+    "checkedAt": "2026-08-05T11:35:48.770Z"
+  },
+  "eng-stripe": {
+    "itemCount": 110,
+    "latestTitle": "Stripe Dot Dev Blog",
+    "checkedAt": "2026-08-05T11:35:48.770Z"
+  },
+  "sec-krebs": {
+    "itemCount": 10,
+    "latestTitle": "Krebs on Security",
+    "checkedAt": "2026-08-05T11:35:48.770Z"
+  },
+  "sec-schneier": {
+    "itemCount": 10,
+    "latestTitle": "Schneier on Security",
+    "checkedAt": "2026-08-05T11:35:48.770Z"
+  },
+  "sec-troy-hunt": {
+    "itemCount": 15,
+    "latestTitle": "Troy Hunt",
+    "checkedAt": "2026-08-05T11:35:48.770Z"
+  },
+  "sec-the-record": {
+    "itemCount": 5,
+    "latestTitle": "The Record from Recorded Future News",
+    "checkedAt": "2026-08-05T11:35:48.770Z"
+  },
+  "sec-cisa": {
+    "itemCount": 10,
+    "latestTitle": "Cybersecurity and Infrastructure Security Agency CISA",
+    "checkedAt": "2026-08-05T11:35:48.770Z"
+  },
+  "sec-google-security": {
+    "itemCount": 20,
+    "latestTitle": "Security",
+    "checkedAt": "2026-08-05T11:35:48.770Z"
+  },
+  "sec-risky-business": {
+    "itemCount": 15,
+    "latestTitle": "Risky.Biz",
+    "checkedAt": "2026-08-05T11:35:48.770Z"
+  },
+  "health-stat-main": {
+    "itemCount": 20,
+    "latestTitle": "STAT",
+    "checkedAt": "2026-08-05T11:35:48.770Z"
+  },
+  "health-stat-pharma": {
+    "itemCount": 20,
+    "latestTitle": "STAT Pharmalot: Insight and analysis by Ed Silverman",
+    "checkedAt": "2026-08-05T11:35:48.770Z"
+  },
+  "health-stat-tech": {
+    "itemCount": 20,
+    "latestTitle": "STAT health tech: Stories on AI, new medical devices and more",
+    "checkedAt": "2026-08-05T11:35:48.770Z"
+  },
+  "health-ground-truths": {
+    "itemCount": 20,
+    "latestTitle": "Ground Truths",
+    "checkedAt": "2026-08-05T11:35:48.770Z"
+  },
+  "health-endpoints": {
+    "itemCount": 24,
+    "latestTitle": "Endpoints News",
+    "checkedAt": "2026-08-05T11:35:48.770Z"
+  },
+  "health-nature-medicine": {
+    "itemCount": 8,
+    "latestTitle": "Nature Medicine",
+    "checkedAt": "2026-08-05T11:35:48.770Z"
+  },
+  "health-medpage": {
+    "itemCount": 20,
+    "latestTitle": "MedPageToday.com - medical news for physicians",
+    "checkedAt": "2026-08-05T11:35:48.770Z"
+  },
+  "health-sbm": {
+    "itemCount": 30,
+    "latestTitle": "Science-Based Medicine",
+    "checkedAt": "2026-08-05T11:35:48.770Z"
+  },
+  "marketing-hubspot-marketing": {
+    "itemCount": 50,
+    "latestTitle": "Marketing",
+    "checkedAt": "2026-08-05T11:35:48.770Z"
+  },
+  "marketing-hubspot-sales": {
+    "itemCount": 50,
+    "latestTitle": "Sales",
+    "checkedAt": "2026-08-05T11:35:48.770Z"
+  },
+  "marketing-hubspot-service": {
+    "itemCount": 50,
+    "latestTitle": "Service",
+    "checkedAt": "2026-08-05T11:35:48.770Z"
+  },
+  "marketing-seth-godin": {
+    "itemCount": 10,
+    "latestTitle": "Seth's Blog",
+    "checkedAt": "2026-08-05T11:35:48.770Z"
+  },
+  "marketing-ahrefs": {
+    "itemCount": 10,
+    "latestTitle": "SEO Blog by Ahrefs",
+    "checkedAt": "2026-08-05T11:35:48.770Z"
+  },
+  "marketing-lennys-newsletter": {
+    "itemCount": 20,
+    "latestTitle": "Lenny's Newsletter",
+    "checkedAt": "2026-08-05T11:35:48.770Z"
+  },
+  "marketing-moz": {
+    "itemCount": 10,
+    "latestTitle": "moz (en-US)",
+    "checkedAt": "2026-08-05T11:35:48.770Z"
+  },
+  "marketing-marketing-brew": {
+    "itemCount": 40,
+    "latestTitle": "Marketing Brew",
+    "checkedAt": "2026-08-05T11:35:48.770Z"
+  },
+  "gaming-eurogamer-news": {
+    "itemCount": 100,
+    "latestTitle": "Eurogamer.net Latest Articles Feed",
+    "checkedAt": "2026-08-05T11:35:48.770Z"
+  },
+  "gaming-vg247": {
+    "itemCount": 100,
+    "latestTitle": "VG247 Latest Articles Feed",
+    "checkedAt": "2026-08-05T11:35:48.770Z"
+  },
+  "gaming-polygon": {
+    "itemCount": 10,
+    "latestTitle": "Polygon.com",
+    "checkedAt": "2026-08-05T11:35:48.770Z"
+  },
+  "gaming-rps": {
+    "itemCount": 100,
+    "latestTitle": "Rock Paper Shotgun Latest Articles Feed",
+    "checkedAt": "2026-08-05T11:35:48.770Z"
+  },
+  "gaming-aftermath": {
+    "itemCount": 15,
+    "latestTitle": "Aftermath",
+    "checkedAt": "2026-08-05T11:35:48.770Z"
+  },
+  "gaming-gamesindustry": {
+    "itemCount": 100,
+    "latestTitle": "GamesIndustry.biz Latest Articles Feed",
+    "checkedAt": "2026-08-05T11:35:48.770Z"
+  },
+  "gaming-pcgamer": {
+    "itemCount": 50,
+    "latestTitle": "Latest from PC Gamer",
+    "checkedAt": "2026-08-05T11:35:48.770Z"
+  },
+  "gaming-kotaku": {
+    "itemCount": 20,
+    "latestTitle": "Kotaku",
+    "checkedAt": "2026-08-05T11:35:48.770Z"
+  },
+  "crypto-coindesk-main": {
+    "itemCount": 25,
+    "latestTitle": "CoinDesk: Bitcoin, Ethereum, Crypto News and Price Data",
+    "checkedAt": "2026-08-05T11:35:48.770Z"
+  },
+  "crypto-theblock": {
+    "itemCount": 20,
+    "latestTitle": "The Block",
+    "checkedAt": "2026-08-05T11:35:48.770Z"
+  },
+  "crypto-citation-needed": {
+    "itemCount": 15,
+    "latestTitle": "Citation Needed",
+    "checkedAt": "2026-08-05T11:35:48.770Z"
+  },
+  "crypto-web3-going-great": {
+    "itemCount": 20,
+    "latestTitle": "Web3 is Going Just Great",
+    "checkedAt": "2026-08-05T11:35:48.770Z"
+  },
+  "crypto-vitalik": {
+    "itemCount": 174,
+    "latestTitle": "Vitalik Buterin's website",
+    "checkedAt": "2026-08-05T11:35:48.770Z"
+  },
+  "crypto-decrypt": {
+    "itemCount": 39,
+    "latestTitle": "Decrypt",
+    "checkedAt": "2026-08-05T11:35:48.770Z"
+  },
+  "crypto-bankless": {
+    "itemCount": 100,
+    "latestTitle": "Bankless News, Research and Analysis",
+    "checkedAt": "2026-08-05T11:35:48.770Z"
+  },
+  "crypto-cointelegraph": {
+    "itemCount": 30,
+    "latestTitle": "Cointelegraph.com News",
+    "checkedAt": "2026-08-05T11:35:48.770Z"
+  },
+  "science-nasa-news": {
+    "itemCount": 10,
+    "latestTitle": "NASA",
+    "checkedAt": "2026-08-05T11:35:48.770Z"
+  },
+  "science-nasa-image": {
+    "itemCount": 60,
+    "latestTitle": "NASA Image of the Day",
+    "checkedAt": "2026-08-05T11:35:48.770Z"
+  },
+  "science-quanta": {
+    "itemCount": 1,
+    "latestTitle": "Quanta Magazine – Illuminating science",
+    "checkedAt": "2026-08-05T11:35:48.770Z"
+  },
+  "science-phys-org": {
+    "itemCount": 30,
+    "latestTitle": "Phys.org - latest science and technology news stories",
+    "checkedAt": "2026-08-05T11:35:48.770Z"
+  },
+  "science-sciencedaily": {
+    "itemCount": 60,
+    "latestTitle": "Latest Science News -- ScienceDaily",
+    "checkedAt": "2026-08-05T11:35:48.770Z"
+  },
+  "science-nautilus": {
+    "itemCount": 10,
+    "latestTitle": "Nautilus",
+    "checkedAt": "2026-08-05T11:35:48.770Z"
+  },
+  "science-space-com": {
+    "itemCount": 50,
+    "latestTitle": "Latest from Space.com",
+    "checkedAt": "2026-08-05T11:35:48.770Z"
+  },
+  "design-smashing-main": {
+    "itemCount": 40,
+    "latestTitle": "Articles on Smashing Magazine — For Web Designers And Developers",
+    "checkedAt": "2026-08-05T11:35:48.770Z"
+  },
+  "design-nngroup": {
+    "itemCount": 20,
+    "latestTitle": "NN/g latest articles and announcements",
+    "checkedAt": "2026-08-05T11:35:48.770Z"
+  },
+  "design-ux-collective": {
+    "itemCount": 10,
+    "latestTitle": "UX Collective - Medium",
+    "checkedAt": "2026-08-05T11:35:48.770Z"
+  },
+  "design-alistapart": {
+    "itemCount": 20,
+    "latestTitle": "A List Apart: The Full Feed",
+    "checkedAt": "2026-08-05T11:35:48.770Z"
+  },
+  "design-julie-zhuo": {
+    "itemCount": 20,
+    "latestTitle": "The Looking Glass",
+    "checkedAt": "2026-08-05T11:35:48.770Z"
+  },
+  "design-css-tricks": {
+    "itemCount": 15,
+    "latestTitle": "CSS-Tricks",
+    "checkedAt": "2026-08-05T11:35:48.770Z"
+  },
+  "climate-heatmap": {
+    "itemCount": 30,
+    "latestTitle": "Heatmap News",
+    "checkedAt": "2026-08-05T11:35:48.770Z"
+  },
+  "climate-carbon-brief": {
+    "itemCount": 12,
+    "latestTitle": "Carbon Brief",
+    "checkedAt": "2026-08-05T11:35:48.770Z"
+  },
+  "climate-volts": {
+    "itemCount": 20,
+    "latestTitle": "Volts",
+    "checkedAt": "2026-08-05T11:35:48.770Z"
+  },
+  "climate-grist": {
+    "itemCount": 20,
+    "latestTitle": "Grist",
+    "checkedAt": "2026-08-05T11:35:48.770Z"
+  },
+  "climate-guardian-env": {
+    "itemCount": 25,
+    "latestTitle": "Environment | The Guardian",
+    "checkedAt": "2026-08-05T11:35:48.770Z"
+  },
+  "climate-e360": {
+    "itemCount": 100,
+    "latestTitle": "Yale E360",
+    "checkedAt": "2026-08-05T11:35:48.770Z"
+  },
+  "climate-latitude": {
+    "itemCount": 10,
+    "latestTitle": "Latitude Media",
+    "checkedAt": "2026-08-05T11:35:48.770Z"
+  },
+  "ideas-aeon": {
+    "itemCount": 20,
+    "latestTitle": "Aeon | a world of ideas",
+    "checkedAt": "2026-08-05T11:35:48.770Z"
+  },
+  "ideas-astral-codex": {
+    "itemCount": 20,
+    "latestTitle": "Astral Codex Ten",
+    "checkedAt": "2026-08-05T11:35:48.770Z"
+  },
+  "ideas-farnam-street": {
+    "itemCount": 20,
+    "latestTitle": "Farnam Street",
+    "checkedAt": "2026-08-05T11:35:48.770Z"
+  },
+  "ideas-works-in-progress": {
+    "itemCount": 224,
+    "latestTitle": "Works in Progress RSS Feed",
+    "checkedAt": "2026-08-05T11:35:48.770Z"
+  },
+  "ideas-marginalian": {
+    "itemCount": 20,
+    "latestTitle": "The Marginalian",
+    "checkedAt": "2026-08-05T11:35:48.770Z"
+  },
+  "ideas-longreads": {
+    "itemCount": 25,
+    "latestTitle": "Longreads",
+    "checkedAt": "2026-08-05T11:35:48.770Z"
+  },
+  "education-hechinger": {
+    "itemCount": 10,
+    "latestTitle": "The Hechinger Report",
+    "checkedAt": "2026-08-05T11:35:48.770Z"
+  },
+  "education-edsurge": {
+    "itemCount": 50,
+    "latestTitle": "EdSurge Articles",
+    "checkedAt": "2026-08-05T11:35:48.770Z"
+  },
+  "education-inside-higher-ed": {
+    "itemCount": 10,
+    "latestTitle": "Inside Higher Ed",
+    "checkedAt": "2026-08-05T11:35:48.770Z"
+  },
+  "education-cult-of-pedagogy": {
+    "itemCount": 0,
+    "latestTitle": "Comments on: Home",
+    "checkedAt": "2026-08-05T11:35:48.770Z"
+  },
+  "education-class-central": {
+    "itemCount": 10,
+    "latestTitle": "The Report by Class Central",
+    "checkedAt": "2026-08-05T11:35:48.770Z"
+  },
+  "education-ness-labs": {
+    "itemCount": 10,
+    "latestTitle": "Ness Labs",
+    "checkedAt": "2026-08-05T11:35:48.770Z"
+  },
+  "education-larry-cuban": {
+    "itemCount": 10,
+    "latestTitle": "Larry Cuban on School Reform and Classroom  Practice",
+    "checkedAt": "2026-08-05T11:35:48.770Z"
+  }
+}

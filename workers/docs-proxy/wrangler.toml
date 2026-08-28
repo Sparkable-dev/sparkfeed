@@ -1,0 +1,21 @@
+name = "sparkfeed-docs-proxy"
+main = "src/index.js"
+compatibility_date = "2025-06-01"
+
+# Your Cloudflare account id. Either uncomment and fill this in, or export
+# CLOUDFLARE_ACCOUNT_ID before running `wrangler deploy`.
+# account_id = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+
+# Bind the Worker to the /docs subpath on the apex zone. Requires the
+# sparkfeed.dev zone to be on this Cloudflare account and proxied (orange cloud).
+# Two precise patterns so we match /docs and everything under it, but not
+# unrelated paths like /docs-changelog.
+routes = [
+  { pattern = "sparkfeed.dev/docs", zone_name = "sparkfeed.dev" },
+  { pattern = "sparkfeed.dev/docs/*", zone_name = "sparkfeed.dev" },
+]
+
+[vars]
+# The hostname that actually serves the docs (the docs Railway service, reached
+# via this custom domain). The Worker forwards /docs requests here unchanged.
+DOCS_ORIGIN = "https://docs.sparkfeed.dev"

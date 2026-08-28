@@ -1,0 +1,39 @@
+---
+title: Run the application
+description: Development, production, and validation commands for Sparkfeed.
+---
+
+## Development
+
+```bash
+bun run dev
+```
+
+The server listens on port 3000.
+
+## Production build
+
+```bash
+bun run build
+bun run db:migrate
+bun run start
+```
+
+The build writes the Node server to `.output/server/index.mjs`. Set `PORT` and `HOST` when your platform requires them.
+
+## Validation
+
+```bash
+bun run lint
+bun run typecheck
+bun run test
+bun run build
+```
+
+## Demo
+
+```bash
+VITE_DEMO_MODE=true DEMO_MODE=true bun run dev
+```
+
+Demo mode does not require PostgreSQL.

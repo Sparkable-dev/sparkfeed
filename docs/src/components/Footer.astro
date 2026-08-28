@@ -1,0 +1,121 @@
+---
+/*
+  Override of Starlight's `Footer`.
+
+  Starlight's <Pagination> is deliberately not used. Its markup is two
+  bordered, shadowed cards that fuse the label and the page title into a single
+  <span> split by a <br>, so a "small label above the title" layout can only be
+  faked — reaching it via CSS would mean undoing nine of its own rules and
+  hiding its <Icon> with display:none, which is exactly the pattern the rest of
+  this redesign removes. Owning ~20 lines of markup is cheaper, and we already
+  gave up inheriting upstream changes the moment we overrode `Footer`.
+
+  Note the data source: Pagination reads `Astro.locals.starlightRoute`, not
+  props — the `<Pagination {...Astro.props} />` spread this replaces was a no-op.
+
+  The default footer's "Edit page" link stays dropped; that action lives in the
+  right rail (see PageSidebar.astro), so it isn't duplicated.
+*/
+const { dir, pagination } = Astro.locals.starlightRoute;
+const { prev, next } = pagination;
+---
+
+<footer class="sf-footer">
+	{
+		(prev || next) && (
+			<nav class="sf-pagination print:hidden" aria-label={Astro.locals.t('page.previousLink') + ' / ' + Astro.locals.t('page.nextLink')} dir={dir}>
+				{prev && (
+					<a class="sf-pagination-link" href={prev.href} rel="prev" data-dir="prev">
+						<span class="sf-pagination-label">{Astro.locals.t('page.previousLink')}</span>
+						<span class="sf-pagination-title">{prev.label}</span>
+					</a>
+				)}
+				{next && (
+					<a class="sf-pagination-link" href={next.href} rel="next" data-dir="next">
+						<span class="sf-pagination-label">{Astro.locals.t('page.nextLink')}</span>
+						<span class="sf-pagination-title">{next.label}</span>
+					</a>
+				)}
+			</nav>
+		)
+	}
+
+	<div class="sf-credit">
+		An open-source product by
+		<a href="https://www.linkedin.com/company/sparkable-dev/" target="_blank" rel="noopener noreferrer">
+			Sparkable
+		</a>
+	</div>
+</footer>
+
+<style>
+	/* One hairline above the whole block. With the section rules and the h2
+	   borders gone, this is the only horizontal line below the article. */
+	.sf-footer {
+		margin-top: var(--sf-space-16);
+		padding-top: var(--sf-space-6);
+		border-top: 1px solid var(--sf-border);
+	}
+
+	.sf-pagination {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--sf-space-6);
+	}
+
+	.sf-pagination-link {
+		display: flex;
+		flex-direction: column;
+		gap: 0.15rem;
+		max-width: 20rem;
+		min-width: 0;
+		text-decoration: none;
+	}
+
+	/* `margin-inline-start: auto` keeps Next flush to the end even when there is
+	   no Previous, and stays correct under RTL. */
+	.sf-pagination-link[data-dir='next'] {
+		margin-inline-start: auto;
+		align-items: flex-end;
+		text-align: end;
+	}
+
+	.sf-pagination-label {
+		font-size: var(--sf-text-2xs);
+		font-weight: 600;
+		letter-spacing: var(--sf-tracking-wide);
+		text-transform: uppercase;
+		color: var(--sf-fg-subtle);
+	}
+
+	.sf-pagination-title {
+		font-size: 0.9375rem;
+		font-weight: 500;
+		line-height: var(--sf-leading-snug);
+		color: var(--sf-fg-heading);
+		overflow-wrap: anywhere;
+		transition: color var(--sf-dur-fast) ease;
+	}
+
+	.sf-pagination-link:hover .sf-pagination-title {
+		color: var(--sf-accent-link);
+	}
+
+	.sf-credit {
+		margin-top: var(--sf-space-8);
+		padding-bottom: var(--sf-space-6);
+		font-size: var(--sf-text-xs);
+		color: var(--sf-fg-subtle);
+	}
+
+	.sf-credit a {
+		color: var(--sf-accent-link);
+		text-decoration: none;
+		font-weight: 500;
+	}
+
+	.sf-credit a:hover {
+		text-decoration: underline;
+		text-underline-offset: 2px;
+	}
+</style>

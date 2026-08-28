@@ -1,0 +1,60 @@
+---
+title: Environment variables
+description: Server, database, registration, email, AI, and demo settings for Sparkfeed.
+---
+
+The repository's `.env.example` file is the canonical configuration reference.
+
+## Required Community settings
+
+| Variable             | Required            | Description                                                    |
+| -------------------- | ------------------- | -------------------------------------------------------------- |
+| `DATABASE_URL`       | Outside demo mode   | PostgreSQL connection string.                                  |
+| `BETTER_AUTH_SECRET` | Outside demo mode   | Random secret used by Better Auth. Generate at least 32 bytes. |
+| `APP_URL`            | Yes for email links | Public application origin, including `http://` or `https://`.  |
+| `BETTER_AUTH_URL`    | Deployed auth       | Origin Better Auth uses for verification links.                |
+
+## Registration and workspaces
+
+| Variable                    | Default      | Description                                                                                                 |
+| --------------------------- | ------------ | ----------------------------------------------------------------------------------------------------------- |
+| `ALLOW_REGISTRATION`        | `false`      | Allows public signup after the first account when set to `true`. A valid invitation still works when false. |
+| `WORKSPACE_CREATION_POLICY` | `owner-only` | Use `all-users` to let every registered account create workspaces.                                          |
+
+The first account can register even when `ALLOW_REGISTRATION=false`. That account becomes the instance owner.
+
+## AI providers
+
+Set at least one provider key to enable Spark AI:
+
+| Variable             | Provider          |
+| -------------------- | ----------------- |
+| `OPENAI_API_KEY`     | OpenAI            |
+| `AI_GATEWAY_API_KEY` | Vercel AI Gateway |
+| `OPENROUTER_API_KEY` | OpenRouter        |
+
+`AI_DEFAULT_MODEL` can select a model ID from `src/config/ai-models.json`. `DISABLE_AI=true` disables Spark AI for the whole instance.
+
+## Email
+
+Use Resend or SMTP. Set `EMAIL_FROM` for either route.
+
+| Variable                         | Description              |
+| -------------------------------- | ------------------------ |
+| `RESEND_API_KEY`                 | Resend credential.       |
+| `SMTP_HOST`, `SMTP_PORT`         | SMTP server.             |
+| `SMTP_USER`, `SMTP_PASS`         | SMTP credentials.        |
+| `SMTP_SECURE`, `SMTP_IGNORE_TLS` | SMTP transport controls. |
+
+Without an email provider, verification, invitation, and password-reset messages cannot reach users.
+
+## Demo mode
+
+Set both variables before the development build:
+
+```dotenv
+VITE_DEMO_MODE=true
+DEMO_MODE=true
+```
+
+Demo mode ignores `DATABASE_URL`, uses `rss-demo.db`, bypasses auth, seeds sample content, and blocks mutations.

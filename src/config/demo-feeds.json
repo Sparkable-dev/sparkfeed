@@ -1,0 +1,32 @@
+{
+  "workspaceId": "demo-workspace",
+  "folders": [
+    {
+      "id": "demo-folder-ai",
+      "name": "AI Research Labs",
+      "feeds": [
+        { "id": "demo-feed-openai",     "name": "OpenAI Blog",        "url": "https://openai.com/news/rss.xml" },
+        { "id": "demo-feed-deepmind",   "name": "Google DeepMind",    "url": "https://deepmind.google/blog/rss.xml" },
+        { "id": "demo-feed-msresearch", "name": "Microsoft Research", "url": "https://www.microsoft.com/en-us/research/feed/" },
+        { "id": "demo-feed-metaai",     "name": "Meta AI Research",   "url": "https://research.facebook.com/feed/" }
+      ]
+    },
+    {
+      "id": "demo-folder-cloud",
+      "name": "Cloud Platforms",
+      "feeds": [
+        { "id": "demo-feed-aws",   "name": "AWS Blog",   "url": "https://aws.amazon.com/blogs/aws/feed/" },
+        { "id": "demo-feed-azure", "name": "Azure Blog", "url": "https://azure.microsoft.com/en-us/blog/feed/" }
+      ]
+    },
+    {
+      "id": "demo-folder-marketing",
+      "name": "Marketing & Growth",
+      "feeds": [
+        { "id": "demo-feed-hubspot",   "name": "HubSpot Marketing", "url": "https://blog.hubspot.com/marketing/rss.xml" },
+        { "id": "demo-feed-neilpatel", "name": "Neil Patel Blog",   "url": "https://neilpatel.com/blog/feed/" },
+        { "id": "demo-feed-moz",       "name": "Moz Blog",          "url": "https://moz.com/blog/feed" }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,193 @@
+---
+/**
+ * The live request bar.
+ *
+ * Reads run against the public demo workspace with the shared read-only key, so
+ * Send works for anyone with no signup and returns real JSON — which is the
+ * whole difference between a reference you read and one you believe.
+ *
+ * Writes render Send disabled: the demo key holds no write scope, so offering
+ * the button would only ever produce a 403 and teach the reader the API is
+ * broken. Supplying your own key enables it.
+ *
+ * Plain custom element, no framework. The docs site has no React and no
+ * Tailwind, and importing either for one widget would cost more than it saves.
+ */
+interface Props {
+  method: string
+  path: string
+  scope?: string
+  readOnly?: boolean
+}
+
+const { method, path, scope = '', readOnly = false } = Astro.props;
+
+const DEMO_BASE = 'https://demo.sparkfeed.dev/api/v1';
+const DEMO_KEY = 'sfk_demo_public';
+---
+
+<sf-playground
+  class="sf-pg"
+  data-method={method}
+  data-path={path}
+  data-scope={scope}
+  data-read-only={String(readOnly)}
+  data-demo-base={DEMO_BASE}
+  data-demo-key={DEMO_KEY}
+>
+  <div class="sf-pg-bar">
+    <span class="sf-pg-method" data-method={method}>{method}</span>
+    <code class="sf-pg-path">{path}</code>
+    <button type="button" class="sf-pg-send" disabled={!readOnly}>
+      {readOnly ? 'Send' : 'Read-only demo'}
+    </button>
+  </div>
+
+  <div class="sf-pg-meta">
+    <span class="sf-pg-target">Runs against the demo workspace</span>
+    <button type="button" class="sf-pg-key-toggle">Use my API key</button>
+  </div>
+
+  <div class="sf-pg-key" hidden>
+    <label>
+      <span class="sf-pg-key-label">API key</span>
+      <input type="password" class="sf-pg-key-input" placeholder="sfk_live_…" autocomplete="off" spellcheck="false" />
+    </label>
+    <label>
+      <span class="sf-pg-key-label">Base URL</span>
+      <input type="url" class="sf-pg-base-input" placeholder="https://beta.sparkfeed.dev/api/v1" autocomplete="off" spellcheck="false" />
+    </label>
+    <p class="sf-pg-key-note">
+      Held in this tab only (<code>sessionStorage</code>) and sent to the base URL above. Closing the tab clears it.
+    </p>
+  </div>
+
+  <div class="sf-pg-result" hidden>
+    <div class="sf-pg-status">
+      <span class="sf-pg-code"></span>
+      <span class="sf-pg-time"></span>
+      <button type="button" class="sf-pg-copy">Copy</button>
+    </div>
+    <pre class="sf-pg-body"><code></code></pre>
+  </div>
+</sf-playground>
+
+<script>
+  const STORE_KEY = 'sf-api-key';
+  const STORE_BASE = 'sf-api-base';
+
+  class Playground extends HTMLElement {
+    connectedCallback() {
+      const $ = (s: string) => this.querySelector(s) as HTMLElement;
+      const send = $('.sf-pg-send') as HTMLButtonElement;
+      const keyToggle = $('.sf-pg-key-toggle') as HTMLButtonElement;
+      const keyPanel = $('.sf-pg-key');
+      const keyInput = $('.sf-pg-key-input') as HTMLInputElement;
+      const baseInput = $('.sf-pg-base-input') as HTMLInputElement;
+      const target = $('.sf-pg-target');
+      const result = $('.sf-pg-result');
+      const codeEl = $('.sf-pg-code');
+      const timeEl = $('.sf-pg-time');
+      const bodyEl = this.querySelector('.sf-pg-body code') as HTMLElement;
+
+      const isReadOnly = this.dataset.readOnly === 'true';
+      const method = this.dataset.method!;
+      const path = this.dataset.path!;
+
+      // Restore a key the reader entered on another page of the reference.
+      keyInput.value = sessionStorage.getItem(STORE_KEY) ?? '';
+      baseInput.value = sessionStorage.getItem(STORE_BASE) ?? '';
+      syncMode();
+
+      keyToggle.addEventListener('click', () => {
+        const open = keyPanel.hasAttribute('hidden');
+        keyPanel.toggleAttribute('hidden', !open);
+        keyToggle.textContent = open ? 'Use the demo instead' : 'Use my API key';
+        if (open) keyInput.focus();
+        else {
+          sessionStorage.removeItem(STORE_KEY);
+          keyInput.value = '';
+          syncMode();
+        }
+      });
+
+      for (const input of [keyInput, baseInput]) {
+        input.addEventListener('input', () => {
+          sessionStorage.setItem(STORE_KEY, keyInput.value.trim());
+          sessionStorage.setItem(STORE_BASE, baseInput.value.trim());
+          syncMode();
+        });
+      }
+
+      function ownKey(): string {
+        return keyInput.value.trim();
+      }
+
+      /** A write endpoint is only sendable once the reader supplies a key. */
+      function syncMode() {
+        const hasOwn = ownKey().length > 0;
+        send.disabled = !isReadOnly && !hasOwn;
+        send.textContent = send.disabled ? 'Read-only demo' : 'Send';
+        target.textContent = hasOwn
+          ? 'Runs against your deployment'
+          : 'Runs against the demo workspace';
+      }
+
+      send.addEventListener('click', async () => {
+        const key = ownKey() || this.dataset.demoKey!;
+        const base = (ownKey() && baseInput.value.trim()) || this.dataset.demoBase!;
+
+        // Path params have no value to send from a docs page, so they are left
+        // as the literal placeholder and the API answers with a 400/404 — which
+        // is more honest than inventing an id that does not exist.
+        const url = `${base.replace(/\/$/, '')}${path}`;
+
+        send.disabled = true;
+        send.textContent = 'Sending…';
+        const started = performance.now();
+
+        try {
+          const res = await fetch(url, {
+            method,
+            headers: {
+              Authorization: `Bearer ${key}`,
+              ...(method === 'GET' ? {} : { 'Content-Type': 'application/json' }),
+            },
+            ...(method === 'GET' ? {} : { body: '{}' }),
+          });
+          const elapsed = Math.round(performance.now() - started);
+          const text = await res.text();
+
+          result.removeAttribute('hidden');
+          codeEl.textContent = String(res.status);
+          codeEl.dataset.ok = String(res.ok);
+          timeEl.textContent = `${elapsed} ms`;
+          try {
+            bodyEl.textContent = JSON.stringify(JSON.parse(text), null, 2);
+          } catch {
+            bodyEl.textContent = text || '(empty)';
+          }
+        } catch (err) {
+          result.removeAttribute('hidden');
+          codeEl.textContent = 'error';
+          codeEl.dataset.ok = 'false';
+          timeEl.textContent = '';
+          // Nearly always CORS or an unreachable host; say so rather than
+          // printing "Failed to fetch" and leaving the reader guessing.
+          bodyEl.textContent =
+            `Could not reach ${base}.\n\n` +
+            `${err instanceof Error ? err.message : String(err)}\n\n` +
+            `If this is your own deployment, add this origin to API_CORS_ORIGINS.`;
+        } finally {
+          syncMode();
+        }
+      });
+
+      this.querySelector('.sf-pg-copy')!.addEventListener('click', () => {
+        void navigator.clipboard.writeText(bodyEl.textContent ?? '');
+      });
+    }
+  }
+
+  customElements.define('sf-playground', Playground);
+</script>

@@ -1,0 +1,1140 @@
+/* ==========================================================================
+   Chrome around the article: top bar, breadcrumbs, theme select, search,
+   sidebar, table of contents, page actions, cards, hero, badge, and the one
+   Expressive Code rule that has no config equivalent.
+
+   Loaded last, because it patches third-party markup (Starlight, Pagefind,
+   Expressive Code) and occasionally needs to out-rank content.css.
+
+   A rule belongs in a component's own scoped <style> instead of this file iff
+   every selector it uses targets markup that component itself emits. That is
+   why Footer.astro keeps a scoped block and PageSidebar.astro does not.
+   ========================================================================== */
+
+/* ══ TOP BAR ═══════════════════════════════════════════════════════════════
+   Markup: src/components/Header.astro */
+.sf-topbar {
+  display: flex;
+  align-items: center;
+  gap: var(--sf-space-2);
+  height: 100%;
+  min-width: 0;
+}
+
+.sf-topbar-separator {
+  display: none;
+  flex-shrink: 0;
+  width: 1px;
+  height: 1rem;
+  margin-inline: 0.125rem;
+  background: var(--sf-border);
+}
+
+/* Always laid out, at every width: it now carries the "Live demo" CTA, which is
+   the one action that must survive down to mobile. Social and theme opt out
+   individually via `.sf-topbar-desktop` (they live in the mobile drawer footer
+   below `md`); the CTA does not. */
+.sf-topbar-right {
+  display: flex;
+  align-items: center;
+  gap: var(--sf-space-2);
+  margin-inline-start: auto;
+  padding-inline-start: var(--sf-space-3);
+}
+
+/* Below `md` Starlight's mobile menu button is `position: fixed` in the
+   top-right corner (2rem wide, 1rem from the edge) and paints over anything
+   sharing that space — which is why this row used to be hidden entirely here.
+   Reserve its width plus a gap so the CTA sits clear of it. */
+.sf-topbar-right {
+  padding-inline-end: calc(2rem + var(--sf-space-2));
+}
+
+.sf-topbar-desktop {
+  display: none;
+  align-items: center;
+}
+
+@media (min-width: 50rem) {
+  .sf-topbar-separator,
+  .sf-topbar-desktop {
+    display: flex;
+  }
+
+  .sf-topbar-right {
+    padding-inline-end: 0;
+  }
+}
+
+.sf-social {
+  align-items: center;
+  gap: 0.125rem;
+}
+
+/* ── "Live demo" CTA ──────────────────────────────────────────────────────
+   The only filled, accent-coloured control in the docs chrome, which is the
+   point: one action, unmistakably the primary one. Sized for a 3.5rem bar, so
+   it is deliberately not the hero button from landing.css — same accent tokens,
+   different geometry. */
+.sf-topbar-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  flex-shrink: 0;
+  padding: 0.34rem 0.7rem;
+  border-radius: var(--sf-radius-md);
+  background: var(--sf-accent);
+  color: var(--sf-accent-fg);
+  font-size: var(--sf-text-sm);
+  font-weight: 600;
+  line-height: 1.2;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background var(--sf-dur-fast) var(--sf-ease);
+}
+
+.sf-topbar-cta:hover {
+  background: var(--sf-accent-hover);
+}
+
+.sf-topbar-cta svg {
+  opacity: 0.7;
+}
+
+.sf-social a {
+  color: var(--sf-fg-subtle);
+  /* Starlight ships a negative margin here to bleed the hit area; undo it so
+     the icons don't overlap in the tighter top bar. */
+  margin: 0;
+  padding: 0.4rem;
+  border-radius: var(--sf-radius-sm);
+  transition:
+    color var(--sf-dur-fast) ease,
+    background var(--sf-dur-fast) ease;
+}
+
+.sf-social a:hover {
+  color: var(--sf-fg-strong);
+  background: var(--sf-surface-hover);
+}
+
+/* ── Breadcrumbs ────────────────────────────────────────────────────────── */
+.sf-breadcrumbs {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.sf-breadcrumbs ol {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--sf-text-sm);
+  line-height: 1.4;
+  white-space: nowrap;
+  color: var(--sf-fg-subtle);
+}
+
+.sf-breadcrumbs li {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+/* Chevron separator before every crumb except the first. */
+.sf-breadcrumbs li + li::before {
+  content: '';
+  flex-shrink: 0;
+  width: 0.35rem;
+  height: 0.35rem;
+  border-top: 1.5px solid currentColor;
+  border-inline-end: 1.5px solid currentColor;
+  transform: rotate(45deg);
+  opacity: 0.5;
+}
+
+.sf-breadcrumbs a {
+  color: inherit;
+  text-decoration: none;
+  transition: color var(--sf-dur-fast) ease;
+}
+
+.sf-breadcrumbs a:hover {
+  color: var(--sf-fg-strong);
+}
+
+.sf-breadcrumbs [aria-current='page'] {
+  color: var(--sf-fg-strong);
+  font-weight: 500;
+}
+
+/* Only the current page's label truncates; the chevron beside it must not. */
+.sf-breadcrumbs [aria-current='page'] span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Intermediate crumbs are the first thing to go on narrow screens. */
+@media (max-width: 30rem) {
+  .sf-breadcrumbs li:not(:first-child):not(:last-child) {
+    display: none;
+  }
+}
+
+/* ── Icon buttons (sidebar toggle) ─────────────────────────────────────── */
+.sf-icon-button {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 1.75rem;
+  height: 1.75rem;
+  padding: 0;
+  border: 0;
+  border-radius: var(--sf-radius-sm);
+  background: transparent;
+  color: var(--sf-fg-subtle);
+  cursor: pointer;
+  transition:
+    color var(--sf-dur-fast) ease,
+    background var(--sf-dur-fast) ease;
+}
+
+.sf-icon-button:hover {
+  color: var(--sf-fg-strong);
+  background: var(--sf-surface-hover);
+}
+
+@media (min-width: 50rem) {
+  .sf-icon-button {
+    display: flex;
+  }
+}
+
+/* Splash pages have no sidebar, so there is nothing to toggle. */
+html:not([data-has-sidebar]) .sf-icon-button,
+html:not([data-has-sidebar]) .sf-topbar-separator {
+  display: none;
+}
+
+/* ══ "COPY PAGE" BUTTON ════════════════════════════════════════════════════
+   Markup: src/components/PageTitle.astro */
+sf-copy-page {
+  display: contents;
+}
+
+.sf-copy-page {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-shrink: 0;
+  height: 1.875rem;
+  margin-top: 0.35rem;
+  padding: 0 0.625rem;
+  border: 1px solid var(--sf-border);
+  border-radius: var(--sf-radius-sm);
+  background: transparent;
+  color: var(--sf-fg-subtle);
+  font-family: var(--sl-font);
+  font-size: 0.78rem;
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    color var(--sf-dur-fast) ease,
+    background var(--sf-dur-fast) ease,
+    border-color var(--sf-dur-fast) ease;
+}
+
+.sf-copy-page:hover {
+  color: var(--sf-fg-strong);
+  border-color: var(--sf-border-strong);
+  background: var(--sf-surface-hover);
+}
+
+/* Icon crossfade: copy by default, check once copied. */
+.sf-copy-page-icons {
+  display: grid;
+  place-items: center;
+  width: 15px;
+  height: 15px;
+}
+
+.sf-copy-page-icons svg {
+  grid-area: 1 / 1;
+}
+
+.sf-copy-page .sf-icon-check {
+  display: none;
+  color: var(--sf-accent);
+}
+
+sf-copy-page[data-copied='true'] .sf-copy-page {
+  color: var(--sf-accent);
+  border-color: color-mix(in srgb, var(--sf-accent) 40%, transparent);
+}
+
+sf-copy-page[data-copied='true'] .sf-icon-copy {
+  display: none;
+}
+
+sf-copy-page[data-copied='true'] .sf-icon-check {
+  display: block;
+}
+
+/* Drop the label on the narrowest screens; keep the icon. */
+@media (max-width: 26rem) {
+  .sf-copy-page-label {
+    display: none;
+  }
+
+  .sf-copy-page {
+    padding: 0 var(--sf-space-2);
+  }
+}
+
+/* ══ THEME TOGGLE ══════════════════════════════════════════════════════════
+   Segmented system / light / dark. Markup: src/components/ThemeSelect.astro */
+.sf-theme-select {
+  display: flex;
+  align-items: center;
+  gap: 0.125rem;
+  padding: 0.125rem;
+  border: 1px solid var(--sf-border);
+  border-radius: var(--sf-radius-full);
+}
+
+.sf-theme-select button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  padding: 0;
+  border: 0;
+  border-radius: var(--sf-radius-full);
+  background: transparent;
+  color: var(--sf-fg-subtle);
+  cursor: pointer;
+  transition:
+    color var(--sf-dur-fast) ease,
+    background var(--sf-dur-fast) ease;
+}
+
+.sf-theme-select button:hover {
+  color: var(--sf-fg-strong);
+}
+
+.sf-theme-select button[aria-pressed='true'] {
+  background: var(--sf-surface-active);
+  color: var(--sf-fg-strong);
+}
+
+/* ══ SEARCH ════════════════════════════════════════════════════════════════
+   Rendered inside the sidebar, restyled as a text input. Starlight's own
+   Search styles live in `@layer starlight.core`, so this unlayered block wins
+   on its own — the fourteen `!important`s that used to be here were noise. */
+.sf-sidebar-search {
+  margin-top: var(--sf-space-2);
+}
+
+.sf-sidebar-search button[data-open-modal] {
+  display: flex;
+  align-items: center;
+  gap: var(--sf-space-2);
+  width: 100%;
+  max-width: none;
+  height: 2rem;
+  padding-inline: var(--sf-space-2);
+  border: 1px solid var(--sf-border);
+  border-radius: var(--sf-radius-sm);
+  background: var(--sf-surface-input);
+  color: var(--sf-fg-muted);
+  box-shadow: none;
+  font-size: var(--sf-text-sm);
+}
+
+.sf-sidebar-search button[data-open-modal]:hover {
+  border-color: var(--sf-border-strong);
+  color: var(--sf-fg-strong);
+}
+
+/* Starlight hides the label + shortcut below `md`; the sidebar has room for
+   both at every width. */
+.sf-sidebar-search button[data-open-modal] > span {
+  display: block;
+  flex: 1;
+  text-align: start;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The shortcut ships with an inline `display: none` that Starlight's inline
+   script clears once it has resolved the platform key. The attribute guard
+   keeps us from fighting that pre-hydration state. */
+.sf-sidebar-search button[data-open-modal] > kbd:not([style*='none']) {
+  display: flex;
+  margin-inline-start: auto;
+}
+
+.sf-sidebar-search button[data-open-modal] kbd {
+  background: transparent;
+  color: var(--sf-fg-subtle);
+  font-size: var(--sf-text-2xs);
+}
+
+/* Pagefind result highlight. */
+.pagefind-ui__result-excerpt mark,
+site-search mark {
+  background: var(--sf-mark-bg);
+  color: var(--sf-accent-hover);
+}
+
+/* Hide only the dev-mode "search is unavailable" notice. Starlight renders it
+   inside an inline-styled <div> that exists solely under `import.meta.env.DEV`;
+   in a production build that div is replaced by `.search-container`, so this
+   matches nothing.
+
+   The previous rule was `site-search p { display: none }`, which also matched
+   Pagefind's `.pagefind-ui__message` — hiding the real result count and the
+   "No results for X" message in production. */
+site-search div[style*='pre-line'] > p {
+  display: none;
+}
+
+/* ══ SIDEBAR ═══════════════════════════════════════════════════════════════
+   Modelled on shadcn/ui `sidebar-03`.
+   Markup: src/components/Sidebar.astro + SidebarSublist.astro
+   (Pane placement and the collapse transform live in layout.css.) */
+
+/* ── Header block (brand tile + search) ───────────────────────────────────
+   Fixed at the top of the sidebar; it sits outside the scroll region so the
+   brand + search never move and the scrollbar never runs behind them. */
+.sf-sidebar-header {
+  flex-shrink: 0;
+  padding: var(--sf-space-3) var(--sf-space-3) 0.625rem;
+  border-bottom: 1px solid var(--sf-border);
+}
+
+/* ── Scrollable nav region ─────────────────────────────────────────────── */
+.sf-sidebar-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: var(--sf-space-2) var(--sf-space-3) var(--sf-space-5);
+  /* Auto-hiding scrollbar (shadcn-style): transparent until the pointer is over
+     this region, so it never lingers when the mouse is elsewhere. Space is
+     reserved so revealing it never shifts the nav. */
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+  transition: scrollbar-color 0.2s ease;
+}
+
+.sf-sidebar-scroll:hover,
+.sf-sidebar-scroll:focus-within {
+  scrollbar-color: var(--sf-scrollbar) transparent;
+}
+
+/* WebKit: same behaviour. The thumb is inset via a transparent border so it
+   reads as a thin rounded bar, and only gains colour on hover. */
+.sf-sidebar-scroll::-webkit-scrollbar {
+  width: 10px;
+}
+
+.sf-sidebar-scroll::-webkit-scrollbar-thumb {
+  background-color: transparent;
+  border: 3px solid transparent;
+  border-radius: var(--sf-radius-full);
+  background-clip: padding-box;
+  transition: background-color 0.2s ease;
+}
+
+.sf-sidebar-scroll:hover::-webkit-scrollbar-thumb,
+.sf-sidebar-scroll:focus-within::-webkit-scrollbar-thumb {
+  background-color: var(--sf-scrollbar);
+}
+
+.sf-sidebar-scroll::-webkit-scrollbar-thumb:hover {
+  background-color: var(--sf-fg-subtle);
+}
+
+/* ── Brand ─────────────────────────────────────────────────────────────── */
+/* The tile is a <button> that opens `.sf-brand-menu-list`, not a link. It is
+   the docs' only route back to the marketing site. */
+.sf-brand-menu {
+  display: block;
+  position: relative;
+}
+
+.sf-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  width: 100%;
+  padding: 0.4rem var(--sf-space-2);
+  border: 0;
+  border-radius: var(--sf-radius-md);
+  background: transparent;
+  font: inherit;
+  text-align: start;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background var(--sf-dur-fast) ease;
+}
+
+.sf-brand:hover,
+.sf-brand[aria-expanded='true'] {
+  background: var(--sf-surface-hover);
+}
+
+.sf-brand-caret {
+  flex-shrink: 0;
+  margin-inline-start: auto;
+  color: var(--sf-fg-subtle);
+}
+
+/* The logo is a full-colour gradient disc that supplies its own shape, so it
+   sits directly on the sidebar — no tinted tile, no radius, no `currentColor`
+   (all of which the previous placeholder glyph needed). */
+.sf-brand-mark {
+  flex-shrink: 0;
+  width: 2rem;
+  height: 2rem;
+}
+
+.sf-brand-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+  line-height: 1.25;
+}
+
+.sf-brand-title {
+  font-size: var(--sf-text-sm);
+  font-weight: 600;
+  color: var(--sf-fg-strong);
+  letter-spacing: -0.01em;
+}
+
+.sf-brand-meta {
+  font-size: var(--sf-text-2xs);
+  color: var(--sf-fg-subtle);
+}
+
+/* ── Brand dropdown ────────────────────────────────────────────────────────
+   Absolutely positioned inside `.sf-sidebar-header`, which has no overflow of
+   its own; `.sidebar-pane` is the only clipping ancestor and the menu sits well
+   inside it. Spans the header's inner width so it lines up with the search box
+   it covers. */
+.sf-brand-menu-list {
+  position: absolute;
+  z-index: 20;
+  inset-inline: 0;
+  top: calc(100% + var(--sf-space-2));
+  padding: var(--sf-space-1);
+  border: 1px solid var(--sf-border);
+  border-radius: var(--sf-radius-lg);
+  background: var(--sf-bg-elevated);
+  box-shadow: var(--sf-shadow-card);
+}
+
+.sf-brand-menu-list[hidden] {
+  display: none;
+}
+
+.sf-brand-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.4rem 0.5rem;
+  border-radius: var(--sf-radius-sm);
+  color: var(--sf-fg-muted);
+  font-size: var(--sf-text-md);
+  text-decoration: none;
+  transition:
+    background var(--sf-dur-fast) ease,
+    color var(--sf-dur-fast) ease;
+}
+
+.sf-brand-menu-item svg {
+  flex-shrink: 0;
+  color: var(--sf-fg-subtle);
+}
+
+.sf-brand-menu-item:hover:not([aria-disabled='true']),
+.sf-brand-menu-item:focus-visible {
+  background: var(--sf-surface-hover);
+  color: var(--sf-fg-strong);
+}
+
+.sf-brand-menu-item[aria-current='page'] {
+  color: var(--sf-fg-strong);
+  font-weight: 600;
+}
+
+/* Pending destinations stay visible so the roadmap is legible, but must not
+   read as clickable. */
+.sf-brand-menu-item[aria-disabled='true'] {
+  cursor: default;
+  color: var(--sf-fg-subtle);
+}
+
+.sf-brand-menu-item[aria-disabled='true'] svg {
+  opacity: 0.5;
+}
+
+.sf-brand-menu-label {
+  min-width: 0;
+}
+
+.sf-brand-menu-check {
+  margin-inline-start: auto;
+  color: var(--sf-accent-link);
+}
+
+.sf-brand-menu-item[aria-current='page'] .sf-brand-menu-check {
+  color: var(--sf-accent-link);
+}
+
+.sf-brand-menu-badge {
+  margin-inline-start: auto;
+  padding: 0.1em 0.4em;
+  border: 1px solid var(--sf-border);
+  border-radius: var(--sf-radius-full);
+  font-size: var(--sf-text-2xs);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  color: var(--sf-fg-subtle);
+}
+
+/* ── Menu scaffolding ──────────────────────────────────────────────────── */
+.sf-menu {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.sf-menu--top > .sf-menu-item + .sf-menu-item {
+  margin-top: 0.875rem;
+}
+
+/* The guide rail that carries the hierarchy — a single continuous line
+   per group rather than a segment per row. */
+.sf-menu--sub {
+  display: flex;
+  flex-direction: column;
+  gap: 0.0625rem;
+  margin: var(--sf-space-1) 0 0 0.875rem;
+  padding-inline-start: 0.625rem;
+  border-inline-start: 1px solid var(--sf-border-strong);
+}
+
+/* Nested groups (a group inside a group) keep their own rail. */
+.sf-menu--sub .sf-menu--sub {
+  margin-inline-start: var(--sf-space-2);
+}
+
+/* ── Group label row ───────────────────────────────────────────────────── */
+.sf-group-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sf-space-2);
+  height: 1.75rem;
+  padding: 0 var(--sf-space-2);
+  border-radius: var(--sf-radius-sm);
+  cursor: pointer;
+  user-select: none;
+  transition: background var(--sf-dur-fast) ease;
+}
+
+.sf-group-summary::marker,
+.sf-group-summary::-webkit-details-marker {
+  display: none;
+  content: '';
+}
+
+.sf-group-summary:hover {
+  background: var(--sf-surface-hover);
+}
+
+.sf-group-label {
+  font-size: var(--sf-text-sm);
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  color: var(--sf-fg-strong);
+  overflow-wrap: anywhere;
+}
+
+.sf-caret {
+  flex-shrink: 0;
+  color: var(--sf-fg-subtle);
+  opacity: 0.6;
+  transition:
+    transform 0.2s ease,
+    opacity var(--sf-dur-fast) ease;
+}
+
+.sf-group-summary:hover .sf-caret {
+  opacity: 1;
+}
+
+.sf-group[open] > .sf-group-summary .sf-caret {
+  transform: rotate(90deg);
+}
+
+[dir='rtl'] .sf-caret {
+  transform: rotate(180deg);
+}
+
+[dir='rtl'] .sf-group[open] > .sf-group-summary .sf-caret {
+  transform: rotate(90deg);
+}
+
+/* ── Menu links ────────────────────────────────────────────────────────── */
+.sf-menu-link {
+  display: flex;
+  align-items: center;
+  min-height: 1.75rem;
+  padding: var(--sf-space-1) var(--sf-space-2);
+  border-radius: var(--sf-radius-sm);
+  font-size: var(--sf-text-sm);
+  font-weight: 400;
+  line-height: 1.45;
+  color: var(--sf-fg-muted);
+  text-decoration: none;
+  overflow-wrap: anywhere;
+  transition:
+    background var(--sf-dur-fast) ease,
+    color var(--sf-dur-fast) ease;
+}
+
+.sf-menu-link:hover {
+  background: var(--sf-surface-hover);
+  color: var(--sf-fg-strong);
+}
+
+.sf-menu-link[aria-current='page'] {
+  font-weight: 500;
+  background: var(--sf-surface-active);
+  color: var(--sf-nav-active-fg);
+}
+
+/* Frontmatter `sidebar.badge`, used to mark a page as not-yet-shipped. Quiet by
+   design: it labels a nav row, it does not compete with it. */
+.sf-menu-badge {
+  flex-shrink: 0;
+  margin-inline-start: auto;
+  padding: 0.05rem 0.3rem;
+  border: 1px solid var(--sf-border);
+  border-radius: var(--sf-radius-sm);
+  font-size: 0.625rem;
+  font-weight: 600;
+  line-height: 1.4;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--sf-fg-subtle);
+}
+
+.sf-menu-link:hover .sf-menu-badge,
+.sf-menu-link[aria-current='page'] .sf-menu-badge {
+  color: var(--sf-fg-muted);
+}
+
+/* ── Mobile menu footer (theme + language selects) ─────────────────────── */
+.sidebar-content .mobile-preferences {
+  border-top: 1px solid var(--sf-border);
+  margin-top: var(--sf-space-2);
+}
+
+/* ══ TABLE OF CONTENTS ═════════════════════════════════════════════════════
+   Markup: src/components/PageSidebar.astro
+
+   WARNING: the SVG guide rail below is built by that component's script, which
+   measures `offsetTop`, `clientHeight` and the computed padding of every link
+   and bakes them into a path. Changing `starlight-toc a`'s `padding-block`,
+   `font-size` or `line-height` silently desynchronises the rail from the text. */
+starlight-toc nav {
+  /* Positioning context for `.sf-toc-rail`. */
+  position: relative;
+}
+
+starlight-toc nav > h2 {
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--sf-fg-subtle);
+  margin-bottom: var(--sf-space-3);
+}
+
+/* The guide rail is drawn as an SVG path, so the lists carry no border. */
+starlight-toc nav ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+starlight-toc a {
+  display: block;
+  font-size: 0.8rem;
+  color: var(--sf-fg-subtle);
+  text-decoration: none;
+  transition: color 0.2s ease;
+  line-height: 1.5;
+  padding-block: 0.3rem;
+}
+
+starlight-toc a:hover {
+  color: var(--sf-fg-strong);
+}
+
+starlight-toc a[aria-current='true'] {
+  color: var(--sf-fg-strong);
+  font-weight: 500;
+}
+
+/* ── Bent SVG rail + sliding highlight (Fumadocs "clerk" style) ──
+   Two identical bent paths: a faint full rail, and an accent copy that is
+   revealed only within the active heading's vertical band via an animated
+   clip-path, so the highlight glides along the bends as you scroll. */
+.sf-toc-rail {
+  position: absolute;
+  inset-inline-start: 0;
+  top: 0;
+  pointer-events: none;
+}
+
+.sf-toc-rail-svg {
+  position: absolute;
+  inset: 0;
+  overflow: visible;
+}
+
+.sf-toc-rail-line {
+  stroke: var(--sf-border-strong);
+  stroke-width: 1;
+  fill: none;
+}
+
+.sf-toc-rail-active {
+  opacity: 0;
+  clip-path: polygon(
+    0 var(--track-top, 0),
+    100% var(--track-top, 0),
+    100% var(--track-bottom, 0),
+    0 var(--track-bottom, 0)
+  );
+}
+
+.sf-toc-rail-active[data-ready] {
+  transition:
+    clip-path 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    opacity 0.2s ease;
+}
+
+.sf-toc-rail-hl {
+  stroke: var(--sf-accent);
+  stroke-width: 2;
+  fill: none;
+  stroke-linecap: round;
+}
+
+/* ── "On this page" mobile disclosure ─────────────────────────────────────
+   Previously styled for light mode only, with four `!important`s, leaving dark
+   mode on Starlight's default. Now one token-driven rule for both. */
+starlight-toc summary {
+  background: var(--sf-bg-elevated);
+  color: var(--sf-fg);
+  border: 1px solid var(--sf-border);
+  border-radius: var(--sf-radius-sm);
+}
+
+/* ── Page actions (Edit on GitHub · Scroll to top) ─────────────────────── */
+.sf-page-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  margin-top: var(--sf-space-5);
+  padding-top: var(--sf-space-4);
+  border-top: 1px solid var(--sf-border);
+}
+
+.sf-page-action {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  width: 100%;
+  padding: 0.3rem 0;
+  border: 0;
+  background: transparent;
+  color: var(--sf-fg-subtle);
+  font-family: var(--sl-font);
+  font-size: 0.8rem;
+  line-height: 1.4;
+  text-align: start;
+  text-decoration: none;
+  cursor: pointer;
+  transition: color var(--sf-dur-fast) ease;
+}
+
+.sf-page-action svg {
+  flex-shrink: 0;
+  color: currentColor;
+  transition: color var(--sf-dur-fast) ease;
+}
+
+.sf-page-action:hover {
+  color: var(--sf-fg-strong);
+}
+
+/* ══ CARDS ═════════════════════════════════════════════════════════════════
+   <Card> / <CardGrid>. Neutral hover — the indigo border-and-glow on hover was
+   the loudest single piece of colour on the splash page. */
+.card {
+  background: var(--sf-surface);
+  border: 1px solid var(--sf-border);
+  border-radius: var(--sf-radius-lg);
+  transition:
+    border-color var(--sf-dur-slow) ease,
+    transform 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.card:hover {
+  border-color: var(--sf-border-strong);
+  transform: translateY(-2px);
+  box-shadow: var(--sf-shadow-card);
+}
+
+.card .title {
+  font-weight: 600;
+  color: var(--sf-fg-strong);
+}
+
+/* The splash hero lives in src/styles/landing.css now. Starlight's own `.hero`
+   markup is no longer rendered at all — src/components/Hero.astro replaces the
+   component wholesale — so there is nothing left here to style. */
+
+/* ══ BADGE ═════════════════════════════════════════════════════════════════
+   Colour comes from the muted hue families in tokens.css. */
+.badge {
+  font-size: var(--sf-text-2xs);
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  border-radius: var(--sf-radius-full);
+  padding: 0.13em 0.5em;
+}
+
+/* ══ EXPRESSIVE CODE ═══════════════════════════════════════════════════════
+   Everything else about the code frames — borders, radii, terminal titlebar,
+   copy button and tooltip colours — is configured in astro.config.mjs under
+   `expressiveCode.styleOverrides`. These two are the only properties the
+   plugin does not expose as a setting.
+
+   EC's own CSS is in `@layer starlight.components`, so no `!important` is
+   needed here. The block this replaces used seven of them to hide the frame
+   header, which also stripped the top border and squared the top corners of
+   every untitled terminal block. */
+.expressive-code .copy button {
+  border-radius: var(--sf-radius-xs);
+}
+
+.expressive-code figure.frame {
+  margin-block: 0;
+}
+
+/* ── API Reference ──────────────────────────────────────────────────────────
+   Method badges reuse the existing `.sf-menu-badge` mechanism: endpoint pages
+   set `sidebar.badge: { text: 'GET', variant: 'success' }` in frontmatter and
+   SidebarSublist renders it. Only the colours are new, keyed off the text so a
+   GET and a POST read differently at a glance in a long list.
+
+   No `@layer` here, matching the rest of this file — unlayered CSS beats
+   Starlight's `@layer starlight.*`, which is why nothing here needs
+   `!important`. */
+
+.sf-menu-badge[data-method='GET'] {
+  color: oklch(0.75 0.16 155);
+  background: oklch(0.75 0.16 155 / 0.12);
+  border-color: oklch(0.75 0.16 155 / 0.25);
+}
+.sf-menu-badge[data-method='POST'] {
+  color: oklch(0.7 0.15 250);
+  background: oklch(0.7 0.15 250 / 0.12);
+  border-color: oklch(0.7 0.15 250 / 0.25);
+}
+.sf-menu-badge[data-method='PATCH'] {
+  color: oklch(0.78 0.15 75);
+  background: oklch(0.78 0.15 75 / 0.12);
+  border-color: oklch(0.78 0.15 75 / 0.25);
+}
+
+/* The brand rows stay on one line: icon, label, then the tick pushed to the
+   right edge. An earlier version gave each row a subtitle, which repeated what
+   the tile above already says and — because the subtitle was a full-width flex
+   item — wrapped the tick onto a third line of its own. */
+.sf-brand-menu-label {
+  flex: 1 1 auto;
+}
+.sf-brand-menu-check {
+  flex: 0 0 auto;
+  margin-left: auto;
+  color: var(--sf-accent-link);
+}
+
+/* ── API playground ─────────────────────────────────────────────────────── */
+
+.sf-pg {
+  display: block;
+  margin: 1.5rem 0;
+  border: 1px solid var(--sf-border);
+  border-radius: 0.75rem;
+  background: var(--sf-surface-2);
+  overflow: hidden;
+}
+.sf-pg-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 0.875rem;
+}
+.sf-pg-method {
+  font-family: var(--sl-font-mono);
+  font-size: var(--sl-text-xs);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+.sf-pg-method[data-method='GET'] { color: oklch(0.75 0.16 155); }
+.sf-pg-method[data-method='POST'] { color: oklch(0.7 0.15 250); }
+.sf-pg-method[data-method='PATCH'] { color: oklch(0.78 0.15 75); }
+.sf-pg-path {
+  flex: 1;
+  font-family: var(--sl-font-mono);
+  font-size: var(--sl-text-sm);
+  color: var(--sf-text);
+  background: none;
+  padding: 0;
+}
+.sf-pg-send {
+  padding: 0.35rem 0.9rem;
+  border: 1px solid var(--sf-border);
+  border-radius: 0.5rem;
+  background: var(--sf-accent);
+  color: var(--sf-accent-fg);
+  font-size: var(--sl-text-xs);
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+.sf-pg-send:hover:not(:disabled) { opacity: 0.9; }
+.sf-pg-send:disabled {
+  background: transparent;
+  color: var(--sf-text-muted);
+  cursor: not-allowed;
+}
+.sf-pg-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0 0.875rem 0.75rem;
+  font-size: var(--sl-text-xs);
+  color: var(--sf-text-muted);
+}
+.sf-pg-key-toggle {
+  border: 0;
+  background: none;
+  padding: 0;
+  color: var(--sf-accent-link);
+  font-size: var(--sl-text-xs);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.sf-pg-key {
+  display: grid;
+  gap: 0.625rem;
+  padding: 0 0.875rem 0.875rem;
+  border-top: 1px solid var(--sf-border);
+  padding-top: 0.875rem;
+}
+.sf-pg-key-label {
+  display: block;
+  margin-bottom: 0.25rem;
+  font-size: var(--sl-text-xs);
+  color: var(--sf-text-muted);
+}
+.sf-pg-key input {
+  width: 100%;
+  padding: 0.4rem 0.6rem;
+  border: 1px solid var(--sf-border);
+  border-radius: 0.5rem;
+  background: var(--sf-surface-1);
+  color: var(--sf-text);
+  font-family: var(--sl-font-mono);
+  font-size: var(--sl-text-xs);
+}
+.sf-pg-key-note {
+  margin: 0;
+  font-size: var(--sl-text-xs);
+  color: var(--sf-text-muted);
+}
+.sf-pg-result { border-top: 1px solid var(--sf-border); }
+.sf-pg-status {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0.875rem;
+  font-size: var(--sl-text-xs);
+}
+.sf-pg-code {
+  font-family: var(--sl-font-mono);
+  font-weight: 700;
+  padding: 0.1rem 0.45rem;
+  border-radius: 0.35rem;
+}
+.sf-pg-code[data-ok='true'] {
+  color: oklch(0.75 0.16 155);
+  background: oklch(0.75 0.16 155 / 0.12);
+}
+.sf-pg-code[data-ok='false'] {
+  color: oklch(0.7 0.19 25);
+  background: oklch(0.7 0.19 25 / 0.12);
+}
+.sf-pg-time { color: var(--sf-text-muted); }
+.sf-pg-copy {
+  margin-left: auto;
+  border: 0;
+  background: none;
+  padding: 0;
+  color: var(--sf-text-muted);
+  font-size: var(--sl-text-xs);
+  cursor: pointer;
+}
+.sf-pg-body {
+  margin: 0;
+  max-height: 22rem;
+  overflow: auto;
+  padding: 0.875rem;
+  background: var(--sf-surface-1);
+  font-size: var(--sl-text-xs);
+  line-height: 1.6;
+}
+
+/* `hidden` sets `display: none` via the UA sheet, which any explicit `display`
+   on the same element overrides. Both panels below set one, so they need this
+   or they render open on first paint. */
+.sf-pg-key[hidden],
+.sf-pg-result[hidden] {
+  display: none;
+}

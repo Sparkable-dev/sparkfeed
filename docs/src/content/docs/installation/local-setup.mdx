@@ -1,0 +1,40 @@
+---
+title: Install Community Edition
+description: Start Sparkfeed with Docker Compose or from source.
+---
+
+## Use Docker Compose
+
+```bash
+git clone https://github.com/Sparkable-dev/sparkfeed-app.git
+cd sparkfeed-app
+cp .env.example .env
+```
+
+Generate values for `POSTGRES_PASSWORD` and `BETTER_AUTH_SECRET`, then put them in `.env`.
+
+```bash
+openssl rand -hex 24
+openssl rand -base64 32
+```
+
+Start the application and PostgreSQL:
+
+```bash
+docker compose up --build
+```
+
+Open `http://localhost:3000`. The first account becomes the instance owner.
+
+## Run from source
+
+Create a PostgreSQL database and set `DATABASE_URL` in `.env.local`.
+
+```bash
+bun install --frozen-lockfile
+cp .env.example .env.local
+bun run db:migrate
+bun run dev
+```
+
+Do not use `db:push` for a database that you intend to deploy. It does not update the migration journal.

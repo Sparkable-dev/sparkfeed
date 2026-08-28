@@ -1,0 +1,95 @@
+---
+title: Folder & Feed Management
+description: Learn how to organize your RSS feeds using folders and manage them effectively in SparkFeed.
+sidebar:
+  order: 4
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+## Overview
+
+SparkFeed uses a two-level hierarchy to organize your content:
+
+```txt frame="none"
+📁 Technology
+  ├── 📡 CSS-Tricks
+  ├── 📡 Smashing Magazine
+  └── 📡 Hacker News
+
+📁 Business
+  ├── 📡 Paul Graham's Blog
+  └── 📡 First Round Review
+
+📡 Uncategorized feed (no folder)
+```
+
+**Folders** are optional containers. Every feed can belong to a folder, or remain at the root level.
+
+## Managing Folders
+
+### Create a folder
+
+1. Click **"New Folder"** in the sidebar
+2. Enter a name (e.g., "Tech", "Design", "Newsletters")
+3. Press **Enter** or click **Create**
+
+### Rename a folder
+
+Right-click a folder in the sidebar and select **"Rename"**, or click the pencil icon.
+
+### Delete a folder
+
+Right-click a folder and select **"Delete"**. The feeds inside the folder are **not deleted**. They move to the root level.
+
+## Managing Feeds
+
+### Add a feed
+
+1. Click **"Add Feed"** in the sidebar (or press `A`)
+2. Paste the RSS/Atom feed URL
+3. SparkFeed will auto-detect the feed title and favicon
+4. Optionally assign the feed to a folder
+5. Click **"Add Feed"**
+
+### Edit a feed
+
+Click the **⋯** menu next to any feed and select **"Edit"** to:
+- Change the display name
+- Move it to a different folder
+- Update the feed URL
+
+### Remove a feed
+
+Click the **⋯** menu and select **"Remove Feed"**. This removes the feed and all its cached articles from the database.
+
+<Aside type="caution">
+  Removing a feed also removes all its articles from the database, including any you've marked as favorites within that feed. There's no undo.
+</Aside>
+
+### Refresh a feed
+
+Click the **refresh icon** next to a feed to manually trigger a fetch of new articles.
+
+## Feed Status Indicators
+
+SparkFeed shows a small status indicator on each feed in the sidebar:
+
+| Indicator | Meaning |
+|-----------|---------|
+| Green dot | Feed fetched successfully |
+| Red dot | Feed fetch failed (check the URL) |
+| Blue dot | Feed has unread articles |
+| ⏳ Spinner | Feed is currently being fetched |
+
+## Keyboard Shortcuts
+
+| Shortcut | Action |
+|----------|--------|
+| `A` | Add a new feed |
+| `F` | Create a new folder |
+| `R` | Refresh all feeds |
+| `↑` / `↓` | Navigate between articles |
+| `Enter` | Open selected article |
+| `M` | Mark current article as read |
+| `S` | Star/favorite current article |

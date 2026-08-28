@@ -1,0 +1,24 @@
+---
+title: Storage flow
+description: How Sparkfeed writes sources, articles, reading state, and chat history.
+---
+
+## Sources and articles
+
+1. Sparkfeed resolves the submitted address as RSS, Atom, or a watched page.
+2. The server checks workspace ownership and duplicate source identities.
+3. The server stores the source in PostgreSQL.
+4. Ingestion fetches new entries and inserts unseen articles.
+5. Reader actions update article state in the same workspace.
+
+Articles link to feeds, and feeds carry the workspace boundary. Server services verify that relationship before reads and writes.
+
+## Spark AI conversations
+
+Sparkfeed stores each chat thread for one user and one workspace. Message rows contain the UI message parts needed to restore text, tool calls, results, reasoning parts, and created documents.
+
+Deleting a thread deletes its message rows first, then the thread.
+
+## Demo mode
+
+Demo mode runs the same ordinary query shapes against a disposable SQLite database. It blocks mutations and external provider use where the demo contract requires it.

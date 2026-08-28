@@ -1,0 +1,288 @@
+---
+title: MCP Server
+description: Connect Claude, Cursor, or any MCP client to your Sparkfeed workspace so an agent can search your feeds and read full articles.
+sidebar:
+  order: 1
+---
+
+import { Aside, Steps, Tabs, TabItem, Badge } from '@astrojs/starlight/components';
+
+Sparkfeed speaks the [Model Context Protocol](https://modelcontextprotocol.io/), so an AI agent can work directly against the feeds you already curate. Ask Claude what shipped in your AI research folder this week and it queries your workspace instead of searching the open web.
+
+The point is the curation. An agent pointed at the internet gets whatever ranks; an agent pointed at your workspace gets the sources you chose to trust.
+
+<Aside type="tip" title="Works without the browser">
+The server runs on Sparkfeed's backend, not in the page. Your agent can query the workspace whether or not the app is open anywhere.
+</Aside>
+
+## Endpoint
+
+```
+https://beta.sparkfeed.dev/api/mcp
+```
+
+Transport is Streamable HTTP. Authentication is a bearer token, which you create on the **Developer → API keys** page inside the app. See [API keys](/docs/developer/api-keys/) for how to mint one.
+
+Self-hosting? Use your own origin with the same path, for example `https://feeds.example.com/api/mcp`.
+
+## Connect a client
+
+<Tabs>
+<TabItem label="Claude Code">
+
+```bash
+claude mcp add --transport http sparkfeed https://beta.sparkfeed.dev/api/mcp \
+  --header "Authorization: Bearer sfk_live_YOUR_KEY"
+```
+
+Check it registered:
+
+```bash
+claude mcp list
+```
+
+</TabItem>
+<TabItem label="Cursor / VS Code">
+
+Add to your MCP config file:
+
+```json
+{
+  "mcpServers": {
+    "sparkfeed": {
+      "type": "http",
+      "url": "https://beta.sparkfeed.dev/api/mcp",
+      "headers": {
+        "Authorization": "Bearer sfk_live_YOUR_KEY"
+      }
+    }
+  }
+}
+```
+
+</TabItem>
+<TabItem label="Claude Desktop">
+
+Claude Desktop connects natively. **Settings → Connectors → Add custom connector**, point it at the endpoint, and set one request header:
+
+| Field | Value |
+|-------|-------|
+| URL | `https://beta.sparkfeed.dev/api/mcp` |
+| Header name | `Authorization` |
+| Header value | `Bearer sfk_live_YOUR_KEY` |
+
+Include the word `Bearer` and the space after it. The value is the whole header, not just the key.
+
+<Aside type="note" title="Older builds">
+Request-header auth arrived in mid-2026 and rolled out gradually. If your connector dialog only offers OAuth fields, use the `mcp-remote` bridge below until it reaches you.
+</Aside>
+
+<details>
+<summary>Bridging with <code>mcp-remote</code></summary>
+
+```json
+{
+  "mcpServers": {
+    "sparkfeed": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "mcp-remote",
+        "https://beta.sparkfeed.dev/api/mcp",
+        "--header",
+        "Authorization:${SPARKFEED_AUTH}"
+      ],
+      "env": {
+        "SPARKFEED_AUTH": "Bearer sfk_live_YOUR_KEY"
+      }
+    }
+  }
+}
+```
+
+Copy that shape exactly. Claude Desktop and Cursor do not escape spaces when they invoke `npx`, so any argument containing one arrives mangled — which is why there is no space after the colon in `Authorization:${SPARKFEED_AUTH}`, and why the token lives in `env` where its space is safe.
+
+`mcp-remote` is an OAuth bridge. If the endpoint rejects your key it will abandon the token and start an OAuth handshake that Sparkfeed does not implement, and the resulting error will talk about registration rather than about your key. Treat any mention of OAuth in its output as "the key did not work".
+
+</details>
+
+</TabItem>
+</Tabs>
+
+<Aside type="tip" title="Let the app write the config">
+**Developer → MCP** inside Sparkfeed has a field for your key. Paste it and every snippet on that page is rebuilt with the key already in place, so there is nothing to substitute by hand. There is also a **Test connection** button that reports whether the key works and which tools it can reach.
+</Aside>
+
+<Aside type="caution" title="A key is a password">
+Anyone holding it can read the whole workspace. Keep it out of committed config files, and revoke it from the API keys page if it leaks.
+</Aside>
+
+## Try it without an account
+
+The demo workspace exposes a public, read-only endpoint. No sign-up:
+
+```bash
+claude mcp add --transport http sparkfeed-demo https://demo.sparkfeed.dev/api/mcp \
+  --header "Authorization: Bearer sfk_demo_public"
+```
+
+It serves the nine seeded demo feeds, is rate limited because everyone shares it, and only ever reads. Write tools are not registered at all, so an agent connected to it will not even see them.
+
+## Tools
+
+Read tools are always available. Write tools appear only when the key carries the `articles:write` scope.
+
+| Tool | Purpose |
+|------|---------|
+| `get_workspace_info` | Counts, plan, what the key may do, and the limits in force |
+| `list_folders` | The workspace tree with per-folder feed counts |
+| `list_feeds` | Sources, optionally filtered to one folder |
+| `search_articles` | Search, or omit the query for newest-first |
+| `get_article` | The full text of one article, as markdown |
+| `set_favorite` | Favorite or unfavorite up to 100 articles |
+| `mark_read` | Mark articles read or unread |
+
+### How responses stay small
+
+Two rules keep an agent's context from filling up with feed data:
+
+1. **List tools return snippets, never article bodies.** `search_articles` gives you titles, sources, dates, and roughly 300 characters of summary.
+2. **Full text is one article at a time.** `get_article` is the only way to read a whole post, and it takes a single id. The expensive call is deliberately opt-in and cannot be batched.
+
+Every response is also capped at 50KB. If a page would exceed it, the payload is cut at an item boundary and comes back with `truncated: true` plus a `next_cursor` to continue from.
+
+### A typical session
+
+Four calls, roughly 4KB total:
+
+<Steps>
+
+1. `list_folders` to see what exists
+2. `search_articles` with a `folder_id` and `since` to narrow to what is new
+3. `get_article` on the one that looks worth reading
+4. `set_favorite` to keep it
+
+</Steps>
+
+## Searching
+
+`search_articles` handles both "find X" and "what is new", because `query` is optional. Omit it and you get the most recent articles instead, which is usually what you want.
+
+| Parameter | Notes |
+|-----------|-------|
+| `query` | Free text over title and summary. Omit for newest-first. |
+| `folder_id`, `feed_id` | Scope to one folder or feed |
+| `since`, `until` | ISO dates, or relative shorthand like `7d` or `24h` |
+| `favorites_only`, `unread_only` | Booleans |
+| `limit` | Default 20, maximum 50 |
+| `cursor` | The `next_cursor` from a previous response |
+
+Results carry `has_full_text`, which tells the agent whether `get_article` will be instant (already cached) or will need to fetch the page first.
+
+## Reading an article
+
+`get_article` returns markdown by default, because that is what a language model reads most cheaply. Pass `format: "text"` or `format: "html"` if you need something else.
+
+It resolves in three steps: cached text, then a live fetch with readability extraction (cached for next time), then the RSS summary as a last resort. The `source_quality` field tells you which one you got, so `rss_description` is a signal that the article's full text was not reachable.
+
+Long articles come back in chunks. When `truncated` is true, call again with the returned `next_offset`.
+
+## Identifiers
+
+Ids are prefixed by type: `fld_` folders, `fed_` feeds, `art_` articles. Pass them back exactly as received. The prefix is load-bearing rather than decorative, since articles and crawled pages live in separate tables and the prefix is what tells them apart.
+
+## Scopes
+
+A key carries scopes, and tools are registered per scope. A read-only key does not merely get refused when it calls a write tool: the tool is not in its list at all.
+
+| Scope | Grants |
+|-------|--------|
+| `mcp` | Access to the endpoint. Every key has it. |
+| `workspace:read` | `get_workspace_info`, `list_folders`, `list_feeds` |
+| `articles:read` | `search_articles`, `get_article` |
+| `articles:write` | `set_favorite`, `mark_read` |
+
+<Aside type="note" title="Read state is shared">
+Favorites and read state belong to the workspace, not to you personally. In a team workspace, an agent marking articles read marks them read for everyone.
+</Aside>
+
+## Limits
+
+| | Authenticated key | Demo key |
+|---|---|---|
+| Requests per minute | 120 | 60, per client |
+| Response ceiling | 50KB | 50KB |
+| `search_articles` limit | 50 max | 50 max |
+| `get_article` length | 80,000 characters max | 80,000 characters max |
+
+Exceeding the rate limit returns `429` with a `retry_after_ms` field. A `limit` above the maximum is clamped rather than rejected.
+
+## Troubleshooting
+
+**Your client mentions OAuth, discovery, or registration**
+
+Sparkfeed does not implement OAuth. Any client talking about it has been refused a bearer token and fallen back to a handshake — so this is almost always a key problem wearing a disguise. Nine times in ten the `Authorization` value lost its `Bearer ` prefix.
+
+Check what your client actually sent. `mcp-remote` logs it on startup:
+
+```
+Using custom headers: {"Authorization":"sfk_live_…"}   ← wrong, no scheme
+Using custom headers: {"Authorization":"Bearer sfk_live_…"}   ← right
+```
+
+Then confirm the key itself against the endpoint:
+
+```bash
+curl -s -o /dev/null -w '%{http_code}\n' \
+  -X POST https://beta.sparkfeed.dev/api/mcp \
+  -H 'Content-Type: application/json' \
+  -H 'Accept: application/json, text/event-stream' \
+  -H 'Authorization: Bearer sfk_live_YOUR_KEY' \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}'
+```
+
+`200` means the key is fine and the problem is in how your client passes it. `401` means the key is wrong, revoked, or missing its scheme.
+
+**`401` with `WWW-Authenticate: Bearer`**
+The key is missing, revoked, or malformed. Confirm the header reads `Authorization: Bearer sfk_live_…`. The challenge carries a `resource_metadata` URL pointing at this endpoint's [RFC 9728](https://datatracker.ietf.org/doc/html/rfc9728) description.
+
+**`403 insufficient_scope`**
+The key is valid but lacks a scope the endpoint requires. Mint a new one.
+
+**The agent cannot see `set_favorite` or `mark_read`**
+Expected on a read-only key, and on the demo endpoint. Those tools are only registered when the key carries `articles:write`.
+
+**`get_article` returns very little, with `source_quality: "rss_description"`**
+The article's full text was not reachable, so the RSS summary was served instead. On the demo endpoint this is expected for uncached articles: live fetching is disabled there on purpose.
+
+## Discovery metadata
+
+Sparkfeed is an OAuth 2.0 *resource server* with no authorization server behind it: a key is a static bearer token, minted in the app. It still publishes the standard description of itself, at both spellings clients probe:
+
+```
+https://beta.sparkfeed.dev/.well-known/oauth-protected-resource
+https://beta.sparkfeed.dev/.well-known/oauth-protected-resource/api/mcp
+```
+
+```json
+{
+  "resource": "https://beta.sparkfeed.dev/api/mcp",
+  "bearer_methods_supported": ["header"],
+  "scopes_supported": ["mcp", "workspace:read", "articles:read", "articles:write"],
+  "resource_name": "Sparkfeed"
+}
+```
+
+There is no `authorization_servers` key, because there is no authorization server. `/.well-known/oauth-authorization-server` answers `404` on purpose — advertising endpoints that do not exist would send clients into a flow that cannot complete.
+
+## Verify a connection
+
+```bash
+npx @modelcontextprotocol/inspector --cli \
+  --method tools/list \
+  --transport http \
+  --server-url https://beta.sparkfeed.dev/api/mcp \
+  --header "Authorization: Bearer sfk_live_YOUR_KEY"
+```
+
+A working key lists the tools available to it. That output is also the fastest way to confirm which scopes a key actually has.

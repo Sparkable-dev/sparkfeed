@@ -1,0 +1,30 @@
+---
+title: Build and deploy
+description: Deploy the Sparkfeed application container or Nitro server.
+---
+
+## Container deployment
+
+Build the versioned image:
+
+```bash
+docker build -t sparkfeed:local .
+```
+
+The image runs PostgreSQL migrations before it starts `.output/server/index.mjs`. Supply `DATABASE_URL`, `BETTER_AUTH_SECRET`, `APP_URL`, and the email settings through the deployment platform.
+
+The image exposes port 3000 and checks `/api/health`.
+
+## Docker Compose
+
+`compose.yml` starts both Sparkfeed and PostgreSQL. It keeps PostgreSQL on the internal Compose network and stores data in the `sparkfeed-postgres` volume.
+
+## Railway
+
+The root `railway.toml` uses Railpack. Railway runs `bun run build`, then applies migrations before starting the Nitro server.
+
+Set `APP_URL` and `BETTER_AUTH_URL` to the public HTTPS origin. Set `VITE_DEMO_MODE` before the build because Vite inlines that value.
+
+## Separate content projects
+
+The `docs/` project builds independently. It is not required to run Community Edition.

@@ -1,0 +1,10 @@
+---
+title: Cached reading
+description: What remains available when a source is offline.
+---
+
+Sparkfeed stores fetched feed data and extracted article text in PostgreSQL. A source outage does not remove content that the instance already stored.
+
+The web application still needs a connection to the Sparkfeed server. Sparkfeed is not a browser-offline application and does not promise a complete offline progressive web app.
+
+When an article body is missing, the reader can fetch and cache it from the source. Demo mode does not perform that live fetch.

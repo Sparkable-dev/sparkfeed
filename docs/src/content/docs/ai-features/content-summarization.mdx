@@ -1,0 +1,86 @@
+---
+title: Content Summarization
+description: How SparkFeed's upcoming AI will automatically summarize articles so you can read smarter, not more.
+sidebar:
+  order: 1
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+<Aside type="caution" title="This feature is not yet available">
+  Content Summarization is currently in development. This page documents the planned behavior. Follow the [GitHub repository](https://github.com/sparkfeed/sparkfeed) for updates.
+</Aside>
+
+## The Problem: Information Overload
+
+If you follow 30 RSS feeds, you might see 50–200 new articles every day. No one can read all of that. The result is **RSS guilt**, an inbox full of unread items that makes you feel behind.
+
+Content summarization solves this by letting you **skim faster** and **read only what matters**.
+
+## How It Will Work
+
+When enabled, SparkFeed's AI will automatically generate a **2–4 sentence summary** of each new article as it's fetched.
+
+```txt frame="none"
+Article fetched → Full content extracted → AI summarization → Summary stored in DB
+```
+
+The summary appears in the article list view, below the title, so you can decide in 5 seconds whether the article is worth reading in full.
+
+## The Reading Flow
+
+**Current flow (without AI):**
+
+1. See a headline
+2. Open the article
+3. Skim for 30–60 seconds
+4. Decide if it's worth reading
+5. Read or close
+
+**Future flow (with AI summaries):**
+
+1. See a headline + 3-sentence AI summary
+2. Decide in 5 seconds
+3. Read the full article if interested, or mark as read
+
+This is the difference between reading *reactively* and reading *intentionally*.
+
+## Morning Briefing
+
+Beyond per-article summaries, SparkFeed will offer a **Morning Briefing**, a single digest generated once a day:
+
+> **Your Morning Briefing: April 14, 2026**
+>
+> **Tech**: React 20 was announced with major performance improvements to the concurrent renderer. Microsoft shipped Copilot Studio updates. GitHub Actions added native ARM support.
+>
+> **Business**: Sam Altman wrote about long-term AI alignment strategy. Sequoia published their annual state of the venture market report.
+>
+> **Design**: Figma released Variables 2.0. Linear shipped a major UI refresh.
+
+This briefing is generated locally using the articles already in your database, so no data leaves your machine.
+
+## AI Provider Options
+
+SparkFeed will support multiple AI providers, so you can choose based on your preferences and privacy needs:
+
+| Provider | Privacy | Cost | Quality |
+|----------|---------|------|---------|
+| **Local (Ollama)** | Maximum | Free | Good |
+| **OpenAI API** | Shares data | Pay-per-use | Excellent |
+| **Anthropic API** | Shares data | Pay-per-use | Excellent |
+| **Groq API** | Shares data | Free tier | Fast |
+
+<Aside type="tip" title="Privacy-first default">
+  The default configuration will use **Ollama** (a local AI runner) so that no article content is ever sent to an external server. If you prefer a hosted API for better quality, you can configure it in settings.
+</Aside>
+
+## Configuration (Planned)
+
+```env
+# .env: future AI configuration
+AI_PROVIDER=ollama           # or openai, anthropic, groq
+AI_MODEL=llama3.2            # model name for the chosen provider
+OPENAI_API_KEY=sk-...        # only if provider is openai
+AI_SUMMARIZATION=true        # enable/disable auto-summarization
+AI_BRIEFING_TIME=07:00       # time to generate the daily briefing
+```

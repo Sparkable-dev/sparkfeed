@@ -1,0 +1,93 @@
+---
+title: Custom Feeds
+description: Advanced techniques for working with custom, non-standard, and authenticated RSS feeds in SparkFeed.
+sidebar:
+  order: 1
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+## Beyond Standard Feeds
+
+Most websites publish standard RSS/Atom feeds you can add directly. But sometimes you'll want to follow content that doesn't have a native feed, or a feed that requires special configuration.
+
+## Finding Feed URLs
+
+Not all feed URLs are obvious. Here are reliable ways to find them:
+
+### Check the source HTML
+
+Look for `<link>` tags in the page's `<head>`:
+
+```bash
+curl -s https://example.com | grep -i 'application/rss\|application/atom'
+```
+
+### Common URL patterns
+
+| Platform | Feed URL Pattern |
+|----------|-----------------|
+| WordPress | `https://site.com/feed/` |
+| Ghost | `https://site.com/rss/` or `https://site.com/rss` |
+| Substack | `https://newsletter.substack.com/feed` |
+| Medium | `https://medium.com/feed/@username` |
+| YouTube | `https://www.youtube.com/feeds/videos.xml?channel_id=CHANNEL_ID` |
+| Reddit subreddit | `https://www.reddit.com/r/subreddit/.rss` |
+| GitHub releases | `https://github.com/user/repo/releases.atom` |
+| GitHub commits | `https://github.com/user/repo/commits/main.atom` |
+
+### Use a feed finder service
+
+Paste any URL into [RSS.app](https://rss.app/) or [FetchRSS](https://fetchrss.com/) to auto-detect or generate a feed.
+
+## GitHub as a Feed Source
+
+GitHub publishes atom feeds for many events, which is useful for staying on top of open-source projects:
+
+```txt
+# New releases for a repository
+https://github.com/vercel/next.js/releases.atom
+
+# Commits to a branch
+https://github.com/withastro/astro/commits/main.atom
+
+# A user's public activity
+https://github.com/dan-abramov.atom
+```
+
+## Creating Custom Feeds with FetchRSS
+
+For websites without native feeds, [FetchRSS](https://fetchrss.com/) can generate a feed by scraping the page. Paste the feed URL it generates into SparkFeed.
+
+<Aside type="note">
+  Scraping-based feeds can break if the source website changes its layout. Check periodically that your custom feeds are still working (look for the red status indicator in the sidebar).
+</Aside>
+
+## Authenticated Feeds
+
+Some feeds require authentication (e.g., private Substack newsletters). SparkFeed will support a `headers` field for custom feeds in a future release:
+
+```json
+{
+  "url": "https://private-newsletter.com/feed",
+  "headers": {
+    "Authorization": "Bearer YOUR_TOKEN"
+  }
+}
+```
+
+For now, if a feed requires authentication, you'll need to find a public mirror or use an RSS proxy service.
+
+## Feed Health Monitoring
+
+SparkFeed tracks the success/failure of every feed fetch. You can identify broken feeds by:
+
+1. Looking for red status dots (🔴) in the sidebar
+2. Opening the feed settings to see the last fetch error
+3. Testing the URL directly in your browser
+
+Common reasons a feed fails:
+- The URL has changed (check the website for a new feed link)
+- The website is temporarily down
+- The feed requires authentication
+- The server blocks automated requests (check `User-Agent` settings)

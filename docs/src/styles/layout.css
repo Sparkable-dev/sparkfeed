@@ -1,0 +1,150 @@
+/* ==========================================================================
+   Geometry only — where the panes sit and how wide they are.
+   No colour beyond the hairlines that define an edge, no typography.
+   ========================================================================== */
+
+/* ── Top bar ──────────────────────────────────────────────────────────────
+   Markup: src/components/Header.astro */
+header.header {
+  background: var(--sl-color-bg);
+  border-bottom: 1px solid var(--sf-border);
+  padding: 0 var(--sl-nav-pad-x);
+}
+
+/* From `md` up the bar begins where the sidebar ends, so the sidebar can run
+   the full height of the viewport. */
+@media (min-width: 50rem) {
+  header.header {
+    /* Starlight's own "where the content column begins" value, so the bar
+       tracks the sidebar automatically — including when it is collapsed. */
+    inset-inline-start: var(--sl-content-inline-start, 0rem);
+    inset-inline-end: 0;
+    width: auto;
+    transition: inset-inline-start 0.2s ease;
+  }
+}
+
+/* ── Sidebar pane ─────────────────────────────────────────────────────────
+   Markup: src/components/Sidebar.astro */
+.sidebar-pane {
+  background: var(--sl-color-bg-sidebar);
+  border-right: 1px solid var(--sf-border);
+  /* The pane itself doesn't scroll — the nav region (.sf-sidebar-scroll) does,
+     so the scrollbar is bounded to the list and never runs behind the header. */
+  overflow: hidden;
+}
+
+.sidebar-content {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  /* Override Starlight's min-height: max-content so the column is exactly the
+     pane height and the nav region (flex child) can own the overflow. */
+  min-height: 0;
+  overflow: hidden;
+  padding: 0;
+  gap: 0;
+}
+
+/* From `md` up the sidebar runs the full height of the viewport, with the top
+   bar starting to its right.
+
+   Collapsing zeroes `--sl-content-inline-start` (the content column's offset)
+   and slides the pane out, rather than zeroing `--sl-sidebar-width`. The width
+   also feeds Starlight's main/TOC column formulas, so changing it there
+   collapses the table of contents to a sliver. */
+@media (min-width: 50rem) {
+  .sidebar-pane {
+    inset-block-start: 0;
+    transition: transform 0.2s ease;
+  }
+
+  .main-frame {
+    transition: padding-inline-start 0.2s ease;
+  }
+
+  :root[data-sidebar='collapsed'] {
+    --sl-content-inline-start: 0rem;
+  }
+
+  :root[data-sidebar='collapsed'] .sidebar-pane {
+    transform: translateX(-100%);
+    border-right-color: transparent;
+  }
+
+  :root[dir='rtl'][data-sidebar='collapsed'] .sidebar-pane {
+    transform: translateX(100%);
+  }
+}
+
+/* ── Content column ───────────────────────────────────────────────────────
+   Starlight renders the page title and the article as two sibling
+   `.content-panel`s and draws a divider between them. With the section rules
+   and the h2 borders gone, that rule is the only line left in the article, and
+   it reads as a stray artifact directly under the H1. The 1.5rem of padding on
+   each panel already separates them. */
+.content-panel + .content-panel {
+  border-top: 0;
+}
+
+/* ── Landing-page content width ───────────────────────────────────────────
+   Starlight hardcodes `--sl-content-width: 67.5rem` for pages with no sidebar,
+   which is what the landing page used to get as a `splash` template. It is a
+   `doc` template now so it keeps the nav sidebar, and that inline rule stops
+   matching — leaving it on the 42rem article width, which is far too narrow for
+   the 3-up card grids and the seven-column comparison table.
+
+   `data-has-hero` is set on <html> by Page.astro whenever `hero` frontmatter
+   exists. Pairing it with `data-has-sidebar` scopes this to the landing page:
+   the only other page with a hero is Starlight's 404, which is still `splash`
+   and so keeps the wider 67.5rem. */
+[data-has-hero][data-has-sidebar] {
+  --sl-content-width: 60rem;
+}
+
+/* ── Right rail (TOC + page actions) ──────────────────────────────────────
+   Single source of truth. PageSidebar.astro used to re-declare these inside
+   `@layer starlight.core` purely so this file could out-rank it; that block
+   is deleted and its rules are absorbed here.
+
+   Below 72rem `.right-sidebar-panel` carries `sl-hidden lg:sl-block`, so it
+   is display:none and this padding is inert. */
+.right-sidebar-panel {
+  padding: var(--sf-space-4) var(--sl-sidebar-pad-x);
+}
+
+/* Starlight's TwoColumnContent formulas cap the article and leave the rail
+   floating mid-canvas on wide screens. Pin it to the viewport edge instead. */
+@media (min-width: 72rem) {
+  /* Reserve a fixed slot for the rail in the flex row. */
+  .right-sidebar-container {
+    width: var(--sf-toc-width);
+  }
+
+  /* The rail itself (position: fixed) hugs the right viewport edge at the full
+     slot width, instead of Starlight's static-position + 100vw width that
+     overflows off-screen. No border — Starlight adds a full-height divider
+     here that we explicitly remove. */
+  .right-sidebar {
+    inset-inline: auto 0;
+    width: var(--sf-toc-width);
+    border-inline-start: 0;
+  }
+
+  /* Let the TOC/actions fill the rail rather than a 25%-of-viewport sliver. */
+  .right-sidebar-panel {
+    padding-inline: var(--sf-space-5);
+  }
+
+  .right-sidebar-panel .sl-container {
+    width: 100%;
+    max-width: none;
+  }
+
+  /* Article fills the space between the left sidebar and the rail, centred
+     with a comfortable max-width so the page reads as balanced. */
+  [data-has-sidebar][data-has-toc] .main-pane {
+    width: calc(100% - var(--sf-toc-width));
+    --sl-content-margin-inline: auto;
+  }
+}

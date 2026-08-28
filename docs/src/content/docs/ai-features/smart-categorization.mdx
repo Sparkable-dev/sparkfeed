@@ -1,0 +1,58 @@
+---
+title: Smart Categorization
+description: How upcoming AI will automatically organize new articles into your existing folders and feeds.
+sidebar:
+  order: 4
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+<Aside type="caution" title="This feature is not yet available">
+  Smart Categorization is planned for a future release.
+</Aside>
+
+## The Problem
+
+When you follow many feeds across different topics, new articles sometimes feel hard to prioritize. You have to open each one to understand its relevance.
+
+Smart Categorization uses AI to automatically tag and sort articles based on your existing folder structure and reading history.
+
+## How It Works
+
+When a new article is fetched, the AI:
+
+1. **Reads the title and summary**
+2. **Compares against your folder names and feed categories**
+3. **Assigns a relevance tag** ("High Interest", "Skim", "Low Priority")
+4. **Suggests the best folder** if the article came from an uncategorized feed
+
+The model learns from your behavior. Articles you open and spend time reading nudge the model toward similar content in the future.
+
+## Relevance Scoring
+
+Each article gets a relevance score from 0–100:
+
+| Score | Label | Recommended Action |
+|-------|-------|--------------------|
+| 80–100 | Must Read | Always open these |
+| 60–79 | Worth Reading | Open when you have time |
+| 40–59 | Skim | Check the summary only |
+| 0–39 | Low Priority | Skip or auto-archive |
+
+## Auto-Archive
+
+Articles below a configurable relevance threshold can be automatically marked as read without appearing in your unread count:
+
+```env
+AI_AUTO_ARCHIVE_THRESHOLD=20   # articles with score < 20 are auto-archived
+```
+
+This dramatically reduces inbox overwhelm for busy feeds.
+
+## Privacy
+
+Smart Categorization works entirely locally when using Ollama. Your reading history and article content never leave your machine.
+
+<Aside type="tip">
+  The more you use SparkFeed and interact with articles (open, favorite, mark as read), the more personalized the categorization becomes. It's a learning system that improves with use.
+</Aside>

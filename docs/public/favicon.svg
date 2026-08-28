@@ -1,0 +1,17 @@
+<svg width="56" height="56" viewBox="0 0 56 56" fill="none" xmlns="http://www.w3.org/2000/svg">
+<defs>
+<linearGradient id="sfDisc" x1="23.39" y1="0.15" x2="45.1" y2="55.85" gradientUnits="userSpaceOnUse">
+<stop stop-color="#A084F3"/>
+<stop offset="1" stop-color="#4F29F6"/>
+</linearGradient>
+<linearGradient id="sfOrb" x1="33.74" y1="13.39" x2="10.85" y2="43.17" gradientUnits="userSpaceOnUse">
+<stop stop-color="#FFFFFF"/>
+<stop offset="1" stop-color="#DCDBE2"/>
+</linearGradient>
+<clipPath id="sfClipL"><rect x="0" y="0" width="23.39" height="56"/></clipPath>
+<clipPath id="sfClipR"><rect x="23.39" y="0" width="32.61" height="56"/></clipPath>
+</defs>
+<path d="M23.39 0.15a27.85 27.85 0 0 1 0 55.7Z" fill="url(#sfDisc)"/>
+<circle cx="21.37" cy="28.28" r="16.6" fill="url(#sfOrb)" clip-path="url(#sfClipL)"/>
+<circle cx="21.37" cy="28.28" r="16.6" fill="url(#sfOrb)" opacity=".62" clip-path="url(#sfClipR)"/>
+</svg>

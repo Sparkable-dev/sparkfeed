@@ -1,0 +1,24 @@
+---
+title: Database
+description: PostgreSQL storage, Drizzle schema, and demo-mode SQLite.
+---
+
+PostgreSQL is the production and Community Edition database. Drizzle defines the canonical schema in `src/db/schema.pg.ts`, and migration files live in `drizzle/`.
+
+Run pending migrations with:
+
+```bash
+bun run db:migrate
+```
+
+The application stores authentication, workspaces, feeds, articles, shares, API keys, catalogue caches, and Spark AI conversations in PostgreSQL.
+
+## Migration journal
+
+`db:migrate` records applied migrations. Do not use `db:push` for deployed databases because it changes tables without updating that journal.
+
+If an older database was created with `db:push`, read the database and migration troubleshooting guide before running migrations.
+
+## Demo database
+
+Demo mode is the only SQLite runtime. It creates `rss-demo.db`, builds its schema at boot, seeds sample data, and blocks mutations. The demo database is disposable and is not a supported production store.

@@ -1,0 +1,238 @@
+---
+title: Database and Migrations
+description: How Sparkfeed applies schema changes, how to fix a stuck migration, and how to reset the database completely.
+sidebar:
+  order: 1
+---
+
+import { Aside, Steps } from '@astrojs/starlight/components';
+
+Sparkfeed applies schema changes with Drizzle migrations. This page covers how that works, and what to do when it goes wrong.
+
+## How migrations run
+
+Migrations run **before the server starts**, not on boot from inside the app:
+
+```bash
+bun run db:migrate && node .output/server/index.mjs
+```
+
+That is the start command in `railway.toml`, and it is the shape to copy on any host. Two properties matter:
+
+- **It fails loudly.** A failed migration exits non-zero, so the deploy stops instead of serving an app against a schema it does not match.
+- **It runs once per deploy**, not once per replica, so multiple instances cannot race each other.
+
+In demo mode `db:migrate` exits cleanly without doing anything, because demo builds its own SQLite schema at boot. The same start command works for both.
+
+<Aside type="note" title="Not a startup plugin">
+It is tempting to run migrations from a server startup hook. Do not. A boot-time migrator races on every restart, and a failure there is a crash loop rather than a blocked deploy.
+</Aside>
+
+## "relation already exists" on deploy
+
+The most common failure. The deploy log looks like this:
+
+```
+[migrate] Applying migrations from /app/drizzle
+[migrate] Migration failed: ...
+error: Failed query: CREATE TABLE "articles" (...)
+PostgresError: relation "articles" already exists
+  code: "42P07"
+error: script "db:migrate" exited with code 1
+```
+
+**What it means:** the tables exist, but the migration journal is empty, so Drizzle thinks nothing has been applied and tries to create tables that are already there.
+
+**Why it happens:** the schema was originally created with `drizzle-kit push`. `push` diffs the schema and applies changes directly, and it writes nothing to `drizzle.__drizzle_migrations`. The migrator has no record that `0000` ever ran.
+
+You have two ways out.
+
+### Option A: baseline (keeps your data)
+
+Mark the already-applied migrations as done, without running their SQL:
+
+```bash
+# Dry run first. Shows exactly which migrations it would mark.
+bun run db:baseline
+
+# Then write the rows.
+bun run db:baseline -- --apply
+```
+
+By default this baselines through `0000_small_sabretooth`. Pass a different tag to baseline further:
+
+```bash
+bun run db:baseline 0001_last_tony_stark -- --apply
+```
+
+<Aside type="caution" title="Verify before applying">
+Baselining tells the migrator "trust me, this already ran." If the live schema does not actually match that migration, later migrations will fail in more confusing ways. Compare against the live schema first if you are unsure.
+</Aside>
+
+Deploy again after baselining. Only migrations after the baselined tag will run.
+
+### Option B: reset (destroys your data)
+
+If the data is disposable, which is usually true before launch, a clean database is simpler and leaves no room for drift:
+
+```sql
+DROP SCHEMA public CASCADE;
+CREATE SCHEMA public;
+DROP SCHEMA IF EXISTS drizzle CASCADE;
+```
+
+Then redeploy. Migrations run from `0000` against an empty database and record themselves properly.
+
+Three things worth knowing about those statements:
+
+- **`CASCADE` handles the ordering.** Sparkfeed has foreign keys between `articles`, `feeds` and `folders`, and between the auth tables and `user`. Dropping tables one at a time means fighting that dependency graph.
+- **`CREATE SCHEMA public` is not optional.** Without it there is no schema to create tables in, and the next deploy fails differently.
+- **The third line is the one people miss.** `__drizzle_migrations` lives in the `drizzle` schema, not `public`, so dropping `public` alone leaves the empty journal behind and you get the same `42P07` again.
+
+## Resetting the database
+
+<Steps>
+
+1. **Run the reset SQL**
+
+   On Railway: open the Postgres service, go to **Database → Data → Query**, and run:
+
+   ```sql
+   DROP SCHEMA public CASCADE;
+   CREATE SCHEMA public;
+   DROP SCHEMA IF EXISTS drizzle CASCADE;
+   ```
+
+   Anywhere else, the same statements through `psql`:
+
+   ```bash
+   psql "$DATABASE_URL" -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public; DROP SCHEMA IF EXISTS drizzle CASCADE;"
+   ```
+
+2. **Verify the state before deploying**
+
+   ```sql
+   SELECT
+     (SELECT count(*) FROM information_schema.schemata WHERE schema_name='public')  AS public_schema,
+     (SELECT count(*) FROM information_schema.tables  WHERE table_schema='public')  AS leftover_tables,
+     (SELECT count(*) FROM information_schema.schemata WHERE schema_name='drizzle') AS drizzle_schema;
+   ```
+
+   You want `1`, `0`, `0`. Anything else and the next deploy will fail:
+
+   | Column | Expected | If it is wrong |
+   |--------|----------|----------------|
+   | `public_schema` | `1` | `0` means you dropped it without recreating. Run `CREATE SCHEMA public;` |
+   | `leftover_tables` | `0` | Non-zero means the drop did not take, and you will hit `42P07` again |
+   | `drizzle_schema` | `0` | `1` means the stale journal is still there |
+
+3. **Redeploy**
+
+   Watch for this line in the deploy log:
+
+   ```
+   [migrate] Database is up to date.
+   ```
+
+   That means every migration applied and the journal is now populated.
+
+4. **Create the first account**
+
+   After a reset the `user` table is empty, which opens registration for exactly one signup even when `ALLOW_REGISTRATION=false`. The first account becomes the workspace owner, and registration closes behind it. There is no need to toggle the flag.
+
+</Steps>
+
+## Checking migration state
+
+What the database thinks has been applied:
+
+```sql
+SELECT * FROM drizzle.__drizzle_migrations ORDER BY created_at;
+```
+
+An empty result with tables present in `public` is the `42P07` situation above.
+
+What the code expects, in order:
+
+```bash
+cat drizzle/meta/_journal.json
+```
+
+## Adding a migration
+
+```bash
+# 1. Edit src/db/schema.pg.ts
+# 2. Generate the SQL
+bun run db:generate
+# 3. Read the generated file in drizzle/ before committing it
+# 4. Apply locally
+bun run db:migrate
+```
+
+<Aside type="caution" title="Avoid db:push outside local development">
+`db:push` applies schema changes without recording them, which is what creates the `42P07` trap in the first place. Use `db:generate` plus `db:migrate` for anything that will be deployed.
+</Aside>
+
+## Better Auth 1.7 account migration
+
+The 1.7 upgrade adds `account.issuer` and identifies accounts by the unique pair
+`(issuer, account_id)`. Sparkfeed supports email/password authentication in this
+release, so the committed migration maps every credential account to:
+
+| Existing value | Migrated value |
+| --- | --- |
+| `provider_id = credential` | `issuer = local:credential` |
+| legacy `account_id` | linked `user.id` |
+
+The user ID is the durable credential identity. An email address is deliberately
+not used because it can change.
+
+Before deploying, take a backup of `user` and `account`, pause authentication
+writes for the maintenance window, and run the read-only check against the
+target database:
+
+```bash
+bun run db:auth-1-7:check
+```
+
+The check prints counts only. It exits non-zero if it finds a provider other
+than `credential` or a future `(issuer, account_id)` collision. Do not invent
+an issuer from an email address, display name, request header, or authorization
+endpoint. Establish a provider-specific trusted issuer mapping, resolve the
+owner from trusted provider data, and rerun the check.
+
+The migration itself repeats these guards inside its transaction, then makes
+the new column required and creates the unique index. A failed migration stops
+the Railway deploy before the server starts. It adds no destructive changes;
+if a package rollback is necessary, keep the additive column and index in
+place, redeploy the previous application artifact, and investigate from the
+backup rather than dropping schema objects.
+
+### Beta deployment checklist
+
+The repository proves the command order but cannot prove Railway's current
+service, branch, or environment mapping. Before enabling this release on
+`beta.sparkfeed.dev`, confirm in Railway that:
+
+1. The custom domain belongs to the root Sparkfeed application service, whose
+   root directory is the repository root and whose build is the checked-out
+   branch containing this migration.
+2. The target environment has `VITE_DEMO_MODE` unset or `false`, plus its
+   existing `DATABASE_URL`, `BETTER_AUTH_SECRET`, `APP_URL`,
+   `BETTER_AUTH_URL`, and mail settings. Do not copy values into Git or logs.
+3. The service uses the repository's `railway.toml` start command unchanged:
+   `bun run db:migrate && node .output/server/index.mjs`.
+4. The preflight check is clean and a database backup has completed.
+
+After deployment, check the deploy log for `[migrate] Database is up to date.`,
+then verify one existing credential login, a session refresh, workspace listing
+and switching, and a new organization action. Confirm the migration journal's
+applied-migration count matches the 11 committed migration files on this
+branch before considering the release complete. Drizzle stores migration hashes
+there, not source filenames.
+
+Some things Drizzle cannot generate, such as `GENERATED ALWAYS AS (...) STORED` columns and certain index types, need a hand-written migration file. Add it to `drizzle/` with the next number in sequence and register it in `_journal.json`.
+
+## Demo mode
+
+Demo mode ignores all of this. It runs a local SQLite file (`rss-demo.db`) whose schema is created at boot by `ensureDemoSchema()`, and it never touches Postgres. There is nothing to migrate and nothing to reset: delete the file and restart, and it rebuilds and reseeds itself.

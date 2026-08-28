@@ -1,0 +1,151 @@
+---
+title: Deployment Issues
+description: Environment variables that silently break authentication and email, plus how to read a failed Sparkfeed deploy.
+sidebar:
+  order: 2
+---
+
+import { Aside, Steps } from '@astrojs/starlight/components';
+
+Most deployment problems with Sparkfeed are one of three things: a missing environment variable, a URL without a scheme, or a migration that cannot apply. The third has [its own page](/docs/troubleshooting/database-and-migrations/). This one covers the rest.
+
+## The variables that matter
+
+| Variable | Required | Breaks if wrong |
+|----------|----------|-----------------|
+| `DATABASE_URL` | yes | Server refuses to start |
+| `BETTER_AUTH_SECRET` | yes | Sessions cannot be signed, login silently fails |
+| `APP_URL` | yes | Invite and password reset links are unusable |
+| `BETTER_AUTH_URL` | yes in production | Verification emails point at localhost |
+| `RESEND_API_KEY` or `SMTP_*` | yes | Nobody can complete signup |
+| `EMAIL_FROM` | yes | Mail is rejected by the provider |
+| One AI key | no | Spark AI errors on first use |
+| `ALLOW_REGISTRATION` | no | Defaults to invite-only after the first account |
+| `VITE_DEMO_MODE` | no | Defaults to normal production |
+
+## URLs must include the scheme
+
+`APP_URL` and `BETTER_AUTH_URL` are used to build absolute links in emails. Both need `https://`.
+
+This is easy to get wrong on platforms that expose the domain as a bare hostname. On Railway, `${{RAILWAY_PUBLIC_DOMAIN}}` expands to `your-app.example.com` with **no** scheme, so:
+
+```bash
+# Wrong. Produces "your-app.example.com/reset-password", a relative path.
+APP_URL=${{RAILWAY_PUBLIC_DOMAIN}}
+
+# Right.
+APP_URL=https://${{RAILWAY_PUBLIC_DOMAIN}}
+BETTER_AUTH_URL=https://${{RAILWAY_PUBLIC_DOMAIN}}
+```
+
+Nothing errors when this is wrong. The app boots, signup appears to work, and the email arrives with a link that goes nowhere. If new users report that verification links do not work, check this first.
+
+<Aside type="tip" title="Test it end to end">
+The only real check is signing up with an address you can read and clicking the link in the email. A deploy that boots cleanly tells you nothing about whether these two values are right.
+</Aside>
+
+## Generate a real auth secret
+
+`BETTER_AUTH_SECRET` signs session tokens. Leaving the placeholder from `.env.example` in place produces a running app where nobody can stay logged in.
+
+```bash
+openssl rand -base64 32
+```
+
+Changing it invalidates every existing session, which is exactly what you want if it has ever been exposed.
+
+## Spark AI errors on first use
+
+Sparkfeed needs one AI provider key. They are checked in order, and the first one present wins:
+
+<Steps>
+
+1. `OPENAI_API_KEY`
+2. `AI_GATEWAY_API_KEY` (Vercel AI Gateway)
+3. `OPENROUTER_API_KEY`
+
+</Steps>
+
+With none set, the app runs normally and Spark AI throws on first use:
+
+```
+[AI] No provider configured. Set OPENAI_API_KEY, AI_GATEWAY_API_KEY,
+or OPENROUTER_API_KEY in your .env file.
+```
+
+Nothing validates the key at boot, so a wrong or expired key also surfaces only on first use. Set `AI_MODEL` to pin a specific model, or `DISABLE_AI=true` to hide the feature entirely.
+
+## Reading a failed deploy
+
+Sparkfeed's start command is two steps, and it matters which one failed:
+
+```bash
+bun run db:migrate && node .output/server/index.mjs
+```
+
+**Fails during `db:migrate`:** a schema problem. The log contains `[migrate]` lines. See [Database and Migrations](/docs/troubleshooting/database-and-migrations/).
+
+**Fails after `Listening on:`:** the server started and a request crashed it. Look for the first stack trace after that line.
+
+**Fails with no `[migrate]` output at all:** the build never produced `.output/server/index.mjs`, so the failure is in the build step, not the deploy.
+
+A healthy start looks like:
+
+```
+[migrate] Applying migrations from /app/drizzle
+[migrate] Database is up to date.
+➜ Listening on: http://localhost:3000/
+```
+
+## Every request returns 500
+
+If the app boots but every path, including the home page, returns:
+
+```json
+{"status":500,"unhandled":true,"message":"HTTPError"}
+```
+
+then something threw while the server was loading its entry module, before any route ran. The usual cause is a dependency that is not ESM-safe: the server bundle is ESM, so a package calling `require()` internally throws `ReferenceError: require is not defined in ES module scope` at import time.
+
+This only reproduces in a production build, which is why development can look completely healthy. To reproduce locally:
+
+```bash
+bun run build
+node .output/server/index.mjs
+```
+
+The deploy log will name the offending module in the stack trace.
+
+## Demo mode deployments
+
+A demo deployment needs exactly one variable:
+
+```bash
+VITE_DEMO_MODE=true
+```
+
+No `DATABASE_URL`, no auth secret, no mail provider. Demo runs on a local SQLite file, bypasses auth entirely, and locks every mutation.
+
+Two things to know:
+
+- **`VITE_DEMO_MODE` is read at build time**, not at runtime. Vite inlines `VITE_*` variables into the bundle, so the variable must be set **before** the build runs. Adding it to an already-built deployment does nothing.
+- **The demo database is disposable.** It lives in the container filesystem, so it is wiped on every deploy and reseeded at boot.
+
+## Feeds are not refreshing
+
+Background refresh runs from a Nitro plugin. Plugins are registered explicitly in `vite.config.ts`:
+
+```js
+nitro({
+  plugins: ['src/server/plugins/demo-boot.ts'],
+})
+```
+
+A file in `src/server/plugins/` that is not listed there is never loaded, and fails silently: no error, no log line, it simply never runs. After adding a plugin, confirm it made it into the build:
+
+```bash
+bun run build
+grep -c "your-log-string" .output/server/index.mjs
+```
+
+Users can always refresh manually from the app in the meantime.

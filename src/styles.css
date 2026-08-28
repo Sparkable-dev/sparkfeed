@@ -1,0 +1,636 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@import "@fontsource-variable/nunito-sans";
+@import "tw-shimmer";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+    --font-heading: var(--font-sans);
+    --font-sans: 'Nunito Sans Variable', sans-serif;
+    --color-sidebar-ring: var(--sidebar-ring);
+    --color-sidebar-border: var(--sidebar-border);
+    --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+    --color-sidebar-accent: var(--sidebar-accent);
+    --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+    --color-sidebar-primary: var(--sidebar-primary);
+    --color-sidebar-foreground: var(--sidebar-foreground);
+    --color-sidebar: var(--sidebar);
+    --color-chart-5: var(--chart-5);
+    --color-chart-4: var(--chart-4);
+    --color-chart-3: var(--chart-3);
+    --color-chart-2: var(--chart-2);
+    --color-chart-1: var(--chart-1);
+    --color-ring: var(--ring);
+    --color-input: var(--input);
+    --color-border: var(--border);
+    --color-destructive: var(--destructive);
+    --color-accent-foreground: var(--accent-foreground);
+    --color-accent: var(--accent);
+    --color-muted-foreground: var(--muted-foreground);
+    --color-muted: var(--muted);
+    --color-secondary-foreground: var(--secondary-foreground);
+    --color-secondary: var(--secondary);
+    --color-primary-foreground: var(--primary-foreground);
+    --color-primary: var(--primary);
+    --color-popover-foreground: var(--popover-foreground);
+    --color-popover: var(--popover);
+    --color-card-foreground: var(--card-foreground);
+    --color-card: var(--card);
+    --color-foreground: var(--foreground);
+    --color-background: var(--background);
+    --radius-sm: calc(var(--radius) * 0.6);
+    --radius-md: calc(var(--radius) * 0.8);
+    --radius-lg: var(--radius);
+    --radius-xl: calc(var(--radius) * 1.4);
+    --radius-2xl: calc(var(--radius) * 1.8);
+    --radius-3xl: calc(var(--radius) * 2.2);
+    --radius-4xl: calc(var(--radius) * 2.6);
+
+    /* Collapsible panel animations. The dual custom-property fallback covers both
+       Radix (assistant-ui's own primitives) and Base UI (this repo's ui/ layer). */
+    @keyframes collapsible-down {
+        from {
+            height: 0;
+        }
+        to {
+            height: var(--radix-collapsible-content-height, var(--collapsible-panel-height, auto));
+        }
+    }
+    @keyframes collapsible-up {
+        from {
+            height: var(--radix-collapsible-content-height, var(--collapsible-panel-height, auto));
+        }
+        to {
+            height: 0;
+        }
+    }
+}
+
+:root {
+    --background: oklch(1 0 0);
+    --foreground: oklch(0.141 0.005 285.823);
+    --card: oklch(1 0 0);
+    --card-foreground: oklch(0.141 0.005 285.823);
+    --popover: oklch(1 0 0);
+    --popover-foreground: oklch(0.141 0.005 285.823);
+    --primary: oklch(0.518 0.253 323.949);
+    --primary-foreground: oklch(0.977 0.017 320.058);
+    --secondary: oklch(0.967 0.001 286.375);
+    --secondary-foreground: oklch(0.21 0.006 285.885);
+    --muted: oklch(0.967 0.001 286.375);
+    --muted-foreground: oklch(0.552 0.016 285.938);
+    --accent: oklch(0.967 0.001 286.375);
+    --accent-foreground: oklch(0.21 0.006 285.885);
+    --destructive: oklch(0.577 0.245 27.325);
+    --border: oklch(0.92 0.004 286.32);
+    --input: oklch(0.92 0.004 286.32);
+    --ring: oklch(0.705 0.015 286.067);
+    --chart-1: oklch(0.833 0.145 321.434);
+    --chart-2: oklch(0.667 0.295 322.15);
+    --chart-3: oklch(0.591 0.293 322.896);
+    --chart-4: oklch(0.518 0.253 323.949);
+    --chart-5: oklch(0.452 0.211 324.591);
+    /*
+      The ink a chart is drawn in, which is deliberately not `--primary`.
+
+      `--primary` is a button colour: it is chosen to sit under white label text,
+      so in dark mode it drops to 0.452 lightness — darker than the surface a
+      chart is drawn on is light, which is why the first charts read as muted
+      smudges. A mark on a background has the opposite requirement to a
+      background under a label, so it gets its own value and moves with the
+      theme in the other direction.
+    */
+    --chart-ink: oklch(0.591 0.293 322.896);
+    --radius: 0.625rem;
+    --sidebar: oklch(0.985 0 0);
+    --sidebar-foreground: oklch(0.141 0.005 285.823);
+    --sidebar-primary: oklch(0.591 0.293 322.896);
+    --sidebar-primary-foreground: oklch(0.977 0.017 320.058);
+    --sidebar-accent: oklch(0.967 0.001 286.375);
+    --sidebar-accent-foreground: oklch(0.21 0.006 285.885);
+    --sidebar-border: oklch(0.92 0.004 286.32);
+    --sidebar-ring: oklch(0.705 0.015 286.067);
+}
+
+.dark {
+    --background: oklch(0.141 0.005 285.823);
+    --foreground: oklch(0.985 0 0);
+    --card: oklch(0.21 0.006 285.885);
+    --card-foreground: oklch(0.985 0 0);
+    --popover: oklch(0.21 0.006 285.885);
+    --popover-foreground: oklch(0.985 0 0);
+    --primary: oklch(0.452 0.211 324.591);
+    --primary-foreground: oklch(0.977 0.017 320.058);
+    --secondary: oklch(0.274 0.006 286.033);
+    --secondary-foreground: oklch(0.985 0 0);
+    --muted: oklch(0.274 0.006 286.033);
+    --muted-foreground: oklch(0.705 0.015 286.067);
+    --accent: oklch(0.274 0.006 286.033);
+    --accent-foreground: oklch(0.985 0 0);
+    --destructive: oklch(0.704 0.191 22.216);
+    --border: oklch(1 0 0 / 10%);
+    --input: oklch(1 0 0 / 15%);
+    --ring: oklch(0.552 0.016 285.938);
+    --chart-1: oklch(0.833 0.145 321.434);
+    --chart-2: oklch(0.667 0.295 322.15);
+    --chart-3: oklch(0.591 0.293 322.896);
+    --chart-4: oklch(0.518 0.253 323.949);
+    --chart-5: oklch(0.452 0.211 324.591);
+    /* Brighter than the light-mode value, not darker — see the note above. */
+    --chart-ink: oklch(0.784 0.183 322.4);
+    --sidebar: oklch(0.21 0.006 285.885);
+    --sidebar-foreground: oklch(0.985 0 0);
+    --sidebar-primary: oklch(0.667 0.295 322.15);
+    --sidebar-primary-foreground: oklch(0.977 0.017 320.058);
+    --sidebar-accent: oklch(0.274 0.006 286.033);
+    --sidebar-accent-foreground: oklch(0.985 0 0);
+    --sidebar-border: oklch(1 0 0 / 10%);
+    --sidebar-ring: oklch(0.552 0.016 285.938);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+    }
+  body {
+    @apply bg-background text-foreground;
+    }
+  html {
+    @apply font-sans;
+    }
+}
+
+/* ── Auth Pages ──────────────────────────────────────────────── */
+.auth-page {
+  position: relative;
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #050508;
+  overflow: hidden;
+  padding: 1.5rem;
+}
+
+/* Animated background orbs */
+.auth-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  pointer-events: none;
+  animation: auth-drift 12s ease-in-out infinite alternate;
+}
+.auth-orb-1 {
+  width: 480px;
+  height: 480px;
+  top: -120px;
+  left: -120px;
+  background: radial-gradient(circle, rgba(124, 58, 237, 0.25), transparent 70%);
+  animation-delay: 0s;
+}
+.auth-orb-2 {
+  width: 360px;
+  height: 360px;
+  bottom: -80px;
+  right: -80px;
+  background: radial-gradient(circle, rgba(59, 130, 246, 0.2), transparent 70%);
+  animation-delay: -4s;
+}
+.auth-orb-3 {
+  width: 260px;
+  height: 260px;
+  top: 50%;
+  left: 60%;
+  background: radial-gradient(circle, rgba(236, 72, 153, 0.15), transparent 70%);
+  animation-delay: -8s;
+}
+@keyframes auth-drift {
+  0%   { transform: translate(0, 0) scale(1); }
+  50%  { transform: translate(30px, -20px) scale(1.06); }
+  100% { transform: translate(-20px, 30px) scale(0.96); }
+}
+
+.auth-container {
+  position: relative;
+  z-index: 10;
+  width: 100%;
+  max-width: 420px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+/* Logo */
+.auth-logo {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+}
+.auth-logo-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 0.625rem;
+  background: linear-gradient(135deg, #7c3aed, #3b82f6);
+  box-shadow: 0 0 20px rgba(124, 58, 237, 0.5);
+}
+.auth-logo-svg {
+  width: 1.125rem;
+  height: 1.125rem;
+  color: white;
+}
+.auth-brand {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: white;
+  letter-spacing: -0.02em;
+}
+
+/* Card */
+.auth-card {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 1.25rem;
+  padding: 2rem;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  box-shadow:
+    0 0 0 1px rgba(255,255,255,0.04) inset,
+    0 24px 64px rgba(0,0,0,0.5);
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.auth-card-header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+.auth-title {
+  font-size: 1.375rem;
+  font-weight: 700;
+  color: white;
+  letter-spacing: -0.02em;
+  margin: 0;
+}
+.auth-subtitle {
+  font-size: 0.8125rem;
+  color: rgba(255,255,255,0.45);
+  margin: 0;
+}
+
+/* Form */
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.auth-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+.auth-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: rgba(255,255,255,0.6);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.auth-label-hint {
+  font-weight: 400;
+  color: rgba(255,255,255,0.3);
+}
+
+.auth-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.auth-input-icon {
+  position: absolute;
+  left: 0.875rem;
+  width: 0.9375rem;
+  height: 0.9375rem;
+  color: #9ca3af;
+  pointer-events: none;
+  flex-shrink: 0;
+  z-index: 2;
+}
+.auth-input {
+  width: 100%;
+  height: 2.625rem;
+  padding: 0 0.875rem 0 2.5rem;
+  background: rgba(0,0,0,0.3);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 0.75rem;
+  color: white;
+  font-size: 0.875rem;
+  font-family: inherit;
+  transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
+  outline: none;
+}
+.auth-input::placeholder {
+  color: rgba(255,255,255,0.3);
+}
+.auth-input:focus {
+  border-color: rgba(124, 58, 237, 0.8);
+  background: rgba(0,0,0,0.5);
+  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.2);
+}
+.auth-input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Fix browser autofill styling making backgrounds white */
+.auth-input:-webkit-autofill,
+.auth-input:-webkit-autofill:hover,
+.auth-input:-webkit-autofill:focus,
+.auth-input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 30px #121216 inset !important;
+  -webkit-text-fill-color: white !important;
+  border: 1px solid rgba(255,255,255,0.15) !important;
+}
+
+.auth-input-password {
+  padding-right: 2.75rem;
+}
+.auth-eye-btn {
+  position: absolute;
+  right: 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.25rem;
+  border-radius: 0.375rem;
+  transition: background 0.15s;
+  z-index: 2;
+}
+.auth-eye-btn:hover {
+  background: rgba(255,255,255,0.12);
+}
+.auth-eye-icon {
+  width: 0.875rem;
+  height: 0.875rem;
+  color: #9ca3af;
+}
+
+/* Password strength bar */
+.auth-strength-bar {
+  height: 3px;
+  background: rgba(255,255,255,0.08);
+  border-radius: 999px;
+  overflow: hidden;
+  margin-top: 0.25rem;
+}
+.auth-strength-fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.3s ease, background-color 0.3s ease;
+}
+.auth-strength-weak   { background: #ef4444; }
+.auth-strength-medium { background: #f59e0b; }
+.auth-strength-strong { background: #22c55e; }
+
+/* Primary button */
+.auth-btn-primary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
+  height: 2.75rem;
+  margin-top: 0.25rem;
+  background: linear-gradient(135deg, #7c3aed, #6d28d9);
+  color: white;
+  font-size: 0.875rem;
+  font-weight: 600;
+  font-family: inherit;
+  border: none;
+  border-radius: 0.75rem;
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s, opacity 0.15s;
+  box-shadow: 0 4px 20px rgba(124, 58, 237, 0.4);
+}
+.auth-btn-primary:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 28px rgba(124, 58, 237, 0.55);
+}
+.auth-btn-primary:active:not(:disabled) {
+  transform: translateY(0);
+}
+.auth-btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+.auth-btn-arrow {
+  width: 0.9375rem;
+  height: 0.9375rem;
+  transition: transform 0.15s;
+}
+.auth-btn-primary:hover .auth-btn-arrow {
+  transform: translateX(3px);
+}
+.auth-spinner {
+  width: 0.9375rem;
+  height: 0.9375rem;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Footer link */
+.auth-footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  padding-top: 0.25rem;
+  border-top: 1px solid rgba(255,255,255,0.06);
+}
+.auth-footer-text {
+  font-size: 0.8125rem;
+  color: rgba(255,255,255,0.4);
+}
+.auth-footer-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #a78bfa;
+  text-decoration: none;
+  transition: color 0.15s;
+}
+.auth-footer-link:hover {
+  color: #c4b5fd;
+}
+.auth-footer-link-arrow {
+  width: 0.75rem;
+  height: 0.75rem;
+}
+
+.auth-tagline {
+  font-size: 0.75rem;
+  color: rgba(255,255,255,0.2);
+  text-align: center;
+  margin: 0;
+}
+
+/* ── Reader-mode article content ───────────────────────────────
+   Scoped typography for the sanitized HTML rendered in PreviewSheet.
+   Colors come from CSS vars set per-theme on .reader-surface; text
+   scales with --reader-font-scale. Descendant selectors (not direct-
+   child) so spacing/links work regardless of source nesting. */
+.reader-surface {
+  --reader-bg: #111111;
+  --reader-fg: #d4d4d8;
+  --reader-heading: #ffffff;
+  --reader-muted: #a1a1aa;
+  --reader-link: #6ea8ff;
+  --reader-link-hover: #9cc2ff;
+  --reader-border: rgba(255, 255, 255, 0.15);
+  --reader-soft: rgba(255, 255, 255, 0.05);
+  --reader-code-bg: rgba(255, 255, 255, 0.08);
+  --reader-font-scale: 1;
+  background: var(--reader-bg);
+  color: var(--reader-fg);
+  transition: background-color 150ms ease, color 150ms ease;
+}
+.reader-surface[data-reader-theme="sepia"] {
+  --reader-bg: #f4ecd8;
+  --reader-fg: #433422;
+  --reader-heading: #2b2317;
+  --reader-muted: #6b5b43;
+  --reader-link: #9a5b2e;
+  --reader-link-hover: #7a4620;
+  --reader-border: rgba(67, 52, 34, 0.25);
+  --reader-soft: rgba(67, 52, 34, 0.06);
+  --reader-code-bg: rgba(67, 52, 34, 0.1);
+}
+.reader-surface[data-reader-theme="light"] {
+  --reader-bg: #ffffff;
+  --reader-fg: #27272a;
+  --reader-heading: #09090b;
+  --reader-muted: #71717a;
+  --reader-link: #2563eb;
+  --reader-link-hover: #1d4ed8;
+  --reader-border: rgba(0, 0, 0, 0.15);
+  --reader-soft: rgba(0, 0, 0, 0.04);
+  --reader-code-bg: rgba(0, 0, 0, 0.06);
+}
+
+.reader-prose {
+  font-size: calc(1.0625rem * var(--reader-font-scale, 1));
+  line-height: 1.75;
+  color: var(--reader-fg);
+  overflow-wrap: break-word;
+}
+.reader-prose > :first-child { margin-top: 0; }
+.reader-prose p,
+.reader-prose ul,
+.reader-prose ol,
+.reader-prose blockquote,
+.reader-prose pre,
+.reader-prose figure,
+.reader-prose table {
+  margin: 0 0 1.25em;
+}
+.reader-prose h1,
+.reader-prose h2,
+.reader-prose h3,
+.reader-prose h4,
+.reader-prose h5,
+.reader-prose h6 {
+  color: var(--reader-heading);
+  font-weight: 700;
+  line-height: 1.3;
+  margin: 2em 0 0.75em;
+}
+.reader-prose h1 { font-size: 1.75em; }
+.reader-prose h2 { font-size: 1.5em; }
+.reader-prose h3 { font-size: 1.25em; }
+.reader-prose h4 { font-size: 1.1em; }
+.reader-prose a {
+  color: var(--reader-link);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  text-decoration-thickness: 1px;
+}
+.reader-prose a:hover { color: var(--reader-link-hover); }
+.reader-prose strong,
+.reader-prose b { color: var(--reader-heading); font-weight: 700; }
+.reader-prose ul,
+.reader-prose ol { padding-left: 1.5em; }
+.reader-prose ul { list-style: disc; }
+.reader-prose ol { list-style: decimal; }
+.reader-prose li { margin: 0.4em 0; }
+.reader-prose li > ul,
+.reader-prose li > ol { margin: 0.4em 0 0.4em; }
+.reader-prose blockquote {
+  border-left: 3px solid var(--reader-border);
+  padding-left: 1em;
+  color: var(--reader-muted);
+  font-style: italic;
+}
+.reader-prose img,
+.reader-prose video {
+  max-width: 100%;
+  height: auto;
+  border-radius: 0.5rem;
+  margin: 1.5em auto;
+}
+.reader-prose figure { margin: 1.5em 0; }
+.reader-prose figcaption {
+  font-size: 0.875em;
+  color: var(--reader-muted);
+  text-align: center;
+  margin-top: 0.5em;
+}
+.reader-prose hr {
+  border: 0;
+  border-top: 1px solid var(--reader-border);
+  margin: 2em 0;
+}
+.reader-prose pre {
+  background: var(--reader-soft);
+  border: 1px solid var(--reader-border);
+  border-radius: 0.5rem;
+  padding: 1em;
+  overflow-x: auto;
+  font-size: 0.9em;
+}
+.reader-prose code {
+  background: var(--reader-code-bg);
+  padding: 0.15em 0.35em;
+  border-radius: 0.3rem;
+  font-size: 0.9em;
+}
+.reader-prose pre code { background: none; padding: 0; }
+.reader-prose table { width: 100%; border-collapse: collapse; font-size: 0.95em; }
+.reader-prose th,
+.reader-prose td {
+  border: 1px solid var(--reader-border);
+  padding: 0.5em 0.75em;
+  text-align: left;
+}
+.reader-prose th { background: var(--reader-soft); color: var(--reader-heading); }
+
+@custom-variant data-open (&:where([data-state="open"], [data-open]:not([data-open="false"])));
+
+@custom-variant data-closed (&:where([data-state="closed"], [data-closed]:not([data-closed="false"])));

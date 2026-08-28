@@ -1,0 +1,244 @@
+---
+title: Sparkfeed Documentation
+description: Self-hosted RSS aggregator and any-site-to-RSS crawler, with workspaces, sharing, and built-in AI. Start here.
+# `doc`, not `splash`, so the nav sidebar stays on the landing page (Starlight
+# ties `hasSidebar` to the template). The hero still renders: Page.astro
+# branches on the `hero` frontmatter, not on the template.
+template: doc
+# The landing page is a set of cards and lists, not an article, so a right-hand
+# "On this page" rail would just mirror the section headings. Setting this false
+# also drops the page-actions block, which PageSidebar.astro guards on `toc`.
+tableOfContents: false
+hero:
+  tagline: A self-hosted RSS aggregator, and a crawler that turns any website into a feed. Read the docs, run it locally, and make it yours.
+  actions:
+    - text: Get started
+      link: /docs/getting-started/introduction/
+      variant: primary
+    - text: View on GitHub
+      link: https://github.com/Sparkable-dev/sparkfeed-app
+      variant: secondary
+---
+
+import Section from "../../components/landing/Section.astro"
+import NavCardGrid from "../../components/landing/NavCardGrid.astro"
+import NavCard from "../../components/landing/NavCard.astro"
+import FeatureList from "../../components/landing/FeatureList.astro"
+import FeatureSplit from "../../components/landing/FeatureSplit.astro"
+import CtaBand from "../../components/landing/CtaBand.astro"
+
+<p class="sf-lead">
+  Sparkfeed brings every blog, news source, and website your team cares about
+  into one clean, distraction-free space. No algorithms, no ads, no telemetry.
+  It is open source under AGPL-3.0 and runs entirely on infrastructure you
+  control.
+</p>
+
+<Section
+  title="Start here"
+  lead="New to Sparkfeed? These three pages take you from nothing installed to a running instance."
+>
+  <NavCardGrid cols={3}>
+    <NavCard
+      href="/docs/getting-started/introduction/"
+      icon="rocket"
+      title="Introduction"
+      description="What Sparkfeed is, why it exists, and what you can do with it."
+    />
+    <NavCard
+      href="/docs/installation/local-setup/"
+      icon="terminal"
+      title="Local setup"
+      description="Clone the repo, install dependencies, and have Sparkfeed running in minutes."
+    />
+    <NavCard
+      href="/docs/installation/demo-mode/"
+      icon="play"
+      title="Demo mode"
+      description="Explore a seeded instance immediately. No account, no migration, no keys."
+    />
+  </NavCardGrid>
+</Section>
+
+<Section
+  title="Explore by topic"
+  lead="The rest of the documentation, grouped by what you are trying to do."
+>
+  <NavCardGrid cols={3}>
+    <NavCard
+      href="/docs/core-concepts/how-rss-works/"
+      icon="book-open"
+      title="Core concepts"
+      description="How RSS, feed aggregation, and the local database fit together."
+    />
+    <NavCard
+      href="/docs/features/minimal-ui/"
+      icon="monitor"
+      title="Features"
+      description="The reading interface, offline access, favorites, and responsive behaviour."
+    />
+    <NavCard
+      href="/docs/ai-features/content-summarization/"
+      icon="sparkles"
+      title="Spark AI"
+      description="Summaries, trend detection, and categorization that run on a key you own."
+    />
+    <NavCard
+      href="/docs/configuration/ai-providers/"
+      icon="sliders"
+      title="Configuration"
+      description="AI providers and every environment variable Sparkfeed reads."
+    />
+    <NavCard
+      href="/docs/tech-stack/frontend/"
+      icon="layers"
+      title="Tech stack"
+      description="React, TanStack Router, Nitro, PostgreSQL, Drizzle, and Zustand."
+    />
+    <NavCard
+      href="/docs/developer/mcp/"
+      icon="plug"
+      title="Developer"
+      description="Connect an AI agent over MCP, and manage the API keys that authenticate it."
+    />
+  </NavCardGrid>
+</Section>
+
+<Section title="Key features">
+  <FeatureList
+    items={[
+      {
+        icon: "rss",
+        label: "Any site to feed",
+        description:
+          "Turn any website into a trackable feed, even sites that never published RSS.",
+      },
+      {
+        icon: "lock",
+        label: "Privacy first",
+        description:
+          "Zero telemetry, no ads, and your data never trains AI models.",
+      },
+      {
+        icon: "server",
+        label: "Self-hostable",
+        description:
+          "Open source under AGPL-3.0. Run it on your own infrastructure.",
+      },
+      {
+        icon: "database",
+        label: "Operator controlled",
+        description:
+          "Feeds, articles, accounts, and chats live in your PostgreSQL database.",
+      },
+      {
+        icon: "folder",
+        label: "Folders and keyword filters",
+        description: "Organize sources hierarchically and cut the noise.",
+      },
+      {
+        icon: "download",
+        label: "OPML import and export",
+        description:
+          "Bring your subscriptions in and out. You are never locked in.",
+      },
+      {
+        icon: "sparkles",
+        label: "Spark AI",
+        description:
+          "Summaries and trend detection that run on an AI key you control.",
+      },
+      {
+        icon: "plug",
+        label: "MCP for AI agents",
+        description:
+          "Let Claude or Cursor search your feeds and read full articles over the Model Context Protocol.",
+      },
+      {
+        icon: "zap",
+        label: "Fast and minimal",
+        description:
+          "A React and Tailwind interface built for near-instant navigation.",
+      },
+    ]}
+  />
+</Section>
+
+<FeatureSplit
+  title="Your instance, your database"
+  frameTitle="Terminal"
+  code={`$ bun dev
+
+✓ database PostgreSQL connected
+✓ migrations up to date
+✓ feeds 24 sources refreshed
+
+➜ ready on http://localhost:3000`}
+
+>
+
+> Community Edition stores its durable data in the PostgreSQL database you configure. Sparkfeed
+> does not add product telemetry or require Sparkable's hosted service. Demo mode remains a
+> separate, disposable SQLite path for trying the interface without account setup.
+
+</FeatureSplit>
+
+<Section title="On the roadmap" variant="band">
+  <FeatureList
+    cols={3}
+    items={[
+      {
+        icon: "server",
+        label: "Community packaging",
+        description: "Verified container upgrades, backup, and restore.",
+        badge: "Beta",
+      },
+      {
+        icon: "plug",
+        label: "Stable REST and MCP",
+        description: "Harden the public contracts before version 1.0.",
+        badge: "Beta",
+      },
+      {
+        icon: "plug",
+        label: "Webhooks",
+        description:
+          "Push new articles to Slack, automation platforms, or your own endpoint.",
+        badge: "Soon",
+      },
+    ]}
+  />
+</Section>
+
+<Section
+  title="How Sparkfeed compares"
+  lead="How Sparkfeed lines up against popular self-hosted and hosted readers."
+  class="sf-compare"
+>
+
+| Feature                | Sparkfeed | FreshRSS |  Miniflux  |  NewsBlur  | Feedly | Inoreader |
+| ---------------------- | :-------: | :------: | :--------: | :--------: | :----: | :-------: |
+| Open source            | AGPL-3.0  | AGPL-3.0 | Apache-2.0 | MIT (core) |   No   |    No     |
+| Self-hostable          |    Yes    |   Yes    |    Yes     |   Yes †    |   No   |    No     |
+| Zero telemetry         |    Yes    |   Yes    |    Yes     |     No     |   No   |    No     |
+| Any site to feed       |    Yes    |    No    |     No     |     No     |   No   |   Yes ‡   |
+| OPML import / export   |    Yes    |   Yes    |    Yes     |    Yes     |  Yes   |    Yes    |
+| Bring-your-own AI keys |    Yes    |    No    |     No     |     No     |   No   |    No     |
+| Team workspaces        |    Yes    |    No    |     No     |     No     | Yes ‡  |   Yes ‡   |
+
+<small class="sf-compare-notes">
+  † NewsBlur self-hosting is supported but more involved to set up.&nbsp; ‡
+  Available on paid or higher tiers.
+</small>
+
+Want the full breakdown, including licenses and privacy posture? Read
+[The Best Private RSS Readers in 2026](https://sparkfeed.dev/blog/best-private-rss-readers-2026/)
+and [Feedly Alternatives That Respect Your Privacy](https://sparkfeed.dev/blog/feedly-alternatives-privacy/).
+
+</Section>
+
+<CtaBand
+  title="Start reading in five minutes."
+  href="/docs/getting-started/introduction/"
+  cta="Get started"
+/>

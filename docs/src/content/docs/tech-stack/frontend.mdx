@@ -1,0 +1,128 @@
+---
+title: Frontend (React + Tailwind)
+description: How SparkFeed's frontend is built with React 18, TanStack Router, and Tailwind CSS.
+sidebar:
+  order: 1
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+## Overview
+
+SparkFeed's frontend is a modern React application built for speed and developer experience.
+
+```txt frame="none"
+React 18 + TypeScript
+  ↓
+TanStack Router (file-based, type-safe routing)
+  ↓
+TanStack Query (server state management)
+  ↓
+Zustand (client-side state)
+  ↓
+Tailwind CSS (utility-first styling)
+```
+
+## React 18
+
+SparkFeed uses React 18 with:
+
+- **Concurrent Features:** Better rendering prioritization for large lists
+- **`useTransition`:** Marks article list updates as non-urgent for smoother navigation
+- **Strict Mode:** Enabled in development to surface issues early
+- **TypeScript:** All components are fully typed
+
+## TanStack Router
+
+[TanStack Router](https://tanstack.com/router) is a type-safe, file-based router for React.
+
+### Why TanStack Router?
+
+- **Type-safe navigation:** TypeScript knows every route and its params
+- **Search params as state:** URL search params are typed and validated
+- **Nested layouts:** Sidebar and main content are separate layout routes
+- **Loaders:** Data is fetched before a route renders, not after
+
+### Route structure
+
+```txt frame="none"
+src/client/routes/
+├── __root.tsx          # Root layout (header, sidebar)
+├── index.tsx           # Home / All articles
+├── feed/
+│   └── $feedId.tsx     # Single feed view
+├── folder/
+│   └── $folderId.tsx   # Folder view
+├── favorites.tsx        # Saved articles
+└── article/
+    └── $articleId.tsx  # Article reader
+```
+
+## Tailwind CSS
+
+SparkFeed uses [Tailwind CSS](https://tailwindcss.com/) for all styling.
+
+### Configuration
+
+```typescript
+// tailwind.config.ts
+export default {
+  content: ['./src/client/**/*.{tsx,ts}'],
+  darkMode: 'class',
+  theme: {
+    extend: {
+      colors: {
+        accent: {
+          DEFAULT: '#6366f1',
+          light: '#818cf8',
+          dark: '#4f46e5',
+        },
+      },
+      fontFamily: {
+        sans: ['Inter', 'system-ui', 'sans-serif'],
+        mono: ['JetBrains Mono', 'monospace'],
+      },
+    },
+  },
+};
+```
+
+### Component example
+
+```tsx
+// ArticleCard.tsx
+export function ArticleCard({ article }: { article: Article }) {
+  return (
+    <article className="group flex flex-col gap-1 px-4 py-3 hover:bg-slate-800/50
+                        transition-colors cursor-pointer border-b border-slate-800">
+      <h3 className="text-sm font-medium text-slate-100
+                     group-hover:text-indigo-400 transition-colors line-clamp-2">
+        {article.title}
+      </h3>
+      <p className="text-xs text-slate-400 line-clamp-2">
+        {article.summary}
+      </p>
+      <div className="flex items-center gap-2 mt-1 text-xs text-slate-500">
+        <span>{article.feedTitle}</span>
+        <span>·</span>
+        <time>{formatRelativeDate(article.publishedAt)}</time>
+      </div>
+    </article>
+  );
+}
+```
+
+## Key Dependencies
+
+| Package | Version | Purpose |
+|---------|---------|---------|
+| `react` | 18.x | UI framework |
+| `@tanstack/react-router` | 1.x | Type-safe routing |
+| `@tanstack/react-query` | 5.x | Server state management |
+| `zustand` | 4.x | Client state |
+| `tailwindcss` | 3.x | Utility-first CSS |
+| `typescript` | 5.x | Type safety |
+
+<Aside type="tip">
+  The frontend source lives in `src/client/`. The backend lives in `src/server/`. They share types defined in `src/shared/`.
+</Aside>

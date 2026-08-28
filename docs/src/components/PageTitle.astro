@@ -1,0 +1,79 @@
+---
+/*
+  Override of Starlight's `PageTitle` — same `<h1>`, plus a "Copy page" button
+  aligned to its top-right (OSS / AI SDK style).
+
+  The button copies the page's raw markdown source with the MDX `import …` lines
+  stripped, so it pastes cleanly into an LLM. The payload is base64-encoded into a
+  data attribute — script/attribute text isn't reliably entity-decoded across
+  contexts, and base64 is pure ASCII so it survives untouched. A small
+  `<sf-copy-page>` web component decodes and copies it on click.
+*/
+const { entry } = Astro.locals.starlightRoute;
+const PAGE_TITLE_ID = '_top';
+
+/** Raw MDX body minus leading/inline `import … from '…';` statements. */
+const markdown = (entry.body ?? '')
+	.replace(/^\s*import\s.+?from\s.+?;?\s*$/gm, '')
+	.replace(/^\n+/, '')
+	.trim();
+
+const markdownB64 = Buffer.from(markdown, 'utf-8').toString('base64');
+---
+
+<div class="sf-title-row">
+	<h1 id={PAGE_TITLE_ID}>{entry.data.title}</h1>
+
+	{/* `data-pagefind-ignore` keeps the button's label out of the search index —
+	    without it every page's excerpt reads "<Title>. Copy page". */}
+	<sf-copy-page class="print:hidden" data-pagefind-ignore data-copy-b64={markdownB64}>
+		<button type="button" class="sf-copy-page" aria-label="Copy page as markdown">
+			<span class="sf-copy-page-icons" aria-hidden="true">
+				<svg class="sf-icon-copy" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+					<rect x="9" y="9" width="13" height="13" rx="2" />
+					<path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+				</svg>
+				<svg class="sf-icon-check" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+					<path d="M20 6 9 17l-5-5" />
+				</svg>
+			</span>
+			<span class="sf-copy-page-label">Copy page</span>
+		</button>
+	</sf-copy-page>
+</div>
+
+<script>
+	/** UTF-8 safe base64 decode. */
+	function decodeB64(b64: string): string {
+		const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+		return new TextDecoder().decode(bytes);
+	}
+
+	class CopyPage extends HTMLElement {
+		constructor() {
+			super();
+			const button = this.querySelector('button');
+			const label = this.querySelector('.sf-copy-page-label');
+			if (!button) return;
+
+			let resetTimer: ReturnType<typeof setTimeout> | undefined;
+
+			button.addEventListener('click', async () => {
+				try {
+					await navigator.clipboard.writeText(decodeB64(this.dataset.copyB64 ?? ''));
+				} catch {
+					return; // Clipboard unavailable (insecure context / denied) — no-op.
+				}
+				this.dataset.copied = 'true';
+				if (label) label.textContent = 'Copied';
+				clearTimeout(resetTimer);
+				resetTimer = setTimeout(() => {
+					delete this.dataset.copied;
+					if (label) label.textContent = 'Copy page';
+				}, 1500);
+			});
+		}
+	}
+
+	customElements.define('sf-copy-page', CopyPage);
+</script>

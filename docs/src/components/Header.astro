@@ -1,0 +1,84 @@
+---
+/*
+  Replaces Starlight's site header with a shadcn `sidebar-01`-style top bar:
+  sidebar toggle + breadcrumbs on the left, social links + theme toggle on the right.
+
+  On desktop the bar starts where the sidebar ends (see custom.css) so the
+  sidebar runs the full height of the viewport.
+*/
+import SocialIcons from 'virtual:starlight/components/SocialIcons';
+import ThemeSelect from 'virtual:starlight/components/ThemeSelect';
+import Breadcrumbs from './Breadcrumbs.astro';
+---
+
+<div class="sf-topbar">
+	<sf-sidebar-toggle>
+		<button type="button" class="sf-icon-button sf-sidebar-toggle" aria-label="Toggle sidebar">
+			<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+				<rect x="3" y="3" width="18" height="18" rx="2" />
+				<path d="M9 3v18" />
+			</svg>
+		</button>
+	</sf-sidebar-toggle>
+
+	<span class="sf-topbar-separator" aria-hidden="true"></span>
+
+	<Breadcrumbs />
+
+	<div class="sf-topbar-right print:hidden">
+		<div class="sf-social sl-flex sf-topbar-desktop">
+			<SocialIcons />
+		</div>
+
+		{/*
+			The only conversion action in the docs chrome. Points at the live hosted
+			instance, which is the one product destination that exists today — the
+			landing hero links to the same place as "Test Live Demo". Deliberately
+			NOT wrapped in `.sf-topbar-desktop`: social and theme move into the
+			mobile drawer below `md`, but this stays in the bar at every width.
+		*/}
+		<a
+			class="sf-topbar-cta"
+			href="https://demo.sparkfeed.dev"
+			target="_blank"
+			rel="noopener noreferrer"
+		>
+			<span>Live demo</span>
+			<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+				<path d="M7 7h10v10" />
+				<path d="M7 17 17 7" />
+			</svg>
+		</a>
+
+		<div class="sf-topbar-desktop">
+			<ThemeSelect />
+		</div>
+	</div>
+</div>
+
+<script>
+	const STORAGE_KEY = 'sf-sidebar';
+
+	class SidebarToggle extends HTMLElement {
+		constructor() {
+			super();
+			const button = this.querySelector('button');
+			button?.addEventListener('click', () => {
+				const root = document.documentElement;
+				const collapsed = root.dataset.sidebar === 'collapsed';
+				if (collapsed) {
+					delete root.dataset.sidebar;
+				} else {
+					root.dataset.sidebar = 'collapsed';
+				}
+				try {
+					localStorage.setItem(STORAGE_KEY, collapsed ? 'expanded' : 'collapsed');
+				} catch {
+					// Private browsing / storage disabled — the toggle still works for this page.
+				}
+			});
+		}
+	}
+
+	customElements.define('sf-sidebar-toggle', SidebarToggle);
+</script>

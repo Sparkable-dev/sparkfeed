@@ -1,0 +1,88 @@
+---
+title: Minimal UI & UX
+description: The design philosophy behind SparkFeed's interface, and why less is more when it comes to a reading tool.
+sidebar:
+  order: 1
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+## Design Philosophy
+
+SparkFeed is built around a single idea: **reading should be effortless**.
+
+Most productivity apps compete for your attention with notifications, banners, recommendations, and suggestions. SparkFeed does the opposite. It focuses entirely on helping you consume the content you've deliberately chosen to follow.
+
+This informed every design decision:
+
+- **No dashboard** with metrics, charts, or gamification
+- **No recommendations** or "you might also like" sections
+- **No distractions** outside the content itself
+- **No dark patterns** that keep you scrolling
+
+## Three-Panel Layout
+
+The UI is organized into three panels:
+
+```txt frame="none"
+┌─────────────────┬───────────────────┬─────────────────────────┐
+│                 │                   │                         │
+│   Sidebar       │   Article List    │   Article Reader        │
+│   (Feeds &      │   (Headlines)     │   (Full Content)        │
+│   Folders)      │                   │                         │
+│                 │                   │                         │
+└─────────────────┴───────────────────┴─────────────────────────┘
+```
+
+Each panel serves a clear purpose:
+
+| Panel | Role |
+|-------|------|
+| **Sidebar** | Navigation: browse feeds and folders |
+| **Article List** | Scanner: skim headlines and titles |
+| **Article Reader** | Focus: read the full article |
+
+On mobile, the three panels collapse into a single-column view with swipe navigation.
+
+## Typography
+
+SparkFeed uses the **Inter** typeface, which is specifically designed for screen readability. In the article reader:
+
+- Font size: `17px` (comfortable for extended reading)
+- Line height: `1.75` (generous spacing between lines)
+- Max content width: `680px` (prevents lines from becoming too long)
+- Paragraph spacing: `1.25rem`
+
+Research shows that lines longer than ~75 characters significantly reduce reading speed and comprehension. SparkFeed's max-width constraint keeps line lengths comfortable.
+
+## Color System
+
+SparkFeed uses a restrained, neutral palette:
+
+- **Background**: Deep navy (`#0f172a`) in dark mode, pure white in light
+- **Text**: Muted gray (`#cbd5e1`) in dark, dark slate in light
+- **Accent**: Indigo (`#6366f1`) for links, active states, and interactive elements
+- **Borders**: Subtle hairlines that define structure without visual weight
+
+<Aside type="tip" title="Why indigo?">
+  Indigo sits between blue (calm, trusted) and violet (creative, distinctive). It's been adopted by many developer tools (Linear, Railway, Doppler) for its professional yet expressive character.
+</Aside>
+
+## Interaction Design
+
+Small interactions matter in a reading app you use every day:
+
+- **Hover states:** Subtle `translateY(-1px)` lifts on interactive elements
+- **Transitions:** All state changes animate at `150ms ease` for smoothness without lag
+- **Focus rings:** Keyboard focus is always clearly visible for accessibility
+- **Loading states:** Skeleton screens instead of spinners for perceived performance
+
+## Accessibility
+
+SparkFeed is built to be accessible by default:
+
+- Semantic HTML throughout (`<main>`, `<nav>`, `<article>`, `<aside>`)
+- ARIA labels on icons and interactive elements
+- Keyboard navigation for all core actions
+- Sufficient color contrast ratios (WCAG AA compliant)
+- Respects `prefers-reduced-motion` for animations

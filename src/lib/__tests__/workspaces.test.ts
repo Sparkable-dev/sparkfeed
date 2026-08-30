@@ -3,6 +3,7 @@ import {
   organizationWorkspaceRef,
   personalWorkspaceName,
   personalWorkspaceRef,
+  workspacePlanLabel,
   workspaceRefForSession,
 } from "../workspaces"
 
@@ -38,6 +39,14 @@ describe("workspace contracts", () => {
 
   it("uses the approved personal workspace display name", () => {
     expect(personalWorkspaceName("Sudu")).toBe("Sudu's workspace")
+    expect(personalWorkspaceName("Tech Support")).toBe("Tech's workspace")
     expect(personalWorkspaceName("  ")).toBe("Personal workspace")
+  })
+
+  it("shows the resolved personal plan without claiming team billing", () => {
+    expect(workspacePlanLabel("personal_plus", false)).toBe("Personal+")
+    expect(workspacePlanLabel("free", false)).toBe("Free plan")
+    expect(workspacePlanLabel(null, false)).toBe("Personal workspace")
+    expect(workspacePlanLabel("pro", true)).toBe("Team workspace")
   })
 })

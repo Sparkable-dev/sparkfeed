@@ -77,5 +77,21 @@ describe("personal billing tab", () => {
       ).toBeTruthy()
     )
     expect(screen.queryByText("Upgrade to Personal+")).toBeNull()
+    expect(screen.getByText("Team plans are coming soon")).toBeTruthy()
+  })
+
+  it("waits for a pending checkout instead of offering another checkout", async () => {
+    getSummary.mockResolvedValue({
+      ...base,
+      plan: "free",
+      billingStatus: "checkout_pending",
+    })
+    render(<PersonalBillingTab />)
+
+    await waitFor(() =>
+      expect(screen.getByText("Confirming your payment")).toBeTruthy()
+    )
+    expect(screen.queryByText("Upgrade to Personal+")).toBeNull()
+    expect(screen.queryByRole("button", { name: "Choose monthly" })).toBeNull()
   })
 })

@@ -4,10 +4,12 @@ import { ChevronDownIcon, PlusIcon, User } from "lucide-react"
 import { CreateWorkspaceModal } from "./CreateWorkspaceModal"
 import { WorkspaceSettingsModal } from "./WorkspaceSettingsModal"
 import { UserSettingsModal } from "./UserSettingsModal"
+import type { EntitlementPlan } from "@/server/entitlements/types"
 import { authClient } from "@/lib/auth-client"
 import { DEMO_MODE } from "@/lib/demo"
 import { useWorkspaceCreationPermission } from "@/hooks/use-workspace-creation-permission"
-import { personalWorkspaceName } from "@/lib/workspaces"
+import { getPersonalBillingSummary } from "@/server/personal-billing-actions"
+import { personalWorkspaceName, workspacePlanLabel } from "@/lib/workspaces"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -32,6 +34,25 @@ export function TeamSwitcher() {
   const session = authClient.useSession()
   const user = session.data?.user
   const workspaceCreation = useWorkspaceCreationPermission()
+  const [personalPlan, setPersonalPlan] =
+    React.useState<EntitlementPlan | null>(null)
+
+  React.useEffect(() => {
+    if (DEMO_MODE || !user?.id) return
+
+    let active = true
+    void getPersonalBillingSummary()
+      .then((summary) => {
+        if (active) setPersonalPlan(summary.plan)
+      })
+      .catch(() => {
+        if (active) setPersonalPlan(null)
+      })
+
+    return () => {
+      active = false
+    }
+  }, [user?.id])
 
   const handleSwitch = async (id: string | null) => {
     if (DEMO_MODE) {
@@ -80,12 +101,12 @@ export function TeamSwitcher() {
                 <User className="size-4.5" />
               )}
             </div>
-            <div className="flex flex-col items-start gap-0.5 leading-none group-data-[collapsible=icon]:hidden">
-              <span className="truncate text-sm font-bold text-zinc-200">
+            <div className="flex min-w-0 flex-1 flex-col items-start gap-0.5 overflow-hidden leading-none group-data-[collapsible=icon]:hidden">
+              <span className="w-full truncate text-sm font-bold text-zinc-200">
                 {activeOrg?.name || personalWorkspaceName(user?.name)}
               </span>
-              <span className="text-[10px] font-medium text-zinc-500">
-                {activeOrg ? "Pro Plan" : "Free Plan"}
+              <span className="w-full truncate text-[10px] font-medium text-zinc-500">
+                {workspacePlanLabel(personalPlan, Boolean(activeOrg))}
               </span>
             </div>
             <ChevronDownIcon className="ml-auto size-3.5 text-zinc-500 group-data-[collapsible=icon]:hidden" />

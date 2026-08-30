@@ -10,6 +10,7 @@ import {
   repairFailedInitialPersonalCheckout,
   selectFreePersonalSources,
 } from "./billing/personal-lifecycle"
+import { reconcilePendingPersonalCheckout } from "./billing/personal-reconciliation"
 import type {
   BillingInterval,
   BillingStatus,
@@ -86,6 +87,18 @@ export const getPersonalBillingSummary = createServerFn({
     session.user.emailVerified
   )
   await repairFailedInitialPersonalCheckout(session.user.id)
+  try {
+    await reconcilePendingPersonalCheckout(
+      session.user.id,
+      dodoClient(),
+      currentDodoBillingConfig()
+    )
+  } catch (error) {
+    console.error(
+      "[billing] Pending checkout reconciliation failed:",
+      error instanceof Error ? error.message : "unknown error"
+    )
+  }
   const entitlements = await resolveEntitlements(workspace, {
     type: "session",
     userId: session.user.id,

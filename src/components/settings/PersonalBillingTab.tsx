@@ -32,8 +32,8 @@ export function PersonalBillingTab() {
   const [busy, setBusy] = useState<string | null>(null)
   const [selectedSources, setSelectedSources] = useState<Array<string>>([])
 
-  const load = useCallback(async () => {
-    setLoading(true)
+  const load = useCallback(async (background = false) => {
+    if (!background) setLoading(true)
     try {
       const next = await getPersonalBillingSummary()
       setSummary(next)
@@ -43,11 +43,13 @@ export function PersonalBillingTab() {
           .map((source) => source.id)
       )
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Could not load billing."
-      )
+      if (!background) {
+        toast.error(
+          error instanceof Error ? error.message : "Could not load billing."
+        )
+      }
     } finally {
-      setLoading(false)
+      if (!background) setLoading(false)
     }
   }, [])
 
@@ -56,8 +58,17 @@ export function PersonalBillingTab() {
       setLoading(false)
       return
     }
-    void load()
+    void load(false)
   }, [load])
+
+  useEffect(() => {
+    if (summary?.billingStatus !== "checkout_pending") return
+
+    const timer = window.setInterval(() => {
+      void load(true)
+    }, 2500)
+    return () => window.clearInterval(timer)
+  }, [load, summary?.billingStatus])
 
   const checkout = async (interval: "monthly" | "annual") => {
     setBusy(interval)
@@ -106,7 +117,7 @@ export function PersonalBillingTab() {
     try {
       await updateFreePersonalSources({ data: { sourceIds: selectedSources } })
       toast.success("Active no-RSS sources updated.")
-      await load()
+      await load(false)
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : "Sources could not be updated."
@@ -169,6 +180,7 @@ export function PersonalBillingTab() {
   const renewal = readableDate(summary.currentPeriodEnd)
   const grace = readableDate(summary.graceDeadline)
   const isPersonalPlus = summary.plan === "personal_plus"
+  const checkoutPending = summary.billingStatus === "checkout_pending"
 
   return (
     <div className="space-y-8">
@@ -247,7 +259,27 @@ export function PersonalBillingTab() {
         </CardContent>
       </Card>
 
-      {!isPersonalPlus ? (
+      {checkoutPending ? (
+        <Card className="border-primary/40">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Loader2 className="h-5 w-5 animate-spin text-primary" />
+              Confirming your payment
+            </CardTitle>
+            <CardDescription>
+              Dodo is finishing the subscription. This page checks the payment
+              automatically and will switch to Personal+ when it is active.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button variant="outline" onClick={() => load(false)}>
+              Check again
+            </Button>
+          </CardContent>
+        </Card>
+      ) : null}
+
+      {!isPersonalPlus && !checkoutPending ? (
         <Card>
           <CardHeader>
             <CardTitle>Upgrade to Personal+</CardTitle>
@@ -286,6 +318,18 @@ export function PersonalBillingTab() {
               </Button>
             </div>
           </CardContent>
+        </Card>
+      ) : null}
+
+      {isPersonalPlus ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>Team plans are coming soon</CardTitle>
+            <CardDescription>
+              Personal+ is for one person. Team and Enterprise workspaces will
+              be offered separately when collaborative plans launch.
+            </CardDescription>
+          </CardHeader>
         </Card>
       ) : null}
 

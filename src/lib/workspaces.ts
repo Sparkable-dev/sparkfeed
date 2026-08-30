@@ -1,4 +1,7 @@
-import type { WorkspaceRef } from "@/server/entitlements/types"
+import type {
+  EntitlementPlan,
+  WorkspaceRef,
+} from "@/server/entitlements/types"
 
 export function personalWorkspaceRef(userId: string): WorkspaceRef {
   return { type: "personal", id: userId }
@@ -19,5 +22,19 @@ export function workspaceRefForSession(
 
 export function personalWorkspaceName(name: string | null | undefined): string {
   const clean = name?.trim()
-  return clean ? `${clean}'s workspace` : "Personal workspace"
+  const firstName = clean?.split(/\s+/)[0]
+  return firstName ? `${firstName}'s workspace` : "Personal workspace"
+}
+
+export function workspacePlanLabel(
+  plan: EntitlementPlan | null,
+  organization: boolean
+): string {
+  if (organization) return "Team workspace"
+  if (plan === "personal_plus") return "Personal+"
+  if (plan === "community") return "Community Edition"
+  if (plan === "pro") return "Pro plan"
+  if (plan === "enterprise") return "Enterprise"
+  if (plan === "free") return "Free plan"
+  return "Personal workspace"
 }

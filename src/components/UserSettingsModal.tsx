@@ -3,7 +3,6 @@ import {
   AlertTriangle,
   Camera,
   Loader2,
-  Lock,
   Monitor,
 } from "lucide-react"
 import { toast } from "sonner"
@@ -37,8 +36,8 @@ import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { Switch } from "@/components/ui/switch"
 import { Card, CardContent } from "@/components/ui/card"
-import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Textarea } from "@/components/ui/textarea"
+import { PersonalBillingTab } from "@/components/settings/PersonalBillingTab"
 import { requestPasswordReset } from "@/server/email-actions"
 import { submitBillingRequest } from "@/server/billing-actions"
 
@@ -412,51 +411,7 @@ export function UserSettingsModal({ open, onOpenChange }: UserSettingsModalProps
 
               {/* Billing Tab */}
               <TabsContent value="billing" className="m-0 space-y-6 animate-in fade-in duration-300">
-                <div className="space-y-2">
-                  <h3 className="text-2xl font-bold text-zinc-100">Billing</h3>
-                  <p className="text-sm text-zinc-500">Manage your plan and subscription</p>
-                </div>
-
-                <Alert variant="warning">
-                  <AlertTriangle className="h-4 w-4" />
-                  <AlertDescription>
-                    You are using the Community Edition — Billing management is not available on this plan. Please contact us to upgrade to a licensed version.
-                  </AlertDescription>
-                </Alert>
-
-                <Card className="bg-zinc-900/30 border-zinc-800/50 shadow-sm rounded-xl overflow-hidden">
-                  <CardContent className="p-0">
-                    <div className="p-6 flex items-center justify-between border-b border-zinc-800/50">
-                      <div className="space-y-1">
-                        <p className="text-sm font-medium text-zinc-100">Current plan</p>
-                        <p className="text-sm text-zinc-400 flex items-center gap-2">
-                          Community Edition · Free
-                          <Badge variant="secondary" className="bg-zinc-800 text-zinc-300 hover:bg-zinc-800">Free</Badge>
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="p-6 flex items-center justify-between opacity-50 bg-zinc-950/50">
-                      <div className="space-y-1">
-                        <p className="text-sm font-medium text-zinc-100">Payment method</p>
-                        <p className="text-sm text-zinc-400">No card on file</p>
-                      </div>
-                      <Lock className="h-4 w-4 text-zinc-500" />
-                    </div>
-
-                    <div className="p-4 bg-zinc-950/30 border-t border-zinc-800/50 flex items-center gap-2 text-xs text-zinc-500">
-                      <Lock className="h-3.5 w-3.5" />
-                      Billing settings are managed by your admin only.
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Button
-                  onClick={() => setIsContactDialogOpen(true)}
-                  className="font-bold h-11 px-8 rounded-xl"
-                >
-                  Contact us to upgrade
-                </Button>
+                <PersonalBillingTab />
               </TabsContent>
 
               {/* Notifications Tab */}

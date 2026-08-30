@@ -1,17 +1,25 @@
 import { randomUUID } from "node:crypto"
-import { and, count, desc, eq, inArray } from "drizzle-orm"
+import { and, count, desc, eq, inArray, isNull } from "drizzle-orm"
 import { z } from "zod"
 import { createServerFn } from "@tanstack/react-start"
 import { fetchAndInsertArticles } from "./utils/fetch-articles"
 import { ingestSource } from "./utils/fetch-page-articles"
 import { safeFetch, safeFetchText } from "./utils/fetch"
-import { checkCanEmbed, extractReadable, sanitizeArticleHtml } from "./utils/extract"
-import {  resolveFeed } from "./utils/detectRSS"
-import {  discoverMoreFeeds } from "./utils/discover"
-import {  feedError, toFeedError } from "./utils/feed-errors"
+import {
+  checkCanEmbed,
+  extractReadable,
+  sanitizeArticleHtml,
+} from "./utils/extract"
+import { resolveFeed } from "./utils/detectRSS"
+import { discoverMoreFeeds } from "./utils/discover"
+import { feedError, toFeedError } from "./utils/feed-errors"
 import { resolveWorkspaceContext, resolveWorkspaceId } from "./services/context"
 import { ARTICLE_LIST_COLUMNS } from "./services/projections"
-import { NOT_FOUND_MSG, assertOwnsFeed, assertOwnsFolder } from "./services/ownership"
+import {
+  NOT_FOUND_MSG,
+  assertOwnsFeed,
+  assertOwnsFolder,
+} from "./services/ownership"
 import { deleteFolderTree } from "./services/folder-delete"
 import {
   cleanFolderName,
@@ -20,7 +28,10 @@ import {
   insertFeedRows,
   resolveDestination,
 } from "./services/feed-write"
-import { recallResolved, rememberResolved } from "./services/feed-resolution-cache"
+import {
+  recallResolved,
+  rememberResolved,
+} from "./services/feed-resolution-cache"
 import { resolveFeedBatch as resolveBatch } from "./services/feed-resolve-batch"
 import {
   articleInWorkspace,
@@ -29,15 +40,16 @@ import {
 } from "./services/tenancy"
 import { FEED_ORDER, FOLDER_ORDER } from "./services/ordering"
 import { emptySignals } from "./utils/feed-signals"
-import type {FeedError} from "./utils/feed-errors";
-import type {DiscoveredFeed} from "./utils/discover";
-import type {ResolvedFeed} from "./utils/detectRSS";
-import type {FeedSignals} from "./utils/feed-signals";
+import type { FeedError } from "./utils/feed-errors"
+import type { DiscoveredFeed } from "./utils/discover"
+import type { ResolvedFeed } from "./utils/detectRSS"
+import type { FeedSignals } from "./utils/feed-signals"
 import { articles, feedShares, feeds, folderShares, folders } from "@/db/schema"
 import { db } from "@/db/index"
 import { feedUrlKey, feedUrlSchema } from "@/lib/validation"
 import { MAX_BATCH_URLS, MAX_BULK_FEEDS } from "@/lib/bulk-urls"
 import { DEMO_MODE } from "@/lib/demo"
+import { assertNoRssSourceCapacity } from "@/server/entitlements/enforce"
 
 function previewDomain(url: string): string {
   try {
@@ -53,136 +65,154 @@ const DEMO_LOCKED_MSG = "This feature is locked in demo mode"
 // FETCH ALL DATA
 // ─────────────────────────────────────────────
 
-export const getAllData = createServerFn({ method: "GET" }).handler(async () => {
-  const { workspaceId, demo } = await resolveWorkspaceContext()
+export const getAllData = createServerFn({ method: "GET" }).handler(
+  async () => {
+    const { workspaceId, demo } = await resolveWorkspaceContext()
 
-  if (demo) {
-    // Ensure schema exists before any query — handles fresh/wiped demo db.
-    const { ensureDemoSchema } = await import("@/server/demo-seeder")
-    await ensureDemoSchema()
-  }
-
-  const workspaceFilter = folderInWorkspace(workspaceId)
-  const feedWorkspaceFilter = feedInWorkspace(workspaceId)
-  const fetchAll = () => Promise.all([
-    db.select({
-      id: folders.id,
-      name: folders.name,
-      workspaceId: folders.workspaceId,
-      createdAt: folders.createdAt,
-      isShared: folderShares.isShared,
-      password: folderShares.password,
-    })
-    .from(folders)
-    .leftJoin(folderShares, eq(folders.id, folderShares.folderId))
-    .where(workspaceFilter)
-    .orderBy(...FOLDER_ORDER),
-    // Joined the same way folders are, above. Without it `feeds` came back with
-    // no share columns at all, so every feed row in the sidebar reported itself
-    // as private no matter what `feed_shares` said.
-    db.select({
-      id: feeds.id,
-      name: feeds.name,
-      url: feeds.url,
-      folderId: feeds.folderId,
-      workspaceId: feeds.workspaceId,
-      // Marks a watched page in the sidebar and on /sources. A page-read source
-      // is a plausible-looking feed that is only as good as someone else's
-      // markup, and saying so is the difference between "this is quiet" and
-      // "this stopped working".
-      kind: feeds.kind,
-      includeKeywords: feeds.includeKeywords,
-      excludeKeywords: feeds.excludeKeywords,
-      createdAt: feeds.createdAt,
-      // Drives the top bar's "Updated 4m ago". Cheap here — one more column on
-      // a query already running — versus a second round trip on every page.
-      lastFetchedAt: feeds.lastFetchedAt,
-      isShared: feedShares.isShared,
-      password: feedShares.password,
-    })
-    .from(feeds)
-    .leftJoin(feedShares, eq(feeds.id, feedShares.feedId))
-    .where(feedWorkspaceFilter)
-    .orderBy(...FEED_ORDER),
-  ])
-
-  // Destructured into fresh bindings because the demo branch below reassigns
-  // the feed lists after seeding, while the folder rows are only ever mapped.
-  const [foldersRaw, initialFeeds] = await fetchAll()
-  let allFeeds = initialFeeds
-
-  let allFolders = foldersRaw.map(f => ({
-    id: f.id,
-    name: f.name,
-    workspaceId: f.workspaceId,
-    createdAt: f.createdAt,
-    isShared: !!f.isShared,
-    hasPassword: !!f.password
-  }))
-
-  if (allFolders.length === 0) {
-    if (DEMO_MODE) {
-      // Seed demo workspace on first load
-      const { seedDemoData } = await import("@/server/demo-seeder")
-      await seedDemoData()
-      const [reseeded, reseedFeeds] = await fetchAll()
-      allFolders = reseeded.map(f => ({
-        id: f.id, name: f.name, workspaceId: f.workspaceId,
-        createdAt: f.createdAt, isShared: !!f.isShared, hasPassword: !!f.password
-      }))
-      allFeeds = reseedFeeds
-    } else {
-      // Create default General folder for real users
-      const id = randomUUID();
-      const name = "General";
-      await db.insert(folders).values({ id, name, workspaceId });
-      allFolders = [{ id, name, workspaceId, createdAt: new Date().toISOString(), isShared: false } as any];
+    if (demo) {
+      // Ensure schema exists before any query — handles fresh/wiped demo db.
+      const { ensureDemoSchema } = await import("@/server/demo-seeder")
+      await ensureDemoSchema()
     }
-  }
 
-  // Collapse the joined share row to the two booleans the client needs. The
-  // password hash must not leave the server, so it is dropped here rather than
-  // relied on being ignored downstream.
-  const allFeedsWithShare = allFeeds.map(f => {
-    const { password, ...rest } = f
-    return { ...rest, isShared: !!f.isShared, hasPassword: !!password }
-  })
+    const workspaceFilter = folderInWorkspace(workspaceId)
+    const feedWorkspaceFilter = feedInWorkspace(workspaceId)
+    const fetchAll = () =>
+      Promise.all([
+        db
+          .select({
+            id: folders.id,
+            name: folders.name,
+            workspaceId: folders.workspaceId,
+            createdAt: folders.createdAt,
+            isShared: folderShares.isShared,
+            password: folderShares.password,
+          })
+          .from(folders)
+          .leftJoin(folderShares, eq(folders.id, folderShares.folderId))
+          .where(workspaceFilter)
+          .orderBy(...FOLDER_ORDER),
+        // Joined the same way folders are, above. Without it `feeds` came back with
+        // no share columns at all, so every feed row in the sidebar reported itself
+        // as private no matter what `feed_shares` said.
+        db
+          .select({
+            id: feeds.id,
+            name: feeds.name,
+            url: feeds.url,
+            folderId: feeds.folderId,
+            workspaceId: feeds.workspaceId,
+            // Marks a watched page in the sidebar and on /sources. A page-read source
+            // is a plausible-looking feed that is only as good as someone else's
+            // markup, and saying so is the difference between "this is quiet" and
+            // "this stopped working".
+            kind: feeds.kind,
+            includeKeywords: feeds.includeKeywords,
+            excludeKeywords: feeds.excludeKeywords,
+            createdAt: feeds.createdAt,
+            // Drives the top bar's "Updated 4m ago". Cheap here — one more column on
+            // a query already running — versus a second round trip on every page.
+            lastFetchedAt: feeds.lastFetchedAt,
+            isShared: feedShares.isShared,
+            password: feedShares.password,
+          })
+          .from(feeds)
+          .leftJoin(feedShares, eq(feeds.id, feedShares.feedId))
+          .where(feedWorkspaceFilter)
+          .orderBy(...FEED_ORDER),
+      ])
 
-  // Article reads are the most fragile part of this loader (they are the widest
-  // queries and the first thing to break on schema drift). A failure here
-  // degrades the page to "no articles yet" instead of taking down every
-  // authenticated route through the router's error boundary.
-  let degraded = false
+    // Destructured into fresh bindings because the demo branch below reassigns
+    // the feed lists after seeding, while the folder rows are only ever mapped.
+    const [foldersRaw, initialFeeds] = await fetchAll()
+    let allFeeds = initialFeeds
 
-  // Fetch RSS articles
-  const feedIds = allFeeds.map(f => f.id);
-  let rssArticles: Array<any> = [];
-  if (feedIds.length > 0) {
-    try {
-      rssArticles = await db.select(ARTICLE_LIST_COLUMNS)
-        .from(articles)
-        .where(inArray(articles.feedId, feedIds))
-        .orderBy(desc(articles.publishedAt))
-        .limit(200);
-    } catch (err) {
-      console.error("[getAllData] Failed to load articles:", err)
-      degraded = true
+    let allFolders = foldersRaw.map((f) => ({
+      id: f.id,
+      name: f.name,
+      workspaceId: f.workspaceId,
+      createdAt: f.createdAt,
+      isShared: !!f.isShared,
+      hasPassword: !!f.password,
+    }))
+
+    if (allFolders.length === 0) {
+      if (DEMO_MODE) {
+        // Seed demo workspace on first load
+        const { seedDemoData } = await import("@/server/demo-seeder")
+        await seedDemoData()
+        const [reseeded, reseedFeeds] = await fetchAll()
+        allFolders = reseeded.map((f) => ({
+          id: f.id,
+          name: f.name,
+          workspaceId: f.workspaceId,
+          createdAt: f.createdAt,
+          isShared: !!f.isShared,
+          hasPassword: !!f.password,
+        }))
+        allFeeds = reseedFeeds
+      } else {
+        // Create default General folder for real users
+        const id = randomUUID()
+        const name = "General"
+        await db.insert(folders).values({ id, name, workspaceId })
+        allFolders = [
+          {
+            id,
+            name,
+            workspaceId,
+            createdAt: new Date().toISOString(),
+            isShared: false,
+          } as any,
+        ]
+      }
     }
-  }
 
-  /*
+    // Collapse the joined share row to the two booleans the client needs. The
+    // password hash must not leave the server, so it is dropped here rather than
+    // relied on being ignored downstream.
+    const allFeedsWithShare = allFeeds.map((f) => {
+      const { password, ...rest } = f
+      return { ...rest, isShared: !!f.isShared, hasPassword: !!password }
+    })
+
+    // Article reads are the most fragile part of this loader (they are the widest
+    // queries and the first thing to break on schema drift). A failure here
+    // degrades the page to "no articles yet" instead of taking down every
+    // authenticated route through the router's error boundary.
+    let degraded = false
+
+    // Fetch RSS articles
+    const feedIds = allFeeds.map((f) => f.id)
+    let rssArticles: Array<any> = []
+    if (feedIds.length > 0) {
+      try {
+        rssArticles = await db
+          .select(ARTICLE_LIST_COLUMNS)
+          .from(articles)
+          .where(inArray(articles.feedId, feedIds))
+          .orderBy(desc(articles.publishedAt))
+          .limit(200)
+      } catch (err) {
+        console.error("[getAllData] Failed to load articles:", err)
+        degraded = true
+      }
+    }
+
+    /*
     One list, one query. Watched pages used to be read from `scraped_articles`
     here and merged in with `feedId: null` and `type: 'scraped'`, which is why
     they could never be filtered, opened or counted like anything else. They are
     `articles` rows now, so they arrive above with everything else.
   */
-  return {
-    folders: allFolders,
-    feeds: allFeedsWithShare,
-    articles: rssArticles,
-    degraded,
+    return {
+      folders: allFolders,
+      feeds: allFeedsWithShare,
+      articles: rssArticles,
+      degraded,
+    }
   }
-})
+)
 
 // ─────────────────────────────────────────────
 // CREATE FOLDER
@@ -221,9 +251,20 @@ type CreatedFeed = {
 
 export type CreateFeedResult =
   /** `partial` means some articles were rejected but the feed is usable. */
-  | { status: 'rss'; feed: CreatedFeed; articleCount: number; partial: boolean; type: 'rss' }
-  | { status: 'scraped'; feed: CreatedFeed; articleCount: number; type: 'scraped' }
-  | { status: 'error'; error: FeedError }
+  | {
+      status: "rss"
+      feed: CreatedFeed
+      articleCount: number
+      partial: boolean
+      type: "rss"
+    }
+  | {
+      status: "scraped"
+      feed: CreatedFeed
+      articleCount: number
+      type: "scraped"
+    }
+  | { status: "error"; error: FeedError }
 
 /**
  * `assertOwnsFeed` / `assertOwnsFolder` / `NOT_FOUND_MSG` moved to
@@ -242,7 +283,7 @@ export type FeedCandidate = {
    * `primary` is the site's own feed, `section` one of its others, and `page` a
    * listing we would read as a feed because there is no feed at all.
    */
-  kind: 'primary' | 'section' | 'page'
+  kind: "primary" | "section" | "page"
   alreadyAdded: boolean
   /** Stable identity, so the deep pass does not re-offer a feed already listed. */
   identity: string
@@ -255,16 +296,21 @@ export type FeedCandidate = {
 }
 
 export type PreviewFeedResult =
-  | { status: 'ok'; origin: string; siteName: string; feeds: Array<FeedCandidate> }
-  | { status: 'error'; error: FeedError }
+  | {
+      status: "ok"
+      origin: string
+      siteName: string
+      feeds: Array<FeedCandidate>
+    }
+  | { status: "error"; error: FeedError }
 
 export type DiscoverFeedsResult =
-  | { status: 'ok'; feeds: Array<FeedCandidate> }
-  | { status: 'error'; error: FeedError }
+  | { status: "ok"; feeds: Array<FeedCandidate> }
+  | { status: "error"; error: FeedError }
 
 export type FindPagesResult =
-  | { status: 'ok'; pages: Array<FeedCandidate> }
-  | { status: 'error'; error: FeedError }
+  | { status: "ok"; pages: Array<FeedCandidate> }
+  | { status: "error"; error: FeedError }
 
 /** One row of the bulk tab: what was typed, and what came back. */
 export type BatchFeedResult = {
@@ -274,14 +320,14 @@ export type BatchFeedResult = {
 }
 
 export type ResolveFeedBatchResult =
-  | { status: 'ok'; results: Array<BatchFeedResult> }
-  | { status: 'error'; error: FeedError }
+  | { status: "ok"; results: Array<BatchFeedResult> }
+  | { status: "error"; error: FeedError }
 
 /** Human label for a site, used to pre-fill the folder name. */
 function siteNameFor(origin: string, primaryTitle: string | null): string {
   if (primaryTitle) return primaryTitle
   try {
-    return new URL(origin).hostname.replace(/^www\./, '')
+    return new URL(origin).hostname.replace(/^www\./, "")
   } catch {
     return origin
   }
@@ -302,7 +348,10 @@ function siteNameFor(origin: string, primaryTitle: string | null): string {
  * `node:net` import. The build fails with `"isIP" is not exported by
  * "__vite-browser-external"`. Same trap as the note in `sources-write.ts`.
  */
-function toCandidate(existing: Set<string>, feed: DiscoveredFeed): FeedCandidate {
+function toCandidate(
+  existing: Set<string>,
+  feed: DiscoveredFeed
+): FeedCandidate {
   return {
     url: feed.url,
     title: feed.title,
@@ -326,7 +375,7 @@ function toCandidate(existing: Set<string>, feed: DiscoveredFeed): FeedCandidate
 export const previewFeed = createServerFn({ method: "POST" })
   .validator((d: any) => z.object({ url: feedUrlSchema }).parse(d))
   .handler(async ({ data }): Promise<PreviewFeedResult> => {
-    if (DEMO_MODE) return { status: 'error', error: feedError('demo_locked') }
+    if (DEMO_MODE) return { status: "error", error: feedError("demo_locked") }
 
     const workspaceId = await resolveWorkspaceId()
     const origin = new URL(data.url).origin
@@ -335,21 +384,24 @@ export const previewFeed = createServerFn({ method: "POST" })
     try {
       resolved = await resolveFeed(data.url)
     } catch (err) {
-      return { status: 'error', error: toFeedError(err) }
+      return { status: "error", error: toFeedError(err) }
     }
 
     // Named for what it holds rather than `feeds`, which is the table imported
     // at the top of this module and was being shadowed here.
     const existing = await existingFeedKeys(workspaceId)
     const candidates = resolved
-      ? [toCandidate(existing, { ...resolved, kind: 'primary', section: null })]
+      ? [toCandidate(existing, { ...resolved, kind: "primary", section: null })]
       : []
 
     // What we proved, so the submit does not have to prove it again.
-    if (resolved) rememberResolved(workspaceId, [{ url: resolved.url, title: resolved.title }])
+    if (resolved)
+      rememberResolved(workspaceId, [
+        { url: resolved.url, title: resolved.title },
+      ])
 
     return {
-      status: 'ok',
+      status: "ok",
       origin,
       siteName: siteNameFor(origin, resolved?.title ?? null),
       feeds: candidates,
@@ -365,14 +417,16 @@ export const previewFeed = createServerFn({ method: "POST" })
  */
 export const discoverFeeds = createServerFn({ method: "POST" })
   .validator((d: any) =>
-    z.object({
-      origin: feedUrlSchema,
-      anchorUrl: z.string().nullable().optional(),
-      known: z.array(z.string()).max(50).optional(),
-    }).parse(d)
+    z
+      .object({
+        origin: feedUrlSchema,
+        anchorUrl: z.string().nullable().optional(),
+        known: z.array(z.string()).max(50).optional(),
+      })
+      .parse(d)
   )
   .handler(async ({ data }): Promise<DiscoverFeedsResult> => {
-    if (DEMO_MODE) return { status: 'error', error: feedError('demo_locked') }
+    if (DEMO_MODE) return { status: "error", error: feedError("demo_locked") }
 
     const workspaceId = await resolveWorkspaceId()
 
@@ -385,11 +439,11 @@ export const discoverFeeds = createServerFn({ method: "POST" })
       const existing = await existingFeedKeys(workspaceId)
       rememberResolved(
         workspaceId,
-        found.map((f) => ({ url: f.url, title: f.title })),
+        found.map((f) => ({ url: f.url, title: f.title }))
       )
-      return { status: 'ok', feeds: found.map((f) => toCandidate(existing, f)) }
+      return { status: "ok", feeds: found.map((f) => toCandidate(existing, f)) }
     } catch (err) {
-      return { status: 'error', error: toFeedError(err) }
+      return { status: "error", error: toFeedError(err) }
     }
   })
 
@@ -403,29 +457,34 @@ export const discoverFeeds = createServerFn({ method: "POST" })
 export const findPages = createServerFn({ method: "POST" })
   .validator((d: any) => z.object({ url: feedUrlSchema }).parse(d))
   .handler(async ({ data }): Promise<FindPagesResult> => {
-    if (DEMO_MODE) return { status: 'error', error: feedError('demo_locked') }
+    if (DEMO_MODE) return { status: "error", error: feedError("demo_locked") }
 
     const workspaceId = await resolveWorkspaceId()
 
     try {
-      const { discoverReadablePages } = await import('./services/page-discovery')
+      const { discoverReadablePages } =
+        await import("./services/page-discovery")
       const pages = await discoverReadablePages(data.url)
       const existing = await existingFeedKeys(workspaceId)
 
       rememberResolved(
         workspaceId,
-        pages.map((p) => ({ url: p.url, title: p.title, kind: 'page' as const })),
+        pages.map((p) => ({
+          url: p.url,
+          title: p.title,
+          kind: "page" as const,
+        }))
       )
 
       return {
-        status: 'ok',
+        status: "ok",
         pages: pages.map((page) => ({
           url: page.url,
           title: page.title,
           itemCount: page.itemCount,
           sampleTitles: page.sampleTitles,
           section: page.section,
-          kind: 'page' as const,
+          kind: "page" as const,
           alreadyAdded: existing.has(feedUrlKey(page.url)),
           identity: `page::${feedUrlKey(page.url)}`,
           /*
@@ -438,7 +497,7 @@ export const findPages = createServerFn({ method: "POST" })
         })),
       }
     } catch (err) {
-      return { status: 'error', error: toFeedError(err) }
+      return { status: "error", error: toFeedError(err) }
     }
   })
 
@@ -452,10 +511,12 @@ export const findPages = createServerFn({ method: "POST" })
  */
 export const resolveFeedBatch = createServerFn({ method: "POST" })
   .validator((d: any) =>
-    z.object({ urls: z.array(feedUrlSchema).min(1).max(MAX_BATCH_URLS) }).parse(d)
+    z
+      .object({ urls: z.array(feedUrlSchema).min(1).max(MAX_BATCH_URLS) })
+      .parse(d)
   )
   .handler(async ({ data }): Promise<ResolveFeedBatchResult> => {
-    if (DEMO_MODE) return { status: 'error', error: feedError('demo_locked') }
+    if (DEMO_MODE) return { status: "error", error: feedError("demo_locked") }
 
     const workspaceId = await resolveWorkspaceId()
     const existing = await existingFeedKeys(workspaceId)
@@ -466,16 +527,16 @@ export const resolveFeedBatch = createServerFn({ method: "POST" })
       workspaceId,
       resolved
         .filter((r) => r.feed)
-        .map((r) => ({ url: r.feed!.url, title: r.feed!.title })),
+        .map((r) => ({ url: r.feed!.url, title: r.feed!.title }))
     )
 
     return {
-      status: 'ok',
+      status: "ok",
       results: resolved.map((r) => ({
         input: r.input,
         error: r.error,
         feed: r.feed
-          ? toCandidate(existing, { ...r.feed, kind: 'primary', section: null })
+          ? toCandidate(existing, { ...r.feed, kind: "primary", section: null })
           : null,
       })),
     }
@@ -505,7 +566,8 @@ async function addRssFeed(opts: {
   const { workspaceId, url, name, folderId } = opts
 
   const existing = await existingFeedKeys(workspaceId)
-  if (existing.has(feedUrlKey(url))) return { status: 'error', error: feedError('duplicate') }
+  if (existing.has(feedUrlKey(url)))
+    return { status: "error", error: feedError("duplicate") }
 
   const id = randomUUID()
   await db.insert(feeds).values({
@@ -527,17 +589,29 @@ async function addRssFeed(opts: {
     // is how a broken schema stayed invisible for weeks.
     if (result.inserted === 0 && result.failed > 0) {
       console.error(
-        `[addRssFeed] All ${result.failed} article inserts failed for ${url}, rolling back feed.`,
+        `[addRssFeed] All ${result.failed} article inserts failed for ${url}, rolling back feed.`
       )
-      await db.delete(feeds).where(eq(feeds.id, id)).catch(() => {})
-      return { status: 'error', error: feedError('internal') }
+      await db
+        .delete(feeds)
+        .where(eq(feeds.id, id))
+        .catch(() => {})
+      return { status: "error", error: feedError("internal") }
     }
 
-    return { status: 'rss', feed, articleCount: result.inserted, partial: result.failed > 0, type: 'rss' }
+    return {
+      status: "rss",
+      feed,
+      articleCount: result.inserted,
+      partial: result.failed > 0,
+      type: "rss",
+    }
   } catch (err) {
     console.error("[addRssFeed] Article ingest failed, rolling back feed:", err)
-    await db.delete(feeds).where(eq(feeds.id, id)).catch(() => {})
-    return { status: 'error', error: toFeedError(err) }
+    await db
+      .delete(feeds)
+      .where(eq(feeds.id, id))
+      .catch(() => {})
+    return { status: "error", error: toFeedError(err) }
   }
 }
 
@@ -563,14 +637,17 @@ async function addPageFeed(opts: {
   const { workspaceId, url, name, folderId } = opts
 
   const existing = await existingFeedKeys(workspaceId)
-  if (existing.has(feedUrlKey(url))) return { status: 'error', error: feedError('duplicate') }
+  if (existing.has(feedUrlKey(url)))
+    return { status: "error", error: feedError("duplicate") }
+
+  if (workspaceId) await assertNoRssSourceCapacity(workspaceId, 1)
 
   const id = randomUUID()
   await db.insert(feeds).values({
     id,
     name,
     url,
-    kind: 'page',
+    kind: "page",
     folderId,
     workspaceId,
     includeKeywords: JSON.stringify([]),
@@ -578,34 +655,40 @@ async function addPageFeed(opts: {
   })
 
   try {
-    const result = await ingestSource(id, url, 'page')
+    const result = await ingestSource(id, url, "page")
     if (result.inserted === 0) {
-      await db.delete(feeds).where(eq(feeds.id, id)).catch(() => {})
-      return { status: 'error', error: feedError('no_items') }
+      await db
+        .delete(feeds)
+        .where(eq(feeds.id, id))
+        .catch(() => {})
+      return { status: "error", error: feedError("no_items") }
     }
     return {
-      status: 'scraped',
+      status: "scraped",
       feed: { id, name, url, folderId, workspaceId },
       articleCount: result.inserted,
-      type: 'scraped',
+      type: "scraped",
     }
   } catch (err) {
-    console.error('[addPageFeed] Page ingest failed, rolling back source:', err)
-    await db.delete(feeds).where(eq(feeds.id, id)).catch(() => {})
-    return { status: 'error', error: toFeedError(err) }
+    console.error("[addPageFeed] Page ingest failed, rolling back source:", err)
+    await db
+      .delete(feeds)
+      .where(eq(feeds.id, id))
+      .catch(() => {})
+    return { status: "error", error: toFeedError(err) }
   }
 }
 
 export type CreateFeedsResult =
   | {
-      status: 'ok'
+      status: "ok"
       folderId: string | null
       added: Array<{ id: string; url: string; name: string }>
       /** Already in the workspace. Not a failure — just nothing to do. */
       skipped: Array<{ url: string; name: string }>
       failed: Array<{ url: string; name: string; message: string }>
     }
-  | { status: 'error'; error: FeedError }
+  | { status: "error"; error: FeedError }
 
 /**
  * Adds a batch of already-checked feeds, optionally into a folder it creates.
@@ -627,27 +710,32 @@ export type CreateFeedsResult =
  */
 export const createFeeds = createServerFn({ method: "POST" })
   .validator((d: any) =>
-    z.object({
-      feeds: z
-        .array(
+    z
+      .object({
+        feeds: z
+          .array(
+            z.object({
+              url: feedUrlSchema,
+              name: z.string().min(1),
+              /** `page` for a site with no feed, read from its listing. */
+              kind: z.enum(["rss", "page"]).optional().default("rss"),
+            })
+          )
+          .min(1)
+          .max(MAX_BULK_FEEDS),
+        destination: z.discriminatedUnion("kind", [
+          z.object({ kind: z.literal("none") }),
           z.object({
-            url: feedUrlSchema,
-            name: z.string().min(1),
-            /** `page` for a site with no feed, read from its listing. */
-            kind: z.enum(['rss', 'page']).optional().default('rss'),
+            kind: z.literal("existing"),
+            folderId: z.string().min(1),
           }),
-        )
-        .min(1)
-        .max(MAX_BULK_FEEDS),
-      destination: z.discriminatedUnion('kind', [
-        z.object({ kind: z.literal('none') }),
-        z.object({ kind: z.literal('existing'), folderId: z.string().min(1) }),
-        z.object({ kind: z.literal('new'), name: z.string().min(1) }),
-      ]),
-    }).parse(d)
+          z.object({ kind: z.literal("new"), name: z.string().min(1) }),
+        ]),
+      })
+      .parse(d)
   )
   .handler(async ({ data }): Promise<CreateFeedsResult> => {
-    if (DEMO_MODE) return { status: 'error', error: feedError('demo_locked') }
+    if (DEMO_MODE) return { status: "error", error: feedError("demo_locked") }
 
     const workspaceId = await resolveWorkspaceId()
 
@@ -664,10 +752,12 @@ export const createFeeds = createServerFn({ method: "POST" })
       through the feed resolver would report `not_a_feed`, which is true and
       unhelpful: the point of a watched page is that it is not one.
     */
-    const unknown = data.feeds.filter((f) => !recallResolved(workspaceId, f.url))
+    const unknown = data.feeds.filter(
+      (f) => !recallResolved(workspaceId, f.url)
+    )
     const proven = new Map<string, string>()
 
-    const unknownFeeds = unknown.filter((f) => f.kind !== 'page')
+    const unknownFeeds = unknown.filter((f) => f.kind !== "page")
     if (unknownFeeds.length > 0) {
       const results = await resolveBatch(unknownFeeds.map((f) => f.url))
       for (let i = 0; i < results.length; i++) {
@@ -676,18 +766,21 @@ export const createFeeds = createServerFn({ method: "POST" })
         else {
           failed.push({
             ...unknownFeeds[i],
-            message: (result.error ?? feedError('not_a_feed')).message,
+            message: (result.error ?? feedError("not_a_feed")).message,
           })
         }
       }
     }
 
-    for (const item of unknown.filter((f) => f.kind === 'page')) {
+    for (const item of unknown.filter((f) => f.kind === "page")) {
       try {
-        const { res, text } = await safeFetchText(item.url, { timeoutMs: 10_000 })
-        const { looksLikeListing } = await import('./utils/page-feed')
-        if (res.ok && looksLikeListing(text, item.url)) proven.set(item.url, item.url)
-        else failed.push({ ...item, message: feedError('not_a_feed').message })
+        const { res, text } = await safeFetchText(item.url, {
+          timeoutMs: 10_000,
+        })
+        const { looksLikeListing } = await import("./utils/page-feed")
+        if (res.ok && looksLikeListing(text, item.url))
+          proven.set(item.url, item.url)
+        else failed.push({ ...item, message: feedError("not_a_feed").message })
       } catch (err) {
         failed.push({ ...item, message: toFeedError(err).message })
       }
@@ -699,7 +792,8 @@ export const createFeeds = createServerFn({ method: "POST" })
     const seen = new Set<string>()
 
     for (const item of data.feeds) {
-      const url = recallResolved(workspaceId, item.url)?.url ?? proven.get(item.url)
+      const url =
+        recallResolved(workspaceId, item.url)?.url ?? proven.get(item.url)
       if (!url) continue // already reported in `failed` above
 
       const key = feedUrlKey(url)
@@ -712,7 +806,7 @@ export const createFeeds = createServerFn({ method: "POST" })
     }
 
     if (ready.length === 0) {
-      return { status: 'ok', folderId: null, added: [], skipped, failed }
+      return { status: "ok", folderId: null, added: [], skipped, failed }
     }
 
     let folderId: string | null
@@ -720,27 +814,29 @@ export const createFeeds = createServerFn({ method: "POST" })
       folderId = await resolveDestination(workspaceId, data.destination)
     } catch {
       // The only thing `resolveDestination` throws is an ownership failure.
-      return { status: 'error', error: feedError('not_found') }
+      return { status: "error", error: feedError("not_found") }
     }
 
     const added = await insertFeedRows(workspaceId, folderId, ready)
-    return { status: 'ok', folderId, added, skipped, failed }
+    return { status: "ok", folderId, added, skipped, failed }
   })
 
 export const createFeed = createServerFn({ method: "POST" })
   .validator((d: any) =>
-    z.object({
-      name: z.string().min(1),
-      url: feedUrlSchema,
-      folderId: z.string().nullable(),
-      includeKeywords: z.array(z.string()),
-      excludeKeywords: z.array(z.string()),
-      /** Set when the user explicitly chose to add a site with no feed. */
-      allowScrape: z.boolean().optional().default(false),
-    }).parse(d)
+    z
+      .object({
+        name: z.string().min(1),
+        url: feedUrlSchema,
+        folderId: z.string().nullable(),
+        includeKeywords: z.array(z.string()),
+        excludeKeywords: z.array(z.string()),
+        /** Set when the user explicitly chose to add a site with no feed. */
+        allowScrape: z.boolean().optional().default(false),
+      })
+      .parse(d)
   )
   .handler(async ({ data }): Promise<CreateFeedResult> => {
-    if (DEMO_MODE) return { status: 'error', error: feedError('demo_locked') }
+    if (DEMO_MODE) return { status: "error", error: feedError("demo_locked") }
 
     const workspaceId = await resolveWorkspaceId()
 
@@ -757,7 +853,7 @@ export const createFeed = createServerFn({ method: "POST" })
     try {
       resolved = await resolveFeed(data.url)
     } catch (err) {
-      return { status: 'error', error: toFeedError(err) }
+      return { status: "error", error: toFeedError(err) }
     }
 
     if (resolved) {
@@ -775,7 +871,7 @@ export const createFeed = createServerFn({ method: "POST" })
     // it; silently turning a mistyped feed URL into a watched page is how people
     // ended up with sources they did not recognise.
     if (!data.allowScrape) {
-      return { status: 'error', error: feedError('not_a_feed') }
+      return { status: "error", error: feedError("not_a_feed") }
     }
 
     return addPageFeed({
@@ -790,22 +886,30 @@ export const createFeed = createServerFn({ method: "POST" })
 // REFRESH ALL FEEDS
 // ─────────────────────────────────────────────
 
-export const refreshAllFeeds = createServerFn({ method: "POST" }).handler(async () => {
-  const workspaceId = await resolveWorkspaceId()
+export const refreshAllFeeds = createServerFn({ method: "POST" }).handler(
+  async () => {
+    const workspaceId = await resolveWorkspaceId()
 
-  const allFeeds = await db.select().from(feeds).where(feedInWorkspace(workspaceId))
-  const results = await Promise.allSettled(
-    allFeeds.map((f: { id: string; url: string; kind: string }) =>
-      ingestSource(f.id, f.url, f.kind),
+    const allFeeds = await db
+      .select()
+      .from(feeds)
+      .where(
+        and(feedInWorkspace(workspaceId), isNull(feeds.entitlementPausedAt))
+      )
+    const results = await Promise.allSettled(
+      allFeeds.map((f: { id: string; url: string; kind: string }) =>
+        ingestSource(f.id, f.url, f.kind)
+      )
     )
-  )
-  const inserted = results.reduce(
-    (acc: number, r) => acc + (r.status === "fulfilled" ? r.value.inserted : 0),
-    0
-  )
-  const failed = results.filter((r) => r.status === "rejected").length
-  return { inserted, failed }
-})
+    const inserted = results.reduce(
+      (acc: number, r) =>
+        acc + (r.status === "fulfilled" ? r.value.inserted : 0),
+      0
+    )
+    const failed = results.filter((r) => r.status === "rejected").length
+    return { inserted, failed }
+  }
+)
 
 // ─────────────────────────────────────────────
 // REFRESH SINGLE FEED
@@ -830,11 +934,19 @@ export const refreshFeed = createServerFn({ method: "POST" })
     await assertOwnsFeed(data.feedId)
 
     const [feed] = await db
-      .select({ id: feeds.id, url: feeds.url, kind: feeds.kind })
+      .select({
+        id: feeds.id,
+        url: feeds.url,
+        kind: feeds.kind,
+        entitlementPausedAt: feeds.entitlementPausedAt,
+      })
       .from(feeds)
       .where(eq(feeds.id, data.feedId))
       .limit(1)
     if (!feed) throw new Error(NOT_FOUND_MSG)
+    if (feed.entitlementPausedAt) {
+      return { ok: false as const, inserted: 0 }
+    }
 
     try {
       const { inserted } = await ingestSource(feed.id, feed.url, feed.kind)
@@ -859,15 +971,22 @@ export const refreshFolder = createServerFn({ method: "POST" })
     const folderFeeds = await db
       .select()
       .from(feeds)
-      .where(and(eq(feeds.folderId, data.folderId), feedInWorkspace(workspaceId)))
+      .where(
+        and(
+          eq(feeds.folderId, data.folderId),
+          feedInWorkspace(workspaceId),
+          isNull(feeds.entitlementPausedAt)
+        )
+      )
 
     const results = await Promise.allSettled(
       folderFeeds.map((f: { id: string; url: string; kind: string }) =>
-        ingestSource(f.id, f.url, f.kind),
+        ingestSource(f.id, f.url, f.kind)
       )
     )
     const inserted = results.reduce(
-      (acc: number, r) => acc + (r.status === "fulfilled" ? r.value.inserted : 0),
+      (acc: number, r) =>
+        acc + (r.status === "fulfilled" ? r.value.inserted : 0),
       0
     )
     const failed = results.filter((r) => r.status === "rejected").length
@@ -964,7 +1083,12 @@ export const getArticlePreview = createServerFn({ method: "POST" })
         description: articles.description,
       })
       .from(articles)
-      .where(and(eq(articles.id, articleRowId(data.id)), articleInWorkspace(workspaceId)))
+      .where(
+        and(
+          eq(articles.id, articleRowId(data.id)),
+          articleInWorkspace(workspaceId)
+        )
+      )
       .limit(1)
 
     const article = rows[0]
@@ -987,7 +1111,9 @@ export const getArticlePreview = createServerFn({ method: "POST" })
     } else {
       // No cached content: one fetch serves both extraction and the header check.
       try {
-        const { res, text: html } = await safeFetchText(link, { timeoutMs: 8000 })
+        const { res, text: html } = await safeFetchText(link, {
+          timeoutMs: 8000,
+        })
         canEmbed = checkCanEmbed(res.headers)
         const extracted = extractReadable(html, link)
         if (extracted) {
@@ -997,8 +1123,16 @@ export const getArticlePreview = createServerFn({ method: "POST" })
               .update(articles)
               // `article.id` rather than the requested one: the caller may have
               // passed a prefixed id, and the row we just read is the truth.
-              .set({ content: readerHtml, contentFetchedAt: new Date().toISOString() })
-              .where(and(eq(articles.id, article.id), articleInWorkspace(workspaceId)))
+              .set({
+                content: readerHtml,
+                contentFetchedAt: new Date().toISOString(),
+              })
+              .where(
+                and(
+                  eq(articles.id, article.id),
+                  articleInWorkspace(workspaceId)
+                )
+              )
           } catch {
             // Caching is best-effort; ignore write failures.
           }
@@ -1064,73 +1198,93 @@ export interface ManagedSource {
 
 export const getFolderManageData = createServerFn({ method: "GET" })
   .validator(z.object({ folderId: z.string() }))
-  .handler(async ({ data }): Promise<{ folder: { id: string; name: string; isShared: boolean; hasPassword: boolean }; sources: Array<ManagedSource> }> => {
-    const workspaceId = await assertOwnsFolder(data.folderId)
-
-    const [folderRow] = await db
-      .select({
-        id: folders.id,
-        name: folders.name,
-        isShared: folderShares.isShared,
-        password: folderShares.password,
-      })
-      .from(folders)
-      .leftJoin(folderShares, eq(folders.id, folderShares.folderId))
-      .where(eq(folders.id, data.folderId))
-      .limit(1)
-    if (!folderRow) throw new Error(NOT_FOUND_MSG)
-
-    const rssFeeds = await db
-      .select({
-        id: feeds.id,
-        name: feeds.name,
-        url: feeds.url,
-        kind: feeds.kind,
-        createdAt: feeds.createdAt,
-        lastFetchedAt: feeds.lastFetchedAt,
-        lastError: feeds.lastError,
-        lastErrorAt: feeds.lastErrorAt,
-      })
-      .from(feeds)
-      .where(and(eq(feeds.folderId, data.folderId), feedInWorkspace(workspaceId)))
-      .orderBy(...FEED_ORDER)
-
-    // Real totals, not the count of whatever the reader happens to have loaded
-    // — the sidebar badge counts the ≤200 articles in memory.
-    const counts = new Map<string, number>()
-    if (rssFeeds.length > 0) {
-      const rows = await db
-        .select({ feedId: articles.feedId, value: count() })
-        .from(articles)
-        .where(inArray(articles.feedId, rssFeeds.map((f) => f.id)))
-        .groupBy(articles.feedId)
-      for (const r of rows) if (r.feedId) counts.set(r.feedId, Number(r.value))
-    }
-
-    const sources: Array<ManagedSource> = [
-      ...rssFeeds.map((f) => ({
-        id: f.id,
-        name: f.name,
-        url: f.url,
-        type: f.kind === "page" ? ("scraped" as const) : ("rss" as const),
-        articleCount: counts.get(f.id) ?? 0,
-        createdAt: f.createdAt ?? null,
-        lastFetchedAt: f.lastFetchedAt ?? null,
-        lastError: f.lastError ?? null,
-        lastErrorAt: f.lastErrorAt ?? null,
-      })),
-    ]
-
-    return {
+  .handler(
+    async ({
+      data,
+    }): Promise<{
       folder: {
-        id: folderRow.id,
-        name: folderRow.name,
-        isShared: !!folderRow.isShared,
-        hasPassword: !!folderRow.password,
-      },
-      sources,
+        id: string
+        name: string
+        isShared: boolean
+        hasPassword: boolean
+      }
+      sources: Array<ManagedSource>
+    }> => {
+      const workspaceId = await assertOwnsFolder(data.folderId)
+
+      const [folderRow] = await db
+        .select({
+          id: folders.id,
+          name: folders.name,
+          isShared: folderShares.isShared,
+          password: folderShares.password,
+        })
+        .from(folders)
+        .leftJoin(folderShares, eq(folders.id, folderShares.folderId))
+        .where(eq(folders.id, data.folderId))
+        .limit(1)
+      if (!folderRow) throw new Error(NOT_FOUND_MSG)
+
+      const rssFeeds = await db
+        .select({
+          id: feeds.id,
+          name: feeds.name,
+          url: feeds.url,
+          kind: feeds.kind,
+          createdAt: feeds.createdAt,
+          lastFetchedAt: feeds.lastFetchedAt,
+          lastError: feeds.lastError,
+          lastErrorAt: feeds.lastErrorAt,
+        })
+        .from(feeds)
+        .where(
+          and(eq(feeds.folderId, data.folderId), feedInWorkspace(workspaceId))
+        )
+        .orderBy(...FEED_ORDER)
+
+      // Real totals, not the count of whatever the reader happens to have loaded
+      // — the sidebar badge counts the ≤200 articles in memory.
+      const counts = new Map<string, number>()
+      if (rssFeeds.length > 0) {
+        const rows = await db
+          .select({ feedId: articles.feedId, value: count() })
+          .from(articles)
+          .where(
+            inArray(
+              articles.feedId,
+              rssFeeds.map((f) => f.id)
+            )
+          )
+          .groupBy(articles.feedId)
+        for (const r of rows)
+          if (r.feedId) counts.set(r.feedId, Number(r.value))
+      }
+
+      const sources: Array<ManagedSource> = [
+        ...rssFeeds.map((f) => ({
+          id: f.id,
+          name: f.name,
+          url: f.url,
+          type: f.kind === "page" ? ("scraped" as const) : ("rss" as const),
+          articleCount: counts.get(f.id) ?? 0,
+          createdAt: f.createdAt ?? null,
+          lastFetchedAt: f.lastFetchedAt ?? null,
+          lastError: f.lastError ?? null,
+          lastErrorAt: f.lastErrorAt ?? null,
+        })),
+      ]
+
+      return {
+        folder: {
+          id: folderRow.id,
+          name: folderRow.name,
+          isShared: !!folderRow.isShared,
+          hasPassword: !!folderRow.password,
+        },
+        sources,
+      }
     }
-  })
+  )
 
 export const renameFolder = createServerFn({ method: "POST" })
   .validator(z.object({ id: z.string(), name: z.string().min(1) }))
@@ -1156,68 +1310,83 @@ export const renameFeed = createServerFn({ method: "POST" })
 
 export const updateFeed = createServerFn({ method: "POST" })
   .validator((d: any) =>
-    z.object({
-      id: z.string(),
-      name: z.string().min(1),
-      url: feedUrlSchema,
-      folderId: z.string().nullable(),
-      includeKeywords: z.array(z.string()),
-      excludeKeywords: z.array(z.string()),
-    }).parse(d)
+    z
+      .object({
+        id: z.string(),
+        name: z.string().min(1),
+        url: feedUrlSchema,
+        folderId: z.string().nullable(),
+        includeKeywords: z.array(z.string()),
+        excludeKeywords: z.array(z.string()),
+      })
+      .parse(d)
   )
-  .handler(async ({ data }): Promise<{ status: 'ok'; url: string } | { status: 'error'; error: FeedError }> => {
-    if (DEMO_MODE) return { status: 'error', error: feedError('demo_locked') }
+  .handler(
+    async ({
+      data,
+    }): Promise<
+      { status: "ok"; url: string } | { status: "error"; error: FeedError }
+    > => {
+      if (DEMO_MODE) return { status: "error", error: feedError("demo_locked") }
 
-    const workspaceId = await resolveWorkspaceId()
+      const workspaceId = await resolveWorkspaceId()
 
-    // Existing rows already hold a resolved feed URL, so an unchanged URL must
-    // not be re-resolved (that would cost a network round trip on every rename).
-    const [existing] = await db
-      .select({ url: feeds.url })
-      .from(feeds)
-      .where(and(eq(feeds.id, data.id), feedInWorkspace(workspaceId)))
-      .limit(1)
+      // Existing rows already hold a resolved feed URL, so an unchanged URL must
+      // not be re-resolved (that would cost a network round trip on every rename).
+      const [existing] = await db
+        .select({ url: feeds.url })
+        .from(feeds)
+        .where(and(eq(feeds.id, data.id), feedInWorkspace(workspaceId)))
+        .limit(1)
 
-    // A missing row here means the feed is gone or belongs to someone else.
-    // Bailing out matters: without it, an unowned id fell through to the
-    // resolve branch and made the server fetch an attacker-chosen URL.
-    if (!existing) return { status: 'error', error: feedError('not_found') }
+      // A missing row here means the feed is gone or belongs to someone else.
+      // Bailing out matters: without it, an unowned id fell through to the
+      // resolve branch and made the server fetch an attacker-chosen URL.
+      if (!existing) return { status: "error", error: feedError("not_found") }
 
-    /*
+      /*
       The destination folder needs checking too, and did not used to be.
       The query above proves you own the *feed*; `data.folderId` was written
       straight through, so a caller could move their own feed into a folder
       belonging to another workspace — where it would then show up in that
       workspace's sidebar. `createFeed` has the same shape and the same gap.
     */
-    if (data.folderId) {
-      const [destination] = await db
-        .select({ id: folders.id })
-        .from(folders)
-        .where(and(eq(folders.id, data.folderId), folderInWorkspace(workspaceId)))
-        .limit(1)
-      if (!destination) return { status: 'error', error: feedError('not_found') }
-    }
-
-    let url = data.url
-    if (existing.url !== data.url) {
-      let resolved: ResolvedFeed | null
-      try {
-        resolved = await resolveFeed(data.url)
-      } catch (err) {
-        return { status: 'error', error: toFeedError(err) }
+      if (data.folderId) {
+        const [destination] = await db
+          .select({ id: folders.id })
+          .from(folders)
+          .where(
+            and(eq(folders.id, data.folderId), folderInWorkspace(workspaceId))
+          )
+          .limit(1)
+        if (!destination)
+          return { status: "error", error: feedError("not_found") }
       }
-      if (!resolved) return { status: 'error', error: feedError('not_a_feed') }
-      url = resolved.url
+
+      let url = data.url
+      if (existing.url !== data.url) {
+        let resolved: ResolvedFeed | null
+        try {
+          resolved = await resolveFeed(data.url)
+        } catch (err) {
+          return { status: "error", error: toFeedError(err) }
+        }
+        if (!resolved)
+          return { status: "error", error: feedError("not_a_feed") }
+        url = resolved.url
+      }
+
+      await db
+        .update(feeds)
+        .set({
+          name: data.name,
+          url,
+          folderId: data.folderId,
+          includeKeywords: JSON.stringify(data.includeKeywords),
+          excludeKeywords: JSON.stringify(data.excludeKeywords),
+        })
+        .where(and(eq(feeds.id, data.id), feedInWorkspace(workspaceId)))
+
+      return { status: "ok", url }
     }
-
-    await db.update(feeds).set({
-      name: data.name,
-      url,
-      folderId: data.folderId,
-      includeKeywords: JSON.stringify(data.includeKeywords),
-      excludeKeywords: JSON.stringify(data.excludeKeywords),
-    }).where(and(eq(feeds.id, data.id), feedInWorkspace(workspaceId)))
-
-    return { status: 'ok', url }
-  })
+  )

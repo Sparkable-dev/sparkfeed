@@ -1,9 +1,15 @@
-import { createFileRoute } from '@tanstack/react-router'
-import { createMcpHandler, requireBearerAuth } from '@modelcontextprotocol/server'
-import { buildMcpServer } from '@/server/mcp/server'
-import { principalFromAuthInfo, sparkfeedVerifier } from '@/server/mcp/verifier'
-import { checkRateLimit, clientIp } from '@/server/mcp/ratelimit'
-import { protectedResourceMetadataUrl, requestOrigin } from '@/server/mcp/well-known'
+import { createFileRoute } from "@tanstack/react-router"
+import {
+  createMcpHandler,
+  requireBearerAuth,
+} from "@modelcontextprotocol/server"
+import { buildMcpServer } from "@/server/mcp/server"
+import { principalFromAuthInfo, sparkfeedVerifier } from "@/server/mcp/verifier"
+import { checkRateLimit, clientIp } from "@/server/mcp/ratelimit"
+import {
+  protectedResourceMetadataUrl,
+  requestOrigin,
+} from "@/server/mcp/well-known"
 
 /**
  * The MCP endpoint.
@@ -14,7 +20,7 @@ import { protectedResourceMetadataUrl, requestOrigin } from '@/server/mcp/well-k
  * per request, so no state is shared between tenants.
  */
 const handler = createMcpHandler(buildMcpServer, {
-  onerror: (err) => console.error('[mcp]', err),
+  onerror: (err) => console.error("[mcp]", err),
 })
 
 /**
@@ -28,7 +34,7 @@ function buildGate(request: Request) {
     verifier: sparkfeedVerifier,
     // Every key carries `mcp`; this is what makes a scope-less token a 403
     // rather than something a tool has to notice.
-    requiredScopes: ['mcp'],
+    requiredScopes: ["mcp"],
     // RFC 9728: a 401 must tell the client where to learn about this resource.
     // Without it a client that hits a bad key has nowhere to look and starts
     // guessing at OAuth endpoints instead.
@@ -42,34 +48,47 @@ async function serve(request: Request): Promise<Response> {
   if (auth instanceof Response) return auth
 
   const principal = principalFromAuthInfo(auth)
+  if (!principal.entitlements?.mcpAccess) {
+    return new Response(
+      JSON.stringify({
+        error: {
+          code: "forbidden",
+          message: "This workspace plan does not include MCP access.",
+        },
+      }),
+      { status: 403, headers: { "Content-Type": "application/json" } }
+    )
+  }
   // The demo key is public and shared, so it is limited per client address;
   // a real key is limited per key.
-  const bucketKey = principal.demo ? `demo:${clientIp(request)}` : principal.keyId
+  const bucketKey = principal.demo
+    ? `demo:${clientIp(request)}`
+    : principal.keyId
   const limit = checkRateLimit(bucketKey, { demo: principal.demo })
 
   if (!limit.ok) {
     return new Response(
       JSON.stringify({
         error: {
-          code: 'rate_limited',
-          message: 'Too many requests. Slow down and retry.',
+          code: "rate_limited",
+          message: "Too many requests. Slow down and retry.",
           retry_after_ms: limit.retryAfterMs,
         },
       }),
       {
         status: 429,
         headers: {
-          'Content-Type': 'application/json',
-          'Retry-After': String(Math.ceil(limit.retryAfterMs / 1000)),
+          "Content-Type": "application/json",
+          "Retry-After": String(Math.ceil(limit.retryAfterMs / 1000)),
         },
-      },
+      }
     )
   }
 
   return handler.fetch(request, { authInfo: auth })
 }
 
-export const Route = createFileRoute('/api/mcp')({
+export const Route = createFileRoute("/api/mcp")({
   server: {
     handlers: {
       POST: ({ request }) => serve(request),

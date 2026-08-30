@@ -1,4 +1,9 @@
-import { Link, createFileRoute, redirect } from "@tanstack/react-router"
+import {
+  Link,
+  createFileRoute,
+  notFound,
+  redirect,
+} from "@tanstack/react-router"
 import { useEffect, useState } from "react"
 import { toast } from "sonner"
 import {
@@ -18,6 +23,7 @@ import { authClient } from "@/lib/auth-client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { getIsPlatformAdminSurface } from "@/server/admin/route-state"
 import {
   Card,
   CardContent,
@@ -33,6 +39,7 @@ export const Route = createFileRoute("/signup")({
   }),
   beforeLoad: async ({ search }) => {
     if (import.meta.env.VITE_DEMO_MODE === "true") throw redirect({ to: "/" })
+    if (await getIsPlatformAdminSurface()) throw notFound()
 
     const { checkCanRegister } = await import("@/server/auth-setup")
     const { allowed, reason } = await checkCanRegister({

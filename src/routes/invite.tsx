@@ -18,7 +18,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { acceptInvite, verifyInviteToken } from "@/server/email-actions"
+import { getInvitationSignupHint } from "@/server/email-actions"
 
 export const Route = createFileRoute("/invite")({
   beforeLoad: () => {
@@ -27,15 +27,16 @@ export const Route = createFileRoute("/invite")({
   validateSearch: (search: Record<string, unknown>) => {
     return {
       token: (search.token as string) || "",
+      email: (search.email as string) || "",
     }
   },
   component: InvitePage,
 })
 
 function InvitePage() {
-  const { token } = Route.useSearch()
+  const { token, email: invitedEmail } = Route.useSearch()
   const navigate = useNavigate()
-  const [email, setEmail] = useState("")
+  const [email, setEmail] = useState(invitedEmail)
   const [userExists, setUserExists] = useState(false)
   const [isVerifying, setIsVerifying] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -43,13 +44,15 @@ function InvitePage() {
 
   useEffect(() => {
     async function checkToken() {
-      if (!token) {
+      if (!token || !invitedEmail) {
         setError("Missing invitation token.")
         setIsVerifying(false)
         return
       }
       try {
-        const invite = await verifyInviteToken({ data: token })
+        const invite = await getInvitationSignupHint({
+          data: { invitationId: token, email: invitedEmail },
+        })
         setEmail(invite.email)
         setUserExists(invite.userExists)
       } catch (err: any) {
@@ -59,7 +62,7 @@ function InvitePage() {
       }
     }
     checkToken()
-  }, [token])
+  }, [invitedEmail, token])
 
   const { data: session } = authClient.useSession()
   const isLoggedIn = !!session
@@ -69,7 +72,7 @@ function InvitePage() {
   // registration policy permits for this invitation email.
   useEffect(() => {
     if (!isVerifying && !isLoggedIn && !error) {
-      const redirectTo = `/invite?token=${token}`
+      const redirectTo = `/invite?token=${encodeURIComponent(token)}&email=${encodeURIComponent(email)}`
       if (userExists) {
         navigate({ to: "/login", search: { redirect: redirectTo } })
       } else {
@@ -90,15 +93,11 @@ function InvitePage() {
         )
       }
 
-      // Call our server function to link user to workspace
-      const result = await acceptInvite({ data: { token } })
-
-      // Crucial: Set the new workspace as active to sync the session
-      if (result.workspaceId) {
-        await authClient.organization.setActive({
-          organizationId: result.workspaceId,
+      const { error: acceptError } =
+        await authClient.organization.acceptInvitation({
+          invitationId: token,
         })
-      }
+      if (acceptError) throw acceptError
 
       toast.success("Joined workspace successfully!")
 

@@ -1,4 +1,5 @@
 import { DEFAULT_SCOPES, DEMO_SCOPES } from "../api/principal"
+import { resolveEntitlements } from "../entitlements/resolve"
 import type { ApiPrincipal } from "../api/principal"
 import type { WorkspaceContext } from "../services/context"
 
@@ -18,21 +19,46 @@ import type { WorkspaceContext } from "../services/context"
  *   clicking, so withholding it here would only mean the agent cannot do what
  *   the person driving it can.
  *
- * - **`plan` is hard-coded.** Sessions have no plan lookup yet; entitlements
- *   are a later piece of work. `getWorkspaceInfo` echoes this value, so it is
- *   visible rather than hidden, and it gates nothing today.
+ * - **`plan` comes from the entitlement authority.** The value exposed by
+ *   `getWorkspaceInfo` is the same value used by the server gates.
  *
  * The demo branch is not a second line of defence, it is the only one that
  * matters: `DEMO_SCOPES` carries no write scope, so no request body — whatever
  * autonomy it claims — can produce a principal that mutates anything.
  */
-export function principalFromWorkspaceContext(
+export async function principalFromWorkspaceContext(
   context: WorkspaceContext
-): ApiPrincipal {
+): Promise<ApiPrincipal> {
+  if (!context.workspace || !context.workspaceId) {
+    throw new Error("A workspace is required to create a principal.")
+  }
+
+  const entitlementPrincipal = context.demo
+    ? {
+        type: "demo" as const,
+        userId: null,
+        emailVerified: false as const,
+        workspaceId: context.workspaceId,
+        demo: true as const,
+      }
+    : {
+        type: "session" as const,
+        userId: context.userId!,
+        emailVerified: context.emailVerified,
+        workspaceId: context.workspaceId,
+        demo: false as const,
+      }
+  const entitlements = await resolveEntitlements(
+    context.workspace,
+    entitlementPrincipal
+  )
+
   return {
     keyId: "session",
+    userId: context.userId,
     workspaceId: context.workspaceId,
-    plan: "pro",
+    plan: entitlements.plan,
+    entitlements,
     scopes: context.demo ? DEMO_SCOPES : [...DEFAULT_SCOPES, "feeds:write"],
     demo: context.demo,
   }

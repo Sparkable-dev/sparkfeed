@@ -1,3 +1,8 @@
+import type {
+  EntitlementPlan,
+  ResolvedEntitlements,
+} from "@/server/entitlements/types"
+
 /**
  * Who an API key represents.
  *
@@ -9,8 +14,12 @@
 export interface ApiPrincipal {
   /** Key id, `key_…`. `demo` for the shared demo key, which has no row. */
   keyId: string
+  /** Present for browser sessions. API keys do not inherit a person's AI allowance. */
+  userId?: string | null
   workspaceId: string | null
-  plan: "free" | "pro" | "enterprise"
+  plan: EntitlementPlan
+  /** Resolved by the server authority, never accepted from a client. */
+  entitlements?: ResolvedEntitlements
   scopes: Array<Scope>
   demo: boolean
 }

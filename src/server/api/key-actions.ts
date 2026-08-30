@@ -5,6 +5,7 @@ import { listApiKeys, mintApiKey, revokeApiKey } from "./keys"
 import { DEFAULT_SCOPES, isScope } from "./principal"
 import type { Scope } from "./principal"
 import { DEMO_MODE } from "@/lib/demo"
+import { principalFromWorkspaceContext } from "@/server/ai/principal"
 
 /**
  * Server functions backing the Developer > API keys page.
@@ -45,7 +46,15 @@ export const createKey = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     if (DEMO_MODE) throw new Error(DEMO_MSG)
-    const { workspaceId, userId } = await requireWorkspace()
+    const context = await requireWorkspace()
+    const { workspaceId, userId } = context
+    const principal = await principalFromWorkspaceContext(context)
+    if (
+      !principal.entitlements?.apiAccess ||
+      !principal.entitlements.mcpAccess
+    ) {
+      throw new Error("This workspace plan does not include API keys.")
+    }
 
     // Unknown scope strings are dropped rather than rejected, so a stale client
     // asking for a scope we removed still gets a usable key.

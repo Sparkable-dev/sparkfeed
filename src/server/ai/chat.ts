@@ -15,6 +15,23 @@ export interface ChatRequest {
   skillId?: string | undefined
 }
 
+export interface ChatBillingCallbacks {
+  onComplete: (costUsd: number | null) => Promise<void>
+  onIncomplete: () => Promise<void>
+}
+
+function gatewayCost(event: {
+  finalStep: { providerMetadata?: Record<string, Record<string, unknown>> }
+}): number | null {
+  const raw = event.finalStep.providerMetadata?.gateway?.cost
+  if (typeof raw === "number" && Number.isFinite(raw) && raw >= 0) return raw
+  if (typeof raw === "string") {
+    const parsed = Number(raw)
+    if (Number.isFinite(parsed) && parsed >= 0) return parsed
+  }
+  return null
+}
+
 /**
  * The single `streamText` call site.
  *
@@ -34,7 +51,8 @@ export interface ChatRequest {
  */
 export async function buildChatStream(
   principal: ApiPrincipal,
-  request: ChatRequest
+  request: ChatRequest,
+  billing?: ChatBillingCallbacks
 ) {
   const selection = resolveModelSelection(request.modelId, request.effort)
 
@@ -49,7 +67,11 @@ export async function buildChatStream(
     // provider's native parameter, so there is no per-vendor branching here.
     // Omitted entirely for models with no effort control.
     ...(selection.effort ? { reasoning: selection.effort } : {}),
-    onError: ({ error }) => {
+    onEnd: billing
+      ? async (event) => billing.onComplete(gatewayCost(event))
+      : undefined,
+    onAbort: billing ? async () => billing.onIncomplete() : undefined,
+    onError: async ({ error }) => {
       console.error(
         `[ai] stream error (${selection.providerId}/${selection.upstreamModelId}, tools: ${allowedToolNames(
           principal,
@@ -57,6 +79,7 @@ export async function buildChatStream(
         ).join(", ")}):`,
         error
       )
+      await billing?.onIncomplete()
     },
   })
 }

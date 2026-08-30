@@ -1,11 +1,19 @@
+import { randomUUID } from "node:crypto"
 import { createFileRoute } from "@tanstack/react-router"
 import { resolveWorkspaceContextFromHeaders } from "@/server/services/context"
 import { buildChatStream } from "@/server/ai/chat"
 import { aiDisabled, isDemo } from "@/server/ai/env"
 import { principalFromWorkspaceContext } from "@/server/ai/principal"
+import { sparkfeedEdition } from "@/server/entitlements/config"
+import {
+  releaseManagedAiCredits,
+  reserveManagedAiCredits,
+  settleManagedAiCredits,
+} from "@/server/billing/personal-credits"
 import {
   AI_BAD_REQUEST,
   AI_DISABLED,
+  AI_NOT_ENTITLED,
   AI_UNAUTHENTICATED,
   toUserFacingError,
 } from "@/server/ai/errors"
@@ -42,15 +50,47 @@ export const Route = createFileRoute("/api/chat")({
           // The services layer speaks `ApiPrincipal`, so the session is
           // translated into one here. Tenancy comes from the session's
           // workspace and nothing else — the body cannot influence it.
-          const principal = principalFromWorkspaceContext(context)
+          const principal = await principalFromWorkspaceContext(context)
+          if (!principal.entitlements?.managedAiAccess) {
+            throw AI_NOT_ENTITLED()
+          }
 
-          const result = await buildChatStream(principal, {
-            messages: parsed.data.messages,
-            modelId: parsed.data.modelId,
-            effort: parsed.data.effort,
-            autonomy: parsed.data.autonomy,
-            skillId: parsed.data.skillId,
-          })
+          const reservation =
+            sparkfeedEdition() === "cloud"
+              ? await reserveManagedAiCredits(
+                  context.workspace!,
+                  context.userId!,
+                  randomUUID()
+                )
+              : null
+          if (sparkfeedEdition() === "cloud" && !reservation) {
+            throw AI_NOT_ENTITLED()
+          }
+
+          let result
+          try {
+            result = await buildChatStream(
+              principal,
+              {
+                messages: parsed.data.messages,
+                modelId: parsed.data.modelId,
+                effort: parsed.data.effort,
+                autonomy: parsed.data.autonomy,
+                skillId: parsed.data.skillId,
+              },
+              reservation
+                ? {
+                    onComplete: (costUsd) =>
+                      settleManagedAiCredits(reservation, costUsd),
+                    onIncomplete: () =>
+                      settleManagedAiCredits(reservation, null),
+                  }
+                : undefined
+            )
+          } catch (error) {
+            if (reservation) await releaseManagedAiCredits(reservation)
+            throw error
+          }
 
           /*
             Consume the stream regardless of whether the client is still

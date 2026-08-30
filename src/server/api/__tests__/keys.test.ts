@@ -30,6 +30,27 @@ async function loadKeys(demo: boolean) {
     DEMO_MODE: demo,
     DEMO_WORKSPACE_ID: "demo-workspace",
   }))
+  vi.doMock("@/server/entitlements/workspace", () => ({
+    workspaceRefFromId: (id: string) =>
+      Promise.resolve({ type: "personal", id }),
+  }))
+  vi.doMock("@/server/entitlements/resolve", () => ({
+    resolveEntitlements: () =>
+      Promise.resolve({
+        plan: demo ? "community" : "free",
+        billingStatus: demo ? "not_applicable" : "free",
+        accessState: "active",
+        seatCapacity: 1,
+        sourceUnitCapacity: demo ? null : 5,
+        monthlySparkAiCredits: demo ? null : 0,
+        sparkAiCreditBalance: demo ? null : 0,
+        canCreateOrganizations: demo,
+        canManageInvitations: demo,
+        apiAccess: demo,
+        mcpAccess: demo,
+        managedAiAccess: demo,
+      }),
+  }))
   return import("../keys")
 }
 

@@ -11,15 +11,18 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { getIsPlatformAdminSurface } from "@/server/admin/route-state";
 
 export const Route = createFileRoute("/login")({
-  beforeLoad: () => {
+  beforeLoad: async () => {
     if (import.meta.env.VITE_DEMO_MODE === "true") throw redirect({ to: "/" })
+    return { adminSurface: await getIsPlatformAdminSurface() }
   },
   component: LoginPage,
 });
 
 function LoginPage() {
+  const { adminSurface } = Route.useRouteContext()
 
   // Use URL search params directly since route doesn't have validateSearch
   const searchParams = typeof window !== 'undefined' ? new URL(window.location.href).searchParams : new URLSearchParams();
@@ -55,6 +58,13 @@ function LoginPage() {
         }
         toast.error(result.error.message || "Invalid credentials");
         return;
+      }
+      if (
+        result.data &&
+        "twoFactorRedirect" in result.data &&
+        result.data.twoFactorRedirect
+      ) {
+        return
       }
       toast.success("Welcome back!");
       window.location.href = redirectTo;
@@ -241,19 +251,21 @@ function LoginPage() {
             </div>
           )}
 
-          <div className="auth-footer mt-8 pt-6 border-t border-zinc-800/50">
-            <span className="auth-footer-text text-zinc-500">Don't have an account?</span>
-            {/* The redirect has to survive the hop to signup: most people
-                taking a "sign in, it's free" CTA from a share link do not have
-                an account yet, and losing it here drops them on / with no idea
-                what they were doing. */}
-            <a
-              href={redirectTo && redirectTo !== "/" ? `/signup?redirect=${encodeURIComponent(redirectTo)}` : "/signup"}
-              className="auth-footer-link text-purple-400 hover:text-purple-300 font-semibold ml-2"
-            >
-              Create one
-            </a>
-          </div>
+          {!adminSurface && (
+            <div className="auth-footer mt-8 pt-6 border-t border-zinc-800/50">
+              <span className="auth-footer-text text-zinc-500">Don't have an account?</span>
+              {/* The redirect has to survive the hop to signup: most people
+                  taking a "sign in, it's free" CTA from a share link do not have
+                  an account yet, and losing it here drops them on / with no idea
+                  what they were doing. */}
+              <a
+                href={redirectTo && redirectTo !== "/" ? `/signup?redirect=${encodeURIComponent(redirectTo)}` : "/signup"}
+                className="auth-footer-link text-purple-400 hover:text-purple-300 font-semibold ml-2"
+              >
+                Create one
+              </a>
+            </div>
+          )}
         </div>
       </div>
     </div>

@@ -60,7 +60,8 @@ beforeAll(async () => {
     id TEXT PRIMARY KEY, name TEXT NOT NULL, url TEXT NOT NULL,
     folder_id TEXT, workspace_id TEXT, kind TEXT DEFAULT 'rss',
     include_keywords TEXT, exclude_keywords TEXT, position INTEGER,
-    created_at TEXT, last_fetched_at TEXT, last_error TEXT, last_error_at TEXT)`)
+    created_at TEXT, last_fetched_at TEXT, last_error TEXT, last_error_at TEXT,
+    entitlement_paused_at TEXT)`)
   await raw.execute(`CREATE TABLE articles (
     id TEXT PRIMARY KEY, feed_id TEXT, title TEXT NOT NULL, description TEXT,
     content TEXT, content_fetched_at TEXT, link TEXT NOT NULL, image TEXT,
@@ -75,8 +76,7 @@ beforeAll(async () => {
     id TEXT PRIMARY KEY, workspace_id TEXT, folder_id TEXT, site_url TEXT,
     title TEXT, url TEXT, date TEXT, description TEXT, created_at TEXT)`)
 
-  const { folders, feeds, articles } =
-    await import("@/db/schema")
+  const { folders, feeds, articles } = await import("@/db/schema")
   const now = new Date().toISOString()
 
   await db.insert(folders).values([

@@ -12,8 +12,8 @@ export async function ensureDemoSchema(): Promise<void> {
   if (schemaReady) return
   schemaReady = true
 
-  const { createClient } = await import('@libsql/client')
-  const client = createClient({ url: 'file:rss-demo.db' })
+  const { createClient } = await import("@libsql/client")
+  const client = createClient({ url: "file:rss-demo.db" })
 
   const tables = [
     `CREATE TABLE IF NOT EXISTS folders (
@@ -43,7 +43,8 @@ export async function ensureDemoSchema(): Promise<void> {
       created_at text,
       last_fetched_at text,
       last_error text,
-      last_error_at text
+      last_error_at text,
+      entitlement_paused_at text
     )`,
     `CREATE TABLE IF NOT EXISTS feed_shares (
       feed_id text PRIMARY KEY NOT NULL REFERENCES feeds(id),
@@ -219,6 +220,7 @@ export async function ensureDemoSchema(): Promise<void> {
     `ALTER TABLE feeds ADD COLUMN last_fetched_at text`,
     `ALTER TABLE feeds ADD COLUMN last_error text`,
     `ALTER TABLE feeds ADD COLUMN last_error_at text`,
+    `ALTER TABLE feeds ADD COLUMN entitlement_paused_at text`,
     `ALTER TABLE scraped_feeds ADD COLUMN last_fetched_at text`,
     `ALTER TABLE scraped_feeds ADD COLUMN last_error text`,
     `ALTER TABLE scraped_feeds ADD COLUMN last_error_at text`,
@@ -248,7 +250,6 @@ export async function ensureDemoSchema(): Promise<void> {
 
 // Idempotent — safe to call on every request. Returns immediately if already seeded.
 export async function seedDemoData(): Promise<void> {
-
   const existing = await db
     .select({ id: folders.id })
     .from(folders)
@@ -261,40 +262,51 @@ export async function seedDemoData(): Promise<void> {
 
   // Insert folders
   for (const folder of demoConfig.folders) {
-    await db.insert(folders).values({
-      id: folder.id,
-      name: folder.name,
-      workspaceId: DEMO_WORKSPACE_ID,
-    }).onConflictDoNothing()
+    await db
+      .insert(folders)
+      .values({
+        id: folder.id,
+        name: folder.name,
+        workspaceId: DEMO_WORKSPACE_ID,
+      })
+      .onConflictDoNothing()
   }
 
   // Insert feeds
-  const allFeeds = demoConfig.folders.flatMap(folder =>
-    folder.feeds.map(feed => ({ ...feed, folderId: folder.id }))
+  const allFeeds = demoConfig.folders.flatMap((folder) =>
+    folder.feeds.map((feed) => ({ ...feed, folderId: folder.id }))
   )
 
   for (const feed of allFeeds) {
-    await db.insert(feeds).values({
-      id: feed.id,
-      name: feed.name,
-      url: feed.url,
-      folderId: feed.folderId,
-      workspaceId: DEMO_WORKSPACE_ID,
-      includeKeywords: "[]",
-      excludeKeywords: "[]",
-    }).onConflictDoNothing()
+    await db
+      .insert(feeds)
+      .values({
+        id: feed.id,
+        name: feed.name,
+        url: feed.url,
+        folderId: feed.folderId,
+        workspaceId: DEMO_WORKSPACE_ID,
+        includeKeywords: "[]",
+        excludeKeywords: "[]",
+      })
+      .onConflictDoNothing()
   }
 
   // Fetch articles for all feeds — failures are isolated and logged
   const results = await Promise.allSettled(
-    allFeeds.map(feed => fetchAndInsertArticles(feed.id, feed.url))
+    allFeeds.map((feed) => fetchAndInsertArticles(feed.id, feed.url))
   )
 
   results.forEach((result, i) => {
     if (result.status === "fulfilled") {
-      console.log(`[demo] ${allFeeds[i].name}: ${result.value} articles inserted`)
+      console.log(
+        `[demo] ${allFeeds[i].name}: ${result.value} articles inserted`
+      )
     } else {
-      console.warn(`[demo] ${allFeeds[i].name}: fetch failed —`, result.reason?.message ?? result.reason)
+      console.warn(
+        `[demo] ${allFeeds[i].name}: fetch failed —`,
+        result.reason?.message ?? result.reason
+      )
     }
   })
 
@@ -302,16 +314,23 @@ export async function seedDemoData(): Promise<void> {
   // favorites page is populated even before the user interacts with anything.
   const favFeedIds = ["demo-feed-openai", "demo-feed-aws", "demo-feed-hubspot"]
   const favArticles = await Promise.all(
-    favFeedIds.map(feedId =>
-      db.select({ id: articles.id })
+    favFeedIds.map((feedId) =>
+      db
+        .select({ id: articles.id })
         .from(articles)
         .where(eq(articles.feedId, feedId))
         .limit(1)
     )
   )
-  const favIds = favArticles.flat().map(a => a.id).filter(Boolean)
+  const favIds = favArticles
+    .flat()
+    .map((a) => a.id)
+    .filter(Boolean)
   if (favIds.length > 0) {
-    await db.update(articles).set({ isFavorite: true }).where(inArray(articles.id, favIds))
+    await db
+      .update(articles)
+      .set({ isFavorite: true })
+      .where(inArray(articles.id, favIds))
     console.log(`[demo] Pre-seeded ${favIds.length} favorites`)
   }
 

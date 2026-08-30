@@ -23,7 +23,7 @@ export const readExternalUrl = createServerFn({ method: "POST" })
     const context = await resolveWorkspaceContext()
     // Reading a public page touches no workspace data, but the principal
     // carries the demo flag the service refuses on.
-    return await readUrl(principalFromWorkspaceContext(context), {
+    return await readUrl(await principalFromWorkspaceContext(context), {
       url: data.url,
     })
   })

@@ -1,6 +1,7 @@
 import { createServerOnlyFn } from "@tanstack/react-start"
 import type { ProviderId } from "@/config/ai-models"
 import { DEMO_MODE as DEMO_MODE_BUILD } from "@/lib/demo"
+import { sparkfeedEdition } from "@/server/entitlements/config"
 
 /**
  * Whether Spark AI is switched off for this deployment.
@@ -38,11 +39,18 @@ export const isDemo = createServerOnlyFn(
 
 /** Which providers have credentials configured, by provider id. */
 export const configuredProviders = createServerOnlyFn(
-  (): Record<ProviderId, boolean> => ({
-    openai: !!process.env.OPENAI_API_KEY,
-    "vercel-gateway": !!process.env.AI_GATEWAY_API_KEY,
-    openrouter: !!process.env.OPENROUTER_API_KEY,
-  })
+  (): Record<ProviderId, boolean> =>
+    sparkfeedEdition() === "cloud"
+      ? {
+          openai: false,
+          "vercel-gateway": !!process.env.AI_GATEWAY_API_KEY,
+          openrouter: false,
+        }
+      : {
+          openai: !!process.env.OPENAI_API_KEY,
+          "vercel-gateway": !!process.env.AI_GATEWAY_API_KEY,
+          openrouter: !!process.env.OPENROUTER_API_KEY,
+        }
 )
 
 /**

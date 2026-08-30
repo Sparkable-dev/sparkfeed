@@ -25,7 +25,9 @@ vi.mock("@/db/index", () => ({
 }))
 
 vi.mock("../ingest-queue", () => ({
-  enqueueIngest: (tasks: Array<{ feedId: string; url: string; kind?: string | null }>) => {
+  enqueueIngest: (
+    tasks: Array<{ feedId: string; url: string; kind?: string | null }>
+  ) => {
     queued.push(...tasks)
   },
 }))
@@ -44,18 +46,24 @@ const WS = "ws-1"
 beforeEach(async () => {
   queued.length = 0
   db = createDb(":memory:", { sqlite: true })
-  const raw = (db as unknown as { $client: ReturnType<typeof createClient> }).$client
+  const raw = (db as unknown as { $client: ReturnType<typeof createClient> })
+    .$client
   await raw.execute(`CREATE TABLE feeds (
     id TEXT PRIMARY KEY, name TEXT NOT NULL, url TEXT NOT NULL,
     folder_id TEXT, workspace_id TEXT, kind TEXT DEFAULT 'rss', include_keywords TEXT,
     exclude_keywords TEXT, position INTEGER, created_at TEXT,
-    last_fetched_at TEXT, last_error TEXT, last_error_at TEXT)`)
+    last_fetched_at TEXT, last_error TEXT, last_error_at TEXT,
+    entitlement_paused_at TEXT)`)
   await raw.execute(`CREATE TABLE folders (
     id TEXT PRIMARY KEY, name TEXT NOT NULL, workspace_id TEXT,
     parent_id TEXT, position INTEGER, created_at TEXT)`)
 })
 
-async function seedFeed(over: { url: string; workspaceId?: string | null; id?: string }) {
+async function seedFeed(over: {
+  url: string
+  workspaceId?: string | null
+  id?: string
+}) {
   const { feeds } = await import("@/db/schema")
   await db.insert(feeds).values({
     id: over.id ?? `f-${over.url}`,
@@ -65,7 +73,11 @@ async function seedFeed(over: { url: string; workspaceId?: string | null; id?: s
   })
 }
 
-async function seedFolder(id: string, name: string, workspaceId: string | null = WS) {
+async function seedFolder(
+  id: string,
+  name: string,
+  workspaceId: string | null = WS
+) {
   const { folders } = await import("@/db/schema")
   await db.insert(folders).values({ id, name, workspaceId })
 }
@@ -126,7 +138,9 @@ describe("resolveDestination", () => {
 
   it("passes an owned folder straight through", async () => {
     await seedFolder("f1", "News")
-    expect(await resolveDestination(WS, { kind: "existing", folderId: "f1" })).toBe("f1")
+    expect(
+      await resolveDestination(WS, { kind: "existing", folderId: "f1" })
+    ).toBe("f1")
   })
 
   it("refuses a folder belonging to someone else", async () => {
@@ -134,7 +148,7 @@ describe("resolveDestination", () => {
     // the server go and resolve URLs on another workspace's behalf.
     await seedFolder("f1", "News", "ws-other")
     await expect(
-      resolveDestination(WS, { kind: "existing", folderId: "f1" }),
+      resolveDestination(WS, { kind: "existing", folderId: "f1" })
     ).rejects.toThrow(/not found/i)
   })
 
@@ -148,7 +162,9 @@ describe("resolveDestination", () => {
   })
 
   it("files under nothing rather than creating a blank folder", async () => {
-    expect(await resolveDestination(WS, { kind: "new", name: "   " })).toBeNull()
+    expect(
+      await resolveDestination(WS, { kind: "new", name: "   " })
+    ).toBeNull()
   })
 })
 
@@ -199,7 +215,9 @@ describe("requeueUnfetched", () => {
     expect(await requeueUnfetched(WS)).toBe(1)
     // The kind rides along so the queue knows whether to parse a feed or read
     // a page.
-    expect(queued).toEqual([{ feedId: "f1", url: "https://a.example/feed", kind: "rss" }])
+    expect(queued).toEqual([
+      { feedId: "f1", url: "https://a.example/feed", kind: "rss" },
+    ])
   })
 
   it("leaves alone a feed that has already been tried, successfully or not", async () => {

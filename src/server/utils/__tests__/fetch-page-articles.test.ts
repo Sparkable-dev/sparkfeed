@@ -29,7 +29,12 @@ vi.mock("../fetch", () => ({
     if (failing.has(url)) throw new Error("unreachable")
     const text = pages.get(url)
     if (text === undefined) return { res: { ok: false, status: 404 }, text: "" }
-    return { res: { ok: true, status: 200 }, text, contentType: "text/html", finalUrl: url }
+    return {
+      res: { ok: true, status: 200 },
+      text,
+      contentType: "text/html",
+      finalUrl: url,
+    }
   },
 }))
 
@@ -39,7 +44,10 @@ const LISTING = "https://example.com/blog"
 
 const listing = (slugs: Array<string>) =>
   `<html><body>${slugs
-    .map((s) => `<div><a href="/blog/${s}"><h3>${s.replace(/-/g, " ")}</h3></a></div>`)
+    .map(
+      (s) =>
+        `<div><a href="/blog/${s}"><h3>${s.replace(/-/g, " ")}</h3></a></div>`
+    )
     .join("")}</body></html>`
 
 const article = (title: string, body: string, published?: string) =>
@@ -49,18 +57,21 @@ const article = (title: string, body: string, published?: string) =>
      <meta property="og:image" content="/img/${title.replace(/\s/g, "-")}.jpg">
    </head><body><article><h1>${title}</h1>${body}</article></body></html>`
 
-const LONG = "<p>" + "Real article prose that Readability will keep. ".repeat(20) + "</p>"
+const LONG =
+  "<p>" + "Real article prose that Readability will keep. ".repeat(20) + "</p>"
 
 beforeEach(async () => {
   pages.clear()
   failing.clear()
   db = createDb(":memory:", { sqlite: true })
-  const raw = (db as unknown as { $client: ReturnType<typeof createClient> }).$client
+  const raw = (db as unknown as { $client: ReturnType<typeof createClient> })
+    .$client
   await raw.execute(`CREATE TABLE feeds (
     id TEXT PRIMARY KEY, name TEXT NOT NULL, url TEXT NOT NULL,
     folder_id TEXT, workspace_id TEXT, kind TEXT DEFAULT 'rss', include_keywords TEXT,
     exclude_keywords TEXT, position INTEGER, created_at TEXT,
-    last_fetched_at TEXT, last_error TEXT, last_error_at TEXT)`)
+    last_fetched_at TEXT, last_error TEXT, last_error_at TEXT,
+    entitlement_paused_at TEXT)`)
   await raw.execute(`CREATE TABLE articles (
     id TEXT PRIMARY KEY, feed_id TEXT, title TEXT NOT NULL, description TEXT,
     content TEXT, content_fetched_at TEXT, link TEXT NOT NULL, image TEXT,
@@ -79,13 +90,22 @@ describe("reading a listing page", () => {
     // The whole reason a post's page is fetched: a listing carries a headline
     // and a link and nothing else, so without this every article would be an
     // empty shell you had to leave the app to read.
-    pages.set(LISTING, listing(["first-post-here", "second-post-here", "third-post-here"]))
+    pages.set(
+      LISTING,
+      listing(["first-post-here", "second-post-here", "third-post-here"])
+    )
     pages.set(
       "https://example.com/blog/first-post-here",
-      article("First post here", LONG, "2026-08-01T09:00:00Z"),
+      article("First post here", LONG, "2026-08-01T09:00:00Z")
     )
-    pages.set("https://example.com/blog/second-post-here", article("Second", LONG))
-    pages.set("https://example.com/blog/third-post-here", article("Third", LONG))
+    pages.set(
+      "https://example.com/blog/second-post-here",
+      article("Second", LONG)
+    )
+    pages.set(
+      "https://example.com/blog/third-post-here",
+      article("Third", LONG)
+    )
 
     const result = await fetchPageArticles("fd-1", LISTING)
     expect(result.inserted).toBe(3)
@@ -101,9 +121,19 @@ describe("reading a listing page", () => {
   it("keeps the listing's headline over the article page's <title>", async () => {
     // A page title is usually the headline with " | Site Name" appended, and
     // Readability takes it verbatim. The listing shows what the site chose.
-    pages.set(LISTING, listing(["first-post-here", "second-post-here", "third-post-here"]))
-    for (const slug of ["first-post-here", "second-post-here", "third-post-here"]) {
-      pages.set(`https://example.com/blog/${slug}`, article("Something Else | Example Inc", LONG))
+    pages.set(
+      LISTING,
+      listing(["first-post-here", "second-post-here", "third-post-here"])
+    )
+    for (const slug of [
+      "first-post-here",
+      "second-post-here",
+      "third-post-here",
+    ]) {
+      pages.set(
+        `https://example.com/blog/${slug}`,
+        article("Something Else | Example Inc", LONG)
+      )
     }
 
     await fetchPageArticles("fd-1", LISTING)
@@ -114,8 +144,14 @@ describe("reading a listing page", () => {
   it("stores a post whose own page cannot be read, minus the body", async () => {
     // A cookie wall or a 404 from a stale listing. The link and the headline
     // are already worth having; dropping the post entirely is worse.
-    pages.set(LISTING, listing(["first-post-here", "second-post-here", "third-post-here"]))
-    pages.set("https://example.com/blog/first-post-here", article("First", LONG))
+    pages.set(
+      LISTING,
+      listing(["first-post-here", "second-post-here", "third-post-here"])
+    )
+    pages.set(
+      "https://example.com/blog/first-post-here",
+      article("First", LONG)
+    )
     failing.add("https://example.com/blog/second-post-here")
     // third-post-here is simply absent → 404
 
@@ -129,8 +165,15 @@ describe("reading a listing page", () => {
   })
 
   it("does not store a post twice", async () => {
-    pages.set(LISTING, listing(["first-post-here", "second-post-here", "third-post-here"]))
-    for (const slug of ["first-post-here", "second-post-here", "third-post-here"]) {
+    pages.set(
+      LISTING,
+      listing(["first-post-here", "second-post-here", "third-post-here"])
+    )
+    for (const slug of [
+      "first-post-here",
+      "second-post-here",
+      "third-post-here",
+    ]) {
       pages.set(`https://example.com/blog/${slug}`, article(slug, LONG))
     }
 
@@ -145,8 +188,15 @@ describe("reading a listing page", () => {
   it("only skips what this source already has", async () => {
     // Dedupe is per feed. The old scraper used a table-wide unique constraint
     // on the URL, so the second workspace to watch a site silently got nothing.
-    pages.set(LISTING, listing(["first-post-here", "second-post-here", "third-post-here"]))
-    for (const slug of ["first-post-here", "second-post-here", "third-post-here"]) {
+    pages.set(
+      LISTING,
+      listing(["first-post-here", "second-post-here", "third-post-here"])
+    )
+    for (const slug of [
+      "first-post-here",
+      "second-post-here",
+      "third-post-here",
+    ]) {
       pages.set(`https://example.com/blog/${slug}`, article(slug, LONG))
     }
 
@@ -162,7 +212,9 @@ describe("when a page stops working", () => {
     // that succeeded with zero results, indistinguishable from a site that had
     // stopped posting. Throwing is what marks the source broken on /sources.
     pages.set(LISTING, "<html><body><p>We have moved.</p></body></html>")
-    await expect(fetchPageArticles("fd-1", LISTING)).rejects.toThrow(/no posts/i)
+    await expect(fetchPageArticles("fd-1", LISTING)).rejects.toThrow(
+      /no posts/i
+    )
   })
 
   it("reports a listing that will not load", async () => {

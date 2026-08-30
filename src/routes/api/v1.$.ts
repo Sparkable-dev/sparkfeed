@@ -110,6 +110,18 @@ async function serve(request: Request): Promise<Response> {
   }
 
   const principal = principalFromAuthInfo(auth)
+  if (!principal.entitlements?.apiAccess) {
+    return jsonResponse(
+      request,
+      {
+        error: {
+          code: "forbidden",
+          message: "This workspace plan does not include REST API access.",
+        },
+      },
+      { status: 403 }
+    )
+  }
 
   // ── Rate limiting ────────────────────────────────────────────────────────
   // The demo key is public and shared, so it is limited per client address; a

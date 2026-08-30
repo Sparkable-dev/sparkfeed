@@ -43,7 +43,8 @@ beforeEach(async () => {
     id TEXT PRIMARY KEY, name TEXT NOT NULL, url TEXT NOT NULL,
     folder_id TEXT, workspace_id TEXT, kind TEXT DEFAULT 'rss', include_keywords TEXT,
     exclude_keywords TEXT, position INTEGER, created_at TEXT,
-    last_fetched_at TEXT, last_error TEXT, last_error_at TEXT)`)
+    last_fetched_at TEXT, last_error TEXT, last_error_at TEXT,
+    entitlement_paused_at TEXT)`)
   await raw.execute(`CREATE TABLE articles (
     id TEXT PRIMARY KEY, feed_id TEXT, title TEXT NOT NULL, description TEXT,
     content TEXT, content_fetched_at TEXT, link TEXT NOT NULL, image TEXT,
@@ -53,12 +54,24 @@ beforeEach(async () => {
 
   const { feeds } = await import("@/db/schema")
   await db.insert(feeds).values([
-    { id: "f1", name: "Ours", url: "https://a.example/rss", workspaceId: "ws-1" },
-    { id: "f2", name: "Theirs", url: "https://b.example/rss", workspaceId: "ws-2" },
+    {
+      id: "f1",
+      name: "Ours",
+      url: "https://a.example/rss",
+      workspaceId: "ws-1",
+    },
+    {
+      id: "f2",
+      name: "Theirs",
+      url: "https://b.example/rss",
+      workspaceId: "ws-2",
+    },
   ])
 })
 
-async function seed(rows: Array<{ feedId: string; publishedAt: string | null }>) {
+async function seed(
+  rows: Array<{ feedId: string; publishedAt: string | null }>
+) {
   const { articles } = await import("@/db/schema")
   await db.insert(articles).values(
     rows.map((row, index) => ({

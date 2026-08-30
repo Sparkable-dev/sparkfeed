@@ -20,6 +20,7 @@ import { useDemoAwareSession } from "@/hooks/useDemoAwareSession"
 import { DEMO_MODE } from "@/lib/demo"
 import { useWorkspaceCreationPermission } from "@/hooks/use-workspace-creation-permission"
 import { requestPasswordReset } from "@/server/email-actions"
+import { personalWorkspaceName } from "@/lib/workspaces"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -64,6 +65,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import { AppTopBar } from "@/components/layout/AppTopBar"
+import { PersonalBillingTab } from "@/components/settings/PersonalBillingTab"
 
 export const Route = createFileRoute("/_protected/settings")({
   validateSearch: (search: Record<string, unknown>) => {
@@ -101,9 +103,11 @@ function SettingsPage() {
   const tabLabel =
     activeTab === "workspaces"
       ? "Workspaces"
-      : activeTab === "security"
-        ? "Security"
-        : "Profile"
+      : activeTab === "billing"
+        ? "Billing"
+        : activeTab === "security"
+          ? "Security"
+          : "Profile"
 
   return (
     /*
@@ -143,6 +147,11 @@ function SettingsPage() {
               isActive={activeTab === "security"}
               onClick={() => setActiveTab("security")}
             />
+            <MenuButton
+              label="Billing"
+              isActive={activeTab === "billing"}
+              onClick={() => setActiveTab("billing")}
+            />
           </nav>
         </aside>
 
@@ -159,6 +168,7 @@ function SettingsPage() {
             {activeTab === "profile" && <ProfileTab session={session} />}
             {activeTab === "workspaces" && <WorkspacesTab />}
             {activeTab === "security" && <SecurityTab />}
+            {activeTab === "billing" && <PersonalBillingTab />}
           </div>
         </main>
       </div>
@@ -455,6 +465,7 @@ function ProfileTab({ session }: { session: any }) {
 
 /* --- VARIATION 2: WORKSPACES TAB (MANDATED DESIGN) --- */
 function WorkspacesTab() {
+  const { data: session } = authClient.useSession()
   const { data: orgs, isPending } = authClient.useListOrganizations()
   const { data: activeOrg } = authClient.useActiveOrganization()
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
@@ -582,7 +593,7 @@ function WorkspacesTab() {
       <div className="grid gap-3">
         {/* PERSONAL WORKSPACE CARD (Always shown) */}
         <WorkspaceCard
-          name="Personal Account"
+          name={personalWorkspaceName(session?.user?.name)}
           slug="personal"
           role="Owner"
           isPersonal

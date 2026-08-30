@@ -6,6 +6,7 @@ import { enqueueIngest } from "./ingest-queue"
 import { db } from "@/db/index"
 import { feeds, folders } from "@/db/schema"
 import { feedUrlKey } from "@/lib/validation"
+import { assertNoRssSourceCapacity } from "@/server/entitlements/enforce"
 
 /**
  * The one way rows get written for a new subscription.
@@ -46,7 +47,9 @@ export type Destination =
  * dialog's result list used to issue a SELECT for each of up to twelve
  * candidates just to draw "already added" beside them.
  */
-export async function existingFeedKeys(workspaceId: string | null): Promise<Set<string>> {
+export async function existingFeedKeys(
+  workspaceId: string | null
+): Promise<Set<string>> {
   const rows = await db
     .select({ url: feeds.url })
     .from(feeds)
@@ -81,7 +84,7 @@ export function cleanFolderName(raw: string): string | null {
  */
 export async function freeFolderName(
   workspaceId: string | null,
-  desired: string,
+  desired: string
 ): Promise<string> {
   const taken = await db
     .select({ name: folders.name })
@@ -108,7 +111,7 @@ export async function freeFolderName(
  */
 export async function resolveDestination(
   workspaceId: string | null,
-  destination: Destination,
+  destination: Destination
 ): Promise<string | null> {
   if (destination.kind === "none") return null
 
@@ -158,9 +161,16 @@ export interface InsertedFeed {
 export async function insertFeedRows(
   workspaceId: string | null,
   folderId: string | null,
-  items: Array<NewFeed>,
+  items: Array<NewFeed>
 ): Promise<Array<InsertedFeed>> {
   if (items.length === 0) return []
+
+  if (workspaceId) {
+    await assertNoRssSourceCapacity(
+      workspaceId,
+      items.filter((item) => item.kind === "page").length
+    )
+  }
 
   const rows = items.map((item) => ({
     id: randomUUID(),
@@ -200,21 +210,37 @@ export function requeueUnfetchedFrom(
     kind?: string | null
     lastFetchedAt: unknown
     lastErrorAt: unknown
-  }>,
+    entitlementPausedAt?: unknown
+  }>
 ): number {
-  const stalled = rows.filter((r) => !r.lastFetchedAt && !r.lastErrorAt)
+  const stalled = rows.filter(
+    (r) => !r.entitlementPausedAt && !r.lastFetchedAt && !r.lastErrorAt
+  )
   if (stalled.length === 0) return 0
-  enqueueIngest(stalled.map((r) => ({ feedId: r.id, url: r.url, kind: r.kind })))
+  enqueueIngest(
+    stalled.map((r) => ({ feedId: r.id, url: r.url, kind: r.kind }))
+  )
   return stalled.length
 }
 
 /** The querying form, for callers that do not already hold the rows. */
-export async function requeueUnfetched(workspaceId: string | null): Promise<number> {
+export async function requeueUnfetched(
+  workspaceId: string | null
+): Promise<number> {
   const rows = await db
-    .select({ id: feeds.id, url: feeds.url, kind: feeds.kind })
+    .select({
+      id: feeds.id,
+      url: feeds.url,
+      kind: feeds.kind,
+    })
     .from(feeds)
     .where(
-      and(feedInWorkspace(workspaceId), isNull(feeds.lastFetchedAt), isNull(feeds.lastErrorAt)),
+      and(
+        feedInWorkspace(workspaceId),
+        isNull(feeds.entitlementPausedAt),
+        isNull(feeds.lastFetchedAt),
+        isNull(feeds.lastErrorAt)
+      )
     )
 
   if (rows.length === 0) return 0

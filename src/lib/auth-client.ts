@@ -1,5 +1,6 @@
 import { createAuthClient } from "better-auth/react"
-import { organizationClient } from "better-auth/client/plugins"
+import { organizationClient, twoFactorClient } from "better-auth/client/plugins"
+import { dodopaymentsClient } from "@dodopayments/better-auth/client"
 
 // Default to the site's own origin in the browser so the auth client always
 // talks to the same domain it was served from (e.g. https://demo.sparkfeed.dev).
@@ -9,13 +10,27 @@ import { organizationClient } from "better-auth/client/plugins"
 // VITE_AUTH_URL stays available as an explicit override for split-domain setups.
 const authBaseURL =
   import.meta.env.VITE_AUTH_URL ||
-  (typeof window !== "undefined" ? window.location.origin : "http://localhost:3000")
+  (typeof window !== "undefined"
+    ? window.location.origin
+    : "http://localhost:3000")
 
 export const authClient = createAuthClient({
   baseURL: authBaseURL,
   plugins: [
-    organizationClient()
-  ]
+    organizationClient(),
+    dodopaymentsClient(),
+    twoFactorClient({
+      onTwoFactorRedirect() {
+        if (typeof window === "undefined") return
+        const redirect = new URL(window.location.href).searchParams.get(
+          "redirect"
+        )
+        window.location.href = redirect
+          ? `/two-factor?redirect=${encodeURIComponent(redirect)}`
+          : "/two-factor"
+      },
+    }),
+  ],
 })
 
-export const { useSession, signIn, signUp, signOut } = authClient;
+export const { useSession, signIn, signUp, signOut } = authClient

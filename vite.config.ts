@@ -22,7 +22,10 @@ export default defineConfig({
     // never ran: the built server contained none of it. Anything added there
     // needs a line here or it silently does nothing.
     nitro({
-      plugins: ['src/server/plugins/demo-boot.ts'],
+      plugins: [
+        "src/server/plugins/deployment-config.ts",
+        "src/server/plugins/demo-boot.ts",
+      ],
     }),
     viteReact(),
   ],

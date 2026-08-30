@@ -53,6 +53,7 @@ export const getSourceHealth = createServerFn({ method: "GET" }).handler(
         lastErrorAt: feeds.lastErrorAt,
         lastFetchedAt: feeds.lastFetchedAt,
         createdAt: feeds.createdAt,
+        entitlementPausedAt: feeds.entitlementPausedAt,
       })
       .from(feeds)
       .where(feedInWorkspace(workspaceId))
@@ -72,12 +73,13 @@ export const getSourceHealth = createServerFn({ method: "GET" }).handler(
         kind: r.kind,
         lastFetchedAt: r.lastFetchedAt,
         lastErrorAt: r.lastErrorAt,
-      })),
+        entitlementPausedAt: r.entitlementPausedAt,
+      }))
     )
 
     const windows = await feedHealthByFeed(
       db,
-      rows.map((r) => r.id),
+      rows.map((r) => r.id)
     )
 
     // A plain object rather than a Map: this crosses the server-fn boundary,
@@ -98,7 +100,7 @@ export const getSourceHealth = createServerFn({ method: "GET" }).handler(
             createdAt: row.createdAt ?? null,
           } satisfies SourceHealthRow,
         ]
-      }),
+      })
     )
-  },
+  }
 )

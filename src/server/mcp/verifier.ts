@@ -1,12 +1,7 @@
-import {
-
-  OAuthError,
-  OAuthErrorCode
-
-} from '@modelcontextprotocol/server'
-import { verifyApiKey } from '../api/keys'
-import type {AuthInfo, OAuthTokenVerifier} from '@modelcontextprotocol/server';
-import type { ApiPrincipal, Scope } from '../api/principal'
+import { OAuthError, OAuthErrorCode } from "@modelcontextprotocol/server"
+import { verifyApiKey } from "../api/keys"
+import type { AuthInfo, OAuthTokenVerifier } from "@modelcontextprotocol/server"
+import type { ApiPrincipal, Scope } from "../api/principal"
 
 /**
  * Bridges Sparkfeed API keys to the MCP SDK's bearer-auth gate.
@@ -18,7 +13,10 @@ export const sparkfeedVerifier: OAuthTokenVerifier = {
   async verifyAccessToken(token: string): Promise<AuthInfo> {
     const principal = await verifyApiKey(token)
     if (!principal) {
-      throw new OAuthError(OAuthErrorCode.InvalidToken, 'Invalid, expired or revoked API key.')
+      throw new OAuthError(
+        OAuthErrorCode.InvalidToken,
+        "Invalid, expired or revoked API key."
+      )
     }
 
     return {
@@ -35,6 +33,7 @@ export const sparkfeedVerifier: OAuthTokenVerifier = {
       extra: {
         workspaceId: principal.workspaceId,
         plan: principal.plan,
+        entitlements: principal.entitlements,
         keyId: principal.keyId,
         demo: principal.demo,
       },
@@ -46,12 +45,19 @@ export const sparkfeedVerifier: OAuthTokenVerifier = {
  * Rebuilds the principal from the AuthInfo the SDK threads through to the
  * server factory, so tools never re-parse a token.
  */
-export function principalFromAuthInfo(authInfo: AuthInfo | undefined): ApiPrincipal {
-  const extra = (authInfo?.extra ?? {})
+export function principalFromAuthInfo(
+  authInfo: AuthInfo | undefined
+): ApiPrincipal {
+  const extra = authInfo?.extra ?? {}
   return {
-    keyId: typeof extra.keyId === 'string' ? extra.keyId : 'key_unknown',
-    workspaceId: typeof extra.workspaceId === 'string' ? extra.workspaceId : null,
-    plan: (extra.plan as ApiPrincipal['plan']) ?? 'free',
+    keyId: typeof extra.keyId === "string" ? extra.keyId : "key_unknown",
+    workspaceId:
+      typeof extra.workspaceId === "string" ? extra.workspaceId : null,
+    plan: (extra.plan as ApiPrincipal["plan"]) ?? "free",
+    entitlements:
+      extra.entitlements && typeof extra.entitlements === "object"
+        ? (extra.entitlements as ApiPrincipal["entitlements"])
+        : undefined,
     scopes: (authInfo?.scopes ?? []) as Array<Scope>,
     demo: extra.demo === true,
   }

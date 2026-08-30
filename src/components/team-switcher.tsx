@@ -7,6 +7,7 @@ import { UserSettingsModal } from "./UserSettingsModal"
 import { authClient } from "@/lib/auth-client"
 import { DEMO_MODE } from "@/lib/demo"
 import { useWorkspaceCreationPermission } from "@/hooks/use-workspace-creation-permission"
+import { personalWorkspaceName } from "@/lib/workspaces"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -81,7 +82,7 @@ export function TeamSwitcher() {
             </div>
             <div className="flex flex-col items-start gap-0.5 leading-none group-data-[collapsible=icon]:hidden">
               <span className="truncate text-sm font-bold text-zinc-200">
-                {activeOrg?.name || "Personal Workspace"}
+                {activeOrg?.name || personalWorkspaceName(user?.name)}
               </span>
               <span className="text-[10px] font-medium text-zinc-500">
                 {activeOrg ? "Pro Plan" : "Free Plan"}
@@ -118,7 +119,9 @@ export function TeamSwitcher() {
                   )}
                 </div>
                 <div className="flex-1 text-left">
-                  <p className="text-sm font-semibold">Personal</p>
+                  <p className="text-sm font-semibold">
+                    {personalWorkspaceName(user?.name)}
+                  </p>
                   <p className="text-[10px] opacity-60">Personal account</p>
                 </div>
                 {!activeOrg ? (

@@ -10,11 +10,13 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as ProtectedRouteImport } from './routes/_protected'
+import { Route as AdminRouteImport } from './routes/admin'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as InviteRouteImport } from './routes/invite'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as SignupRouteImport } from './routes/signup'
+import { Route as TwoFactorRouteImport } from './routes/two-factor'
 import { Route as VerifyEmailRouteImport } from './routes/verify-email'
 import { Route as FolderSlugFeedRouteImport } from './routes/$folderSlug.feed'
 import { Route as FolderSlugXmlRouteImport } from './routes/$folderSlug.xml'
@@ -41,9 +43,11 @@ import { Route as ProtectedDiscoverIndexRouteImport } from './routes/_protected/
 import { Route as ProtectedDiscoverCategorySlugRouteImport } from './routes/_protected/discover/$categorySlug'
 import { Route as ProtectedFeedFeedSlugRouteImport } from './routes/_protected/feed.$feedSlug'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth.$'
+import { Route as ApiDodoWebhooksRouteImport } from './routes/api/dodo.webhooks'
 import { Route as ApiFeedsShareRouteImport } from './routes/api/feeds.share'
 import { Route as ApiFoldersAddToWorkspaceRouteImport } from './routes/api/folders.add-to-workspace'
 import { Route as ApiFoldersShareRouteImport } from './routes/api/folders.share'
+import { Route as ApiPlatformAdminSplatRouteImport } from './routes/api/platform-admin.$'
 import { Route as ApiRssSlugRouteImport } from './routes/api/rss.$slug'
 import { Route as ApiSharedFolderIdRouteImport } from './routes/api/shared.$folderId'
 import { Route as ApiV1SplatRouteImport } from './routes/api/v1.$'
@@ -54,6 +58,11 @@ import { Route as ProtectedWorkspacesSlugSettingsRouteImport } from './routes/_p
 
 const ProtectedRoute = ProtectedRouteImport.update({
   id: '/_protected',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminRoute = AdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
@@ -79,6 +88,11 @@ const ResetPasswordRoute = ResetPasswordRouteImport.update({
 const SignupRoute = SignupRouteImport.update({
   id: '/signup',
   path: '/signup',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TwoFactorRoute = TwoFactorRouteImport.update({
+  id: '/two-factor',
+  path: '/two-factor',
   getParentRoute: () => rootRouteImport,
 } as any)
 const VerifyEmailRoute = VerifyEmailRouteImport.update({
@@ -213,6 +227,11 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiDodoWebhooksRoute = ApiDodoWebhooksRouteImport.update({
+  id: '/api/dodo/webhooks',
+  path: '/api/dodo/webhooks',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiFeedsShareRoute = ApiFeedsShareRouteImport.update({
   id: '/api/feeds/share',
   path: '/api/feeds/share',
@@ -227,6 +246,11 @@ const ApiFoldersAddToWorkspaceRoute =
 const ApiFoldersShareRoute = ApiFoldersShareRouteImport.update({
   id: '/api/folders/share',
   path: '/api/folders/share',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPlatformAdminSplatRoute = ApiPlatformAdminSplatRouteImport.update({
+  id: '/api/platform-admin/$',
+  path: '/api/platform-admin/$',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiRssSlugRoute = ApiRssSlugRouteImport.update({
@@ -271,11 +295,13 @@ const ProtectedWorkspacesSlugSettingsRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof ProtectedIndexRoute
+  '/admin': typeof AdminRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/invite': typeof InviteRoute
   '/login': typeof LoginRoute
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
+  '/two-factor': typeof TwoFactorRoute
   '/verify-email': typeof VerifyEmailRoute
   '/$folderSlug/feed': typeof FolderSlugFeedRoute
   '/$folderSlug/xml': typeof FolderSlugXmlRoute
@@ -299,9 +325,11 @@ export interface FileRoutesByFullPath {
   '/discover/$categorySlug': typeof ProtectedDiscoverCategorySlugRoute
   '/feed/$feedSlug': typeof ProtectedFeedFeedSlugRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/dodo/webhooks': typeof ApiDodoWebhooksRoute
   '/api/feeds/share': typeof ApiFeedsShareRoute
   '/api/folders/add-to-workspace': typeof ApiFoldersAddToWorkspaceRoute
   '/api/folders/share': typeof ApiFoldersShareRoute
+  '/api/platform-admin/$': typeof ApiPlatformAdminSplatRoute
   '/api/rss/$slug': typeof ApiRssSlugRoute
   '/api/shared/$folderId': typeof ApiSharedFolderIdRoute
   '/api/v1/$': typeof ApiV1SplatRoute
@@ -313,11 +341,13 @@ export interface FileRoutesByFullPath {
   '/dashboard/ai/': typeof ProtectedDashboardAiIndexRoute
 }
 export interface FileRoutesByTo {
+  '/admin': typeof AdminRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/invite': typeof InviteRoute
   '/login': typeof LoginRoute
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
+  '/two-factor': typeof TwoFactorRoute
   '/verify-email': typeof VerifyEmailRoute
   '/$folderSlug/feed': typeof FolderSlugFeedRoute
   '/$folderSlug/xml': typeof FolderSlugXmlRoute
@@ -339,9 +369,11 @@ export interface FileRoutesByTo {
   '/discover/$categorySlug': typeof ProtectedDiscoverCategorySlugRoute
   '/feed/$feedSlug': typeof ProtectedFeedFeedSlugRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/dodo/webhooks': typeof ApiDodoWebhooksRoute
   '/api/feeds/share': typeof ApiFeedsShareRoute
   '/api/folders/add-to-workspace': typeof ApiFoldersAddToWorkspaceRoute
   '/api/folders/share': typeof ApiFoldersShareRoute
+  '/api/platform-admin/$': typeof ApiPlatformAdminSplatRoute
   '/api/rss/$slug': typeof ApiRssSlugRoute
   '/api/shared/$folderId': typeof ApiSharedFolderIdRoute
   '/api/v1/$': typeof ApiV1SplatRoute
@@ -355,11 +387,13 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_protected': typeof ProtectedRouteWithChildren
+  '/admin': typeof AdminRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/invite': typeof InviteRoute
   '/login': typeof LoginRoute
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
+  '/two-factor': typeof TwoFactorRoute
   '/verify-email': typeof VerifyEmailRoute
   '/$folderSlug/feed': typeof FolderSlugFeedRoute
   '/$folderSlug/xml': typeof FolderSlugXmlRoute
@@ -384,9 +418,11 @@ export interface FileRoutesById {
   '/_protected/discover/$categorySlug': typeof ProtectedDiscoverCategorySlugRoute
   '/_protected/feed/$feedSlug': typeof ProtectedFeedFeedSlugRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/dodo/webhooks': typeof ApiDodoWebhooksRoute
   '/api/feeds/share': typeof ApiFeedsShareRoute
   '/api/folders/add-to-workspace': typeof ApiFoldersAddToWorkspaceRoute
   '/api/folders/share': typeof ApiFoldersShareRoute
+  '/api/platform-admin/$': typeof ApiPlatformAdminSplatRoute
   '/api/rss/$slug': typeof ApiRssSlugRoute
   '/api/shared/$folderId': typeof ApiSharedFolderIdRoute
   '/api/v1/$': typeof ApiV1SplatRoute
@@ -401,11 +437,13 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/admin'
     | '/forgot-password'
     | '/invite'
     | '/login'
     | '/reset-password'
     | '/signup'
+    | '/two-factor'
     | '/verify-email'
     | '/$folderSlug/feed'
     | '/$folderSlug/xml'
@@ -429,9 +467,11 @@ export interface FileRouteTypes {
     | '/discover/$categorySlug'
     | '/feed/$feedSlug'
     | '/api/auth/$'
+    | '/api/dodo/webhooks'
     | '/api/feeds/share'
     | '/api/folders/add-to-workspace'
     | '/api/folders/share'
+    | '/api/platform-admin/$'
     | '/api/rss/$slug'
     | '/api/shared/$folderId'
     | '/api/v1/$'
@@ -443,11 +483,13 @@ export interface FileRouteTypes {
     | '/dashboard/ai/'
   fileRoutesByTo: FileRoutesByTo
   to:
+    | '/admin'
     | '/forgot-password'
     | '/invite'
     | '/login'
     | '/reset-password'
     | '/signup'
+    | '/two-factor'
     | '/verify-email'
     | '/$folderSlug/feed'
     | '/$folderSlug/xml'
@@ -469,9 +511,11 @@ export interface FileRouteTypes {
     | '/discover/$categorySlug'
     | '/feed/$feedSlug'
     | '/api/auth/$'
+    | '/api/dodo/webhooks'
     | '/api/feeds/share'
     | '/api/folders/add-to-workspace'
     | '/api/folders/share'
+    | '/api/platform-admin/$'
     | '/api/rss/$slug'
     | '/api/shared/$folderId'
     | '/api/v1/$'
@@ -484,11 +528,13 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/_protected'
+    | '/admin'
     | '/forgot-password'
     | '/invite'
     | '/login'
     | '/reset-password'
     | '/signup'
+    | '/two-factor'
     | '/verify-email'
     | '/$folderSlug/feed'
     | '/$folderSlug/xml'
@@ -513,9 +559,11 @@ export interface FileRouteTypes {
     | '/_protected/discover/$categorySlug'
     | '/_protected/feed/$feedSlug'
     | '/api/auth/$'
+    | '/api/dodo/webhooks'
     | '/api/feeds/share'
     | '/api/folders/add-to-workspace'
     | '/api/folders/share'
+    | '/api/platform-admin/$'
     | '/api/rss/$slug'
     | '/api/shared/$folderId'
     | '/api/v1/$'
@@ -529,11 +577,13 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   ProtectedRoute: typeof ProtectedRouteWithChildren
+  AdminRoute: typeof AdminRoute
   ForgotPasswordRoute: typeof ForgotPasswordRoute
   InviteRoute: typeof InviteRoute
   LoginRoute: typeof LoginRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   SignupRoute: typeof SignupRoute
+  TwoFactorRoute: typeof TwoFactorRoute
   VerifyEmailRoute: typeof VerifyEmailRoute
   FolderSlugFeedRoute: typeof FolderSlugFeedRoute
   FolderSlugXmlRoute: typeof FolderSlugXmlRoute
@@ -545,9 +595,11 @@ export interface RootRouteChildren {
   FolderSlugFeedSlugFeedRoute: typeof FolderSlugFeedSlugFeedRoute
   FolderSlugFeedSlugXmlRoute: typeof FolderSlugFeedSlugXmlRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
+  ApiDodoWebhooksRoute: typeof ApiDodoWebhooksRoute
   ApiFeedsShareRoute: typeof ApiFeedsShareRoute
   ApiFoldersAddToWorkspaceRoute: typeof ApiFoldersAddToWorkspaceRoute
   ApiFoldersShareRoute: typeof ApiFoldersShareRoute
+  ApiPlatformAdminSplatRoute: typeof ApiPlatformAdminSplatRoute
   ApiRssSlugRoute: typeof ApiRssSlugRoute
   ApiSharedFolderIdRoute: typeof ApiSharedFolderIdRoute
   ApiV1SplatRoute: typeof ApiV1SplatRoute
@@ -560,6 +612,13 @@ declare module '@tanstack/react-router' {
       path: ''
       fullPath: '/'
       preLoaderRoute: typeof ProtectedRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/forgot-password': {
@@ -595,6 +654,13 @@ declare module '@tanstack/react-router' {
       path: '/signup'
       fullPath: '/signup'
       preLoaderRoute: typeof SignupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/two-factor': {
+      id: '/two-factor'
+      path: '/two-factor'
+      fullPath: '/two-factor'
+      preLoaderRoute: typeof TwoFactorRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/verify-email': {
@@ -779,6 +845,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/dodo/webhooks': {
+      id: '/api/dodo/webhooks'
+      path: '/api/dodo/webhooks'
+      fullPath: '/api/dodo/webhooks'
+      preLoaderRoute: typeof ApiDodoWebhooksRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/feeds/share': {
       id: '/api/feeds/share'
       path: '/api/feeds/share'
@@ -798,6 +871,13 @@ declare module '@tanstack/react-router' {
       path: '/api/folders/share'
       fullPath: '/api/folders/share'
       preLoaderRoute: typeof ApiFoldersShareRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/platform-admin/$': {
+      id: '/api/platform-admin/$'
+      path: '/api/platform-admin/$'
+      fullPath: '/api/platform-admin/$'
+      preLoaderRoute: typeof ApiPlatformAdminSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/rss/$slug': {
@@ -929,11 +1009,13 @@ const ProtectedRouteWithChildren = ProtectedRoute._addFileChildren(
 
 const rootRouteChildren: RootRouteChildren = {
   ProtectedRoute: ProtectedRouteWithChildren,
+  AdminRoute: AdminRoute,
   ForgotPasswordRoute: ForgotPasswordRoute,
   InviteRoute: InviteRoute,
   LoginRoute: LoginRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   SignupRoute: SignupRoute,
+  TwoFactorRoute: TwoFactorRoute,
   VerifyEmailRoute: VerifyEmailRoute,
   FolderSlugFeedRoute: FolderSlugFeedRoute,
   FolderSlugXmlRoute: FolderSlugXmlRoute,
@@ -945,9 +1027,11 @@ const rootRouteChildren: RootRouteChildren = {
   FolderSlugFeedSlugFeedRoute: FolderSlugFeedSlugFeedRoute,
   FolderSlugFeedSlugXmlRoute: FolderSlugFeedSlugXmlRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
+  ApiDodoWebhooksRoute: ApiDodoWebhooksRoute,
   ApiFeedsShareRoute: ApiFeedsShareRoute,
   ApiFoldersAddToWorkspaceRoute: ApiFoldersAddToWorkspaceRoute,
   ApiFoldersShareRoute: ApiFoldersShareRoute,
+  ApiPlatformAdminSplatRoute: ApiPlatformAdminSplatRoute,
   ApiRssSlugRoute: ApiRssSlugRoute,
   ApiSharedFolderIdRoute: ApiSharedFolderIdRoute,
   ApiV1SplatRoute: ApiV1SplatRoute,

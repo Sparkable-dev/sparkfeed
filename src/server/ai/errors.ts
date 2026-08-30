@@ -28,6 +28,12 @@ export const AI_DISABLED = (demo = false) =>
 export const AI_UNAUTHENTICATED = () =>
   new AIError("Sign in to use Spark AI.", 401)
 
+export const AI_NOT_ENTITLED = () =>
+  new AIError(
+    "Spark AI is not available for this workspace or its credit balance is empty.",
+    403
+  )
+
 export const AI_BAD_REQUEST = () =>
   new AIError("That request was malformed.", 400)
 

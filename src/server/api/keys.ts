@@ -5,6 +5,9 @@ import type { ApiPrincipal, Scope } from "./principal"
 import { db } from "@/db/index"
 import { apiKeys } from "@/db/schema"
 import { DEMO_MODE, DEMO_WORKSPACE_ID } from "@/lib/demo"
+import { personalWorkspaceRef } from "@/lib/workspaces"
+import { resolveEntitlements } from "@/server/entitlements/resolve"
+import { workspaceRefFromId } from "@/server/entitlements/workspace"
 
 /**
  * API key minting and verification.
@@ -48,11 +51,22 @@ function digestsMatch(a: string, b: string): boolean {
  * endpoint is open: the key is published in the docs anyway, so treating it as
  * a secret would be theatre, and an open demo is one less step for a visitor.
  */
-function demoPrincipal(): ApiPrincipal {
+async function demoPrincipal(): Promise<ApiPrincipal> {
+  const entitlements = await resolveEntitlements(
+    personalWorkspaceRef(DEMO_WORKSPACE_ID),
+    {
+      type: "demo",
+      userId: null,
+      emailVerified: false,
+      workspaceId: DEMO_WORKSPACE_ID,
+      demo: true,
+    }
+  )
   return {
     keyId: "key_demo",
     workspaceId: DEMO_WORKSPACE_ID,
-    plan: "pro",
+    plan: entitlements.plan,
+    entitlements,
     scopes: DEMO_SCOPES,
     demo: true,
   }
@@ -98,12 +112,24 @@ export async function verifyApiKey(raw: string): Promise<ApiPrincipal | null> {
     .where(eq(apiKeys.id, row.id))
     .catch(() => {})
 
+  const entitlementPrincipal = {
+    type: "api_key" as const,
+    keyId: row.id,
+    userId: row.createdByUserId ?? null,
+    emailVerified: false,
+    workspaceId: row.workspaceId,
+    demo: false as const,
+  }
+  const entitlements = await resolveEntitlements(
+    await workspaceRefFromId(row.workspaceId),
+    entitlementPrincipal
+  )
+
   return {
     keyId: row.id,
     workspaceId: row.workspaceId,
-    // Entitlements do not exist yet (PROD-62/63). Until they do, holding a key
-    // is the entitlement; the field is here so the check has somewhere to go.
-    plan: "pro",
+    plan: entitlements.plan,
+    entitlements,
     scopes: parseScopes(row.scopes),
     demo: false,
   }

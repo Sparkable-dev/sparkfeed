@@ -63,8 +63,13 @@ function stub(over: {
   publishedDates: Array<string>
 }) {
   const items = over.publishedDates.length
-    ? over.publishedDates.map((isoDate, i) => ({ isoDate, title: over.sampleTitles[i] }))
-    : Array.from({ length: over.itemCount }, (_, i) => ({ title: over.sampleTitles[i] }))
+    ? over.publishedDates.map((isoDate, i) => ({
+        isoDate,
+        title: over.sampleTitles[i],
+      }))
+    : Array.from({ length: over.itemCount }, (_, i) => ({
+        title: over.sampleTitles[i],
+      }))
 
   return {
     ...over,
@@ -87,7 +92,8 @@ beforeEach(async () => {
     id TEXT PRIMARY KEY, name TEXT NOT NULL, url TEXT NOT NULL,
     folder_id TEXT, workspace_id TEXT, kind TEXT DEFAULT 'rss', include_keywords TEXT,
     exclude_keywords TEXT, position INTEGER, created_at TEXT,
-    last_fetched_at TEXT, last_error TEXT, last_error_at TEXT)`)
+    last_fetched_at TEXT, last_error TEXT, last_error_at TEXT,
+    entitlement_paused_at TEXT)`)
 })
 
 describe("an address that is not a feed", () => {

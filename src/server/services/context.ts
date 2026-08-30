@@ -1,5 +1,7 @@
 import { createServerOnlyFn } from "@tanstack/react-start"
+import type { WorkspaceRef } from "@/server/entitlements/types"
 import { DEMO_MODE, DEMO_WORKSPACE_ID } from "@/lib/demo"
+import { personalWorkspaceRef, workspaceRefForSession } from "@/lib/workspaces"
 
 /**
  * Who is calling, and which workspace their data lives in.
@@ -16,7 +18,9 @@ import { DEMO_MODE, DEMO_WORKSPACE_ID } from "@/lib/demo"
  */
 export interface WorkspaceContext {
   workspaceId: string | null
+  workspace: WorkspaceRef | null
   userId: string | null
+  emailVerified: boolean
   demo: boolean
 }
 
@@ -41,12 +45,18 @@ export interface WorkspaceContext {
 export const resolveWorkspaceContext = createServerOnlyFn(
   async (): Promise<WorkspaceContext> => {
     if (DEMO_MODE) {
-      return { workspaceId: DEMO_WORKSPACE_ID, userId: DEMO_WORKSPACE_ID, demo: true }
+      return {
+        workspaceId: DEMO_WORKSPACE_ID,
+        workspace: personalWorkspaceRef(DEMO_WORKSPACE_ID),
+        userId: DEMO_WORKSPACE_ID,
+        emailVerified: false,
+        demo: true,
+      }
     }
 
     const { getRequestHeaders } = await import("@tanstack/react-start/server")
     return resolveWorkspaceContextFromHeaders(getRequestHeaders())
-  },
+  }
 )
 
 /**
@@ -63,18 +73,37 @@ export const resolveWorkspaceContext = createServerOnlyFn(
 export const resolveWorkspaceContextFromHeaders = createServerOnlyFn(
   async (headers: Headers): Promise<WorkspaceContext> => {
     if (DEMO_MODE) {
-      return { workspaceId: DEMO_WORKSPACE_ID, userId: DEMO_WORKSPACE_ID, demo: true }
+      return {
+        workspaceId: DEMO_WORKSPACE_ID,
+        workspace: personalWorkspaceRef(DEMO_WORKSPACE_ID),
+        userId: DEMO_WORKSPACE_ID,
+        emailVerified: false,
+        demo: true,
+      }
     }
 
     const { auth } = await import("@/lib/auth")
     const session = await auth.api.getSession({ headers })
 
+    const organizationId = session?.session
+      ? "activeOrganizationId" in session.session
+        ? ((session.session.activeOrganizationId as
+            string | null | undefined) ?? null)
+        : null
+      : null
+    const userId = session?.user?.id ?? null
+    const workspace = userId
+      ? workspaceRefForSession(userId, organizationId)
+      : null
+
     return {
-      workspaceId: session?.session?.activeOrganizationId || session?.user?.id || null,
-      userId: session?.user?.id ?? null,
+      workspaceId: workspace?.id ?? null,
+      workspace,
+      userId,
+      emailVerified: session?.user?.emailVerified === true,
       demo: false,
     }
-  },
+  }
 )
 
 /** Convenience for the common case where only the anchor is needed. */

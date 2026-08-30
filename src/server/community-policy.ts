@@ -1,12 +1,13 @@
-import { and, asc, eq, gt, isNull, sql } from "drizzle-orm"
+import { and, asc, eq, gt, sql } from "drizzle-orm"
 import type { RegistrationDecision } from "@/lib/community-policy"
 import { db } from "@/db/index"
-import { invitation, invites, user } from "@/db/schema"
+import { invitation, user } from "@/db/schema"
 import {
   decideRegistration,
   decideWorkspaceCreation,
   readWorkspaceCreationPolicy,
 } from "@/lib/community-policy"
+import { sparkfeedEdition } from "@/server/entitlements/config"
 
 export { readWorkspaceCreationPolicy } from "@/lib/community-policy"
 
@@ -19,20 +20,6 @@ async function hasPendingInvite(email: string | undefined): Promise<boolean> {
 
   const normalizedEmail = normalizeEmail(email)
   const now = new Date()
-
-  const [customInvite] = await db
-    .select({ id: invites.id })
-    .from(invites)
-    .where(
-      and(
-        sql`lower(${invites.email}) = ${normalizedEmail}`,
-        isNull(invites.usedAt),
-        gt(invites.expiresAt, now)
-      )
-    )
-    .limit(1)
-
-  if (customInvite) return true
 
   const [organizationInvite] = await db
     .select({ id: invitation.id })
@@ -60,6 +47,10 @@ async function userCount(): Promise<number> {
 export async function registrationDecision(
   email?: string
 ): Promise<RegistrationDecision> {
+  if (sparkfeedEdition() === "cloud") {
+    return { allowed: true, reason: "open" }
+  }
+
   const openRegistration = process.env.ALLOW_REGISTRATION === "true"
   const count = await userCount()
 
@@ -81,6 +72,8 @@ export async function isInstanceOwner(userId: string): Promise<boolean> {
 }
 
 export async function canUserCreateWorkspace(userId: string): Promise<boolean> {
+  if (sparkfeedEdition() === "cloud") return false
+
   const policy = readWorkspaceCreationPolicy()
   if (policy === "all-users") return true
 

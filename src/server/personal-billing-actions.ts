@@ -11,6 +11,7 @@ import {
   selectFreePersonalSources,
 } from "./billing/personal-lifecycle"
 import { reconcilePendingPersonalCheckout } from "./billing/personal-reconciliation"
+import { grantPersonalMonthlyCredits } from "./billing/personal-credits"
 import type {
   BillingInterval,
   BillingStatus,
@@ -99,14 +100,6 @@ export const getPersonalBillingSummary = createServerFn({
       error instanceof Error ? error.message : "unknown error"
     )
   }
-  const entitlements = await resolveEntitlements(workspace, {
-    type: "session",
-    userId: session.user.id,
-    emailVerified: session.user.emailVerified,
-    workspaceId: session.user.id,
-    demo: false,
-  })
-
   const [subscription] = await db
     .select()
     .from(workspaceSubscriptions)
@@ -117,6 +110,28 @@ export const getPersonalBillingSummary = createServerFn({
       )
     )
     .limit(1)
+  // Repair activations completed through the provider reconciliation fallback
+  // before this grant existed. The ledger idempotency key makes repeated
+  // Billing loads and later webhook replays safe.
+  if (
+    subscription?.planKey === "personal_plus" &&
+    subscription.subscriptionStatus === "active" &&
+    subscription.currentPeriodStart
+  ) {
+    await grantPersonalMonthlyCredits(
+      session.user.id,
+      subscription.currentPeriodStart
+    )
+  }
+
+  const entitlements = await resolveEntitlements(workspace, {
+    type: "session",
+    userId: session.user.id,
+    emailVerified: session.user.emailVerified,
+    workspaceId: session.user.id,
+    demo: false,
+  })
+
   const sourceRows = await db
     .select({
       id: feeds.id,

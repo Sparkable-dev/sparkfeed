@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import type { createClient } from "@libsql/client"
 import type { UnwrapWebhookEvent } from "dodopayments/resources/webhooks/webhooks"
+import type { Subscription } from "dodopayments/resources/subscriptions"
 import type { Database } from "@/db/client"
 import { createDb } from "@/db/client"
 
@@ -21,7 +22,8 @@ vi.mock("../personal-lifecycle", () => ({
   reactivatePersonalPlusSources: reactivate,
 }))
 
-const { ingestVerifiedDodoWebhook } = await import("../personal-webhooks")
+const { ingestVerifiedDodoWebhook, reconcilePersonalSubscriptionFromDodo } =
+  await import("../personal-webhooks")
 
 const config = {
   apiKey: "test-key",
@@ -149,6 +151,17 @@ describe("Personal+ Dodo webhooks", () => {
         dodo_subscription_id: "sub-1",
       },
     ])
+  })
+
+  it("grants the period allowance during active provider reconciliation", async () => {
+    await reconcilePersonalSubscriptionFromDodo(
+      activeEvent().data as Subscription,
+      new Date("2026-08-30T10:05:00.000Z"),
+      config
+    )
+
+    expect(grant).toHaveBeenCalledTimes(1)
+    expect(grant).toHaveBeenCalledWith("user-1", "2026-08-30T10:00:00.000Z")
   })
 
   it("rejects a customer that does not match the personal account", async () => {

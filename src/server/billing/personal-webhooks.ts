@@ -312,7 +312,10 @@ async function applyPersonalSubscriptionEvent(
 function reconciliationEventType(
   status: Subscription["status"]
 ): UnwrapWebhookEvent["type"] {
-  if (status === "active") return "subscription.updated"
+  // An authoritative active reconciliation must run the same idempotent credit
+  // grant as the original activation webhook. Mapping it to updated would
+  // activate the plan without issuing the paid period allowance.
+  if (status === "active") return "subscription.active"
   if (status === "on_hold") return "subscription.on_hold"
   if (status === "paused") return "subscription.paused"
   if (status === "cancelled") return "subscription.cancelled"

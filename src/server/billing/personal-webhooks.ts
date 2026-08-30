@@ -105,8 +105,11 @@ async function applyPersonalSubscriptionEvent(
   const periodEnd = iso(subscription.next_billing_date)
   const [current] = await db
     .select({
+      planKey: workspaceSubscriptions.planKey,
+      subscriptionStatus: workspaceSubscriptions.subscriptionStatus,
       providerEventAt: workspaceSubscriptions.providerEventAt,
       dodoSubscriptionId: workspaceSubscriptions.dodoSubscriptionId,
+      updatedAt: workspaceSubscriptions.updatedAt,
     })
     .from(workspaceSubscriptions)
     .where(
@@ -120,6 +123,12 @@ async function applyPersonalSubscriptionEvent(
   if (
     current?.providerEventAt &&
     new Date(current.providerEventAt) >= new Date(eventAt)
+  ) {
+    return
+  }
+  if (
+    current?.subscriptionStatus === "checkout_pending" &&
+    new Date(current.updatedAt) > new Date(eventAt)
   ) {
     return
   }
@@ -201,6 +210,37 @@ async function applyPersonalSubscriptionEvent(
     event.type === "subscription.on_hold" ||
     event.type === "subscription.failed"
   ) {
+    // A declined first payment is not a paid-plan renewal failure. Keep the
+    // Dodo customer for a retry, but remove the failed subscription reference
+    // so a fresh checkout can activate without colliding with it.
+    if (current?.planKey !== "personal_plus") {
+      await db
+        .update(workspaceSubscriptions)
+        .set({
+          planKey: "free",
+          billingSource: "free",
+          subscriptionStatus: "free",
+          accessState: "active",
+          billingInterval: null,
+          currentPeriodStart: null,
+          currentPeriodEnd: null,
+          failedPaymentGraceDeadline: null,
+          paidCreditRetentionEndsAt: null,
+          providerEventAt: eventAt,
+          dodoCustomerId: subscription.customer.customer_id,
+          dodoSubscriptionId: null,
+          productKey: null,
+          updatedAt: now,
+        })
+        .where(
+          and(
+            eq(workspaceSubscriptions.workspaceType, "personal"),
+            eq(workspaceSubscriptions.workspaceId, userId)
+          )
+        )
+      return
+    }
+
     await db
       .update(workspaceSubscriptions)
       .set({

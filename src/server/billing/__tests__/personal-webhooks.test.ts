@@ -89,7 +89,7 @@ beforeEach(async () => {
     received_at TEXT NOT NULL, processing_started_at TEXT, processed_at TEXT)`)
 
   const { user, workspaceSubscriptions } = await import("@/db/schema")
-  const now = new Date()
+  const now = new Date("2026-08-30T09:00:00.000Z")
   await db.insert(user).values({
     id: "user-1",
     name: "Sudu",
@@ -168,5 +168,39 @@ describe("Personal+ Dodo webhooks", () => {
       "SELECT processing_status FROM dodo_webhook_inbox WHERE webhook_id = 'webhook-2'"
     )
     expect(inbox.rows).toEqual([{ processing_status: "failed" }])
+  })
+
+  it("keeps a declined first checkout on Free and allows a clean retry", async () => {
+    const event = {
+      ...activeEvent(),
+      type: "subscription.failed",
+      data: {
+        ...activeEvent().data,
+        status: "failed",
+      },
+    } as UnwrapWebhookEvent
+
+    await ingestVerifiedDodoWebhook({
+      webhookId: "webhook-initial-failure",
+      rawBody: JSON.stringify(event),
+      event,
+      config,
+    })
+
+    const raw = (db as unknown as { $client: ReturnType<typeof createClient> })
+      .$client
+    const subscription = await raw.execute(
+      "SELECT plan_key, billing_source, subscription_status, dodo_subscription_id, billing_interval FROM workspace_subscriptions"
+    )
+    expect(subscription.rows).toEqual([
+      {
+        plan_key: "free",
+        billing_source: "free",
+        subscription_status: "free",
+        dodo_subscription_id: null,
+        billing_interval: null,
+      },
+    ])
+    expect(grant).not.toHaveBeenCalled()
   })
 })

@@ -5,6 +5,7 @@ import {
   Camera,
   Check,
   ExternalLink,
+  Home,
   Loader2,
   Lock,
   LogOut,
@@ -117,7 +118,11 @@ function SettingsPage() {
     */
     <div className="flex h-screen flex-col overflow-hidden bg-background text-foreground">
       <AppTopBar
-        crumbs={[{ label: "Settings" }, { label: tabLabel }]}
+        crumbs={[
+          { label: "Home", href: "/", icon: Home },
+          { label: "Settings" },
+          { label: tabLabel },
+        ]}
         showSidebarTrigger={false}
       />
 
@@ -125,6 +130,15 @@ function SettingsPage() {
         {/* SIDEBAR NAVIGATION (240px Fixed) */}
         <aside className="flex h-full w-[240px] shrink-0 flex-col border-r border-border">
           <div className="border-b border-border p-6">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => navigate({ to: "/" })}
+              className="mb-4 -ml-2 gap-2 text-muted-foreground hover:text-foreground"
+            >
+              <Home className="size-4" />
+              Back to home
+            </Button>
             <h2 className="text-[17px] font-bold text-foreground">Settings</h2>
             <p className="mt-1 text-[11px] font-medium text-muted-foreground">
               Manage your account and workspaces

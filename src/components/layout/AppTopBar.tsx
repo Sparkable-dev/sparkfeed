@@ -104,18 +104,35 @@ export function AppTopBar({
             {crumbs.map((crumb, i) => {
               const isLeaf = i === crumbs.length - 1
               if (isLeaf) return null
+              const Icon = crumb.icon
               return (
-                <div key={i} className="hidden min-w-0 shrink items-center gap-1.5 md:flex">
+                <div
+                  key={i}
+                  className={cn(
+                    "min-w-0 shrink items-center gap-1.5",
+                    Icon ? "flex" : "hidden md:flex",
+                  )}
+                >
                   {crumb.href ? (
                     <Link
                       to={crumb.href}
-                      className="truncate text-sm font-medium text-zinc-400 transition-colors hover:text-white"
+                      aria-label={Icon ? crumb.label : undefined}
+                      title={Icon ? crumb.label : undefined}
+                      className={cn(
+                        "text-sm font-medium text-zinc-400 transition-colors hover:text-white",
+                        Icon ? "flex size-7 shrink-0 items-center justify-center rounded-md hover:bg-white/10" : "truncate",
+                      )}
                     >
-                      {crumb.label}
+                      {Icon ? <Icon className="size-4" /> : crumb.label}
                     </Link>
                   ) : (
-                    <span className="truncate text-sm font-medium text-zinc-400">
-                      {crumb.label}
+                    <span
+                      className={cn(
+                        "text-sm font-medium text-zinc-400",
+                        Icon ? "flex size-7 shrink-0 items-center justify-center" : "truncate",
+                      )}
+                    >
+                      {Icon ? <Icon className="size-4" /> : crumb.label}
                     </span>
                   )}
                   <ChevronRight className="size-3.5 shrink-0 text-zinc-700" />

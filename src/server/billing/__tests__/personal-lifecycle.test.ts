@@ -11,8 +11,11 @@ vi.mock("@/db/index", () => ({
   },
 }))
 
-const { refreshPersonalSubscriptionLifecycle, selectFreePersonalSources } =
-  await import("../personal-lifecycle")
+const {
+  refreshPersonalSubscriptionLifecycle,
+  repairFailedInitialPersonalCheckout,
+  selectFreePersonalSources,
+} = await import("../personal-lifecycle")
 
 beforeEach(async () => {
   db = createDb(":memory:", { sqlite: true })
@@ -120,6 +123,45 @@ describe("Personal+ downgrade", () => {
       { id: "page-4" },
       { id: "page-5" },
       { id: "page-6" },
+    ])
+  })
+
+  it("repairs a past-due record that never completed its first payment", async () => {
+    const { and, eq } = await import("drizzle-orm")
+    const { workspaceSubscriptions } = await import("@/db/schema")
+    await db
+      .update(workspaceSubscriptions)
+      .set({
+        subscriptionStatus: "past_due",
+        currentPeriodStart: "2026-08-30T12:49:54.769Z",
+        currentPeriodEnd: "2026-08-30T12:49:54.769Z",
+        dodoSubscriptionId: "sub-failed",
+        productKey: "personal-monthly",
+      })
+      .where(
+        and(
+          eq(workspaceSubscriptions.workspaceType, "personal"),
+          eq(workspaceSubscriptions.workspaceId, "user-1")
+        )
+      )
+
+    await expect(repairFailedInitialPersonalCheckout("user-1")).resolves.toBe(
+      true
+    )
+
+    const raw = (db as unknown as { $client: ReturnType<typeof createClient> })
+      .$client
+    const subscription = await raw.execute(
+      "SELECT plan_key, billing_source, subscription_status, dodo_subscription_id, product_key FROM workspace_subscriptions"
+    )
+    expect(subscription.rows).toEqual([
+      {
+        plan_key: "free",
+        billing_source: "free",
+        subscription_status: "free",
+        dodo_subscription_id: null,
+        product_key: null,
+      },
     ])
   })
 })

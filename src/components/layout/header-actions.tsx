@@ -5,6 +5,8 @@ import { timeAgo } from "@/lib/time-ago"
 /** One step of the breadcrumb. The last entry is the current page. */
 export type Crumb = {
   label: string
+  /** Optional icon-only ancestor, such as the Home escape from full-page settings. */
+  icon?: LucideIcon
   /** Omit on the leaf, and on ancestors that are not their own page. */
   href?: string
 }

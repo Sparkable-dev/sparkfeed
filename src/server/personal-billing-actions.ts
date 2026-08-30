@@ -6,7 +6,10 @@ import {
   currentDodoBillingConfig,
 } from "./billing/personal-checkout"
 import { dodoClient } from "./billing/dodo-client"
-import { selectFreePersonalSources } from "./billing/personal-lifecycle"
+import {
+  repairFailedInitialPersonalCheckout,
+  selectFreePersonalSources,
+} from "./billing/personal-lifecycle"
 import type {
   BillingInterval,
   BillingStatus,
@@ -82,6 +85,7 @@ export const getPersonalBillingSummary = createServerFn({
     session.user.id,
     session.user.emailVerified
   )
+  await repairFailedInitialPersonalCheckout(session.user.id)
   const entitlements = await resolveEntitlements(workspace, {
     type: "session",
     userId: session.user.id,

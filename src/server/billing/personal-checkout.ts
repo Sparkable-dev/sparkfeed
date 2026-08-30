@@ -90,7 +90,11 @@ export async function createPersonalCheckout(
         accessState: "active",
         billingInterval: interval,
         dodoCustomerId: customerId,
+        dodoSubscriptionId: null,
         productKey,
+        currentPeriodStart: null,
+        currentPeriodEnd: null,
+        failedPaymentGraceDeadline: null,
         updatedAt: now,
       },
     })

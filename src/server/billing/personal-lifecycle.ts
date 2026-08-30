@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto"
-import { and, asc, eq, inArray, isNotNull } from "drizzle-orm"
+import { and, asc, eq, gt, inArray, isNotNull } from "drizzle-orm"
 import type { WorkspaceRef } from "@/server/entitlements/types"
 import { db } from "@/db/index"
 import { creditLedger, feeds, workspaceSubscriptions } from "@/db/schema"
@@ -83,6 +83,79 @@ export async function reactivatePersonalPlusSources(
 ): Promise<void> {
   const activeIds = await firstPageSourceIds(userId, PERSONAL_PLUS_NO_RSS_LIMIT)
   await setActivePageSources(userId, activeIds, new Date().toISOString())
+}
+
+/**
+ * Repairs records written by the pre-launch webhook handler, which treated a
+ * declined first checkout as a failed renewal. A real Personal+ activation
+ * always writes at least one positive paid grant in the same webhook flow.
+ */
+export async function repairFailedInitialPersonalCheckout(
+  userId: string
+): Promise<boolean> {
+  const [subscription] = await db
+    .select({
+      planKey: workspaceSubscriptions.planKey,
+      subscriptionStatus: workspaceSubscriptions.subscriptionStatus,
+      providerEventAt: workspaceSubscriptions.providerEventAt,
+    })
+    .from(workspaceSubscriptions)
+    .where(
+      and(
+        eq(workspaceSubscriptions.workspaceType, "personal"),
+        eq(workspaceSubscriptions.workspaceId, userId)
+      )
+    )
+    .limit(1)
+
+  if (
+    subscription?.planKey !== "personal_plus" ||
+    subscription.subscriptionStatus !== "past_due"
+  ) {
+    return false
+  }
+
+  const [paidGrant] = await db
+    .select({ id: creditLedger.id })
+    .from(creditLedger)
+    .where(
+      and(
+        eq(creditLedger.workspaceType, "personal"),
+        eq(creditLedger.workspaceId, userId),
+        eq(creditLedger.beneficiaryUserId, userId),
+        eq(creditLedger.creditBucket, "paid"),
+        eq(creditLedger.entryType, "grant"),
+        gt(creditLedger.amount, 0)
+      )
+    )
+    .limit(1)
+  if (paidGrant) return false
+
+  const now = new Date().toISOString()
+  await db
+    .update(workspaceSubscriptions)
+    .set({
+      planKey: "free",
+      billingSource: "free",
+      subscriptionStatus: "free",
+      accessState: "active",
+      billingInterval: null,
+      currentPeriodStart: null,
+      currentPeriodEnd: null,
+      failedPaymentGraceDeadline: null,
+      paidCreditRetentionEndsAt: null,
+      providerEventAt: subscription.providerEventAt,
+      dodoSubscriptionId: null,
+      productKey: null,
+      updatedAt: now,
+    })
+    .where(
+      and(
+        eq(workspaceSubscriptions.workspaceType, "personal"),
+        eq(workspaceSubscriptions.workspaceId, userId)
+      )
+    )
+  return true
 }
 
 export async function selectFreePersonalSources(

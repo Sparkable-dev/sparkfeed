@@ -3,6 +3,7 @@ import { useEffect, useState } from "react"
 import {
   ChevronLeft,
   CreditCard,
+  Home,
   Link as LinkIcon,
   Loader2,
   MoreHorizontal,
@@ -114,6 +115,7 @@ function WorkspaceSettingsPage() {
     <div className="flex h-screen flex-col overflow-hidden bg-background text-foreground">
       <AppTopBar
         crumbs={[
+          { label: "Home", href: "/", icon: Home },
           { label: "Workspaces" },
           { label: currentOrg?.name ?? "Workspace" },
           { label: tabLabel },

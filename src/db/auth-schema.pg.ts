@@ -28,6 +28,18 @@ export const user = pgTable("user", {
     .$onUpdate(() => new Date()),
 })
 
+export const notificationPreferences = pgTable("notification_preferences", {
+  userId: text("user_id")
+    .primaryKey()
+    .references(() => user.id, { onDelete: "cascade" }),
+  workspaceActivity: boolean("workspace_activity").notNull().default(true),
+  productUpdates: boolean("product_updates").notNull().default(false),
+  updatedAt: timestamp("updated_at")
+    .notNull()
+    .defaultNow()
+    .$onUpdate(() => new Date()),
+})
+
 export const session = pgTable(
   "session",
   {
@@ -123,7 +135,7 @@ export const member = pgTable(
     userId: text("user_id")
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
-    role: text("role").notNull().default("member"),
+    role: text("role").notNull().default("editor"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
   (table) => [

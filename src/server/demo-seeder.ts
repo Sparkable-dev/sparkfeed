@@ -91,8 +91,16 @@ export async function ensureDemoSchema(): Promise<void> {
       email text NOT NULL,
       company text NOT NULL,
       message text NOT NULL,
+      requester_user_id text,
+      request_type text NOT NULL DEFAULT 'create_workspace',
+      workspace_name text,
+      expected_seats integer,
+      requested_plan text,
+      workspace_id text,
       status text DEFAULT 'pending',
-      created_at text
+      decision_note text,
+      created_at text,
+      updated_at text
     )`,
     `CREATE TABLE IF NOT EXISTS scraped_feeds (
       id text PRIMARY KEY NOT NULL,
@@ -236,6 +244,14 @@ export async function ensureDemoSchema(): Promise<void> {
     */
     `ALTER TABLE folders ADD COLUMN position integer`,
     `ALTER TABLE feeds ADD COLUMN position integer`,
+    `ALTER TABLE billing_requests ADD COLUMN requester_user_id text`,
+    `ALTER TABLE billing_requests ADD COLUMN request_type text NOT NULL DEFAULT 'create_workspace'`,
+    `ALTER TABLE billing_requests ADD COLUMN workspace_name text`,
+    `ALTER TABLE billing_requests ADD COLUMN expected_seats integer`,
+    `ALTER TABLE billing_requests ADD COLUMN requested_plan text`,
+    `ALTER TABLE billing_requests ADD COLUMN workspace_id text`,
+    `ALTER TABLE billing_requests ADD COLUMN decision_note text`,
+    `ALTER TABLE billing_requests ADD COLUMN updated_at text`,
   ]
   for (const sql of migrations) {
     try {

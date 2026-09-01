@@ -47,6 +47,6 @@ describe("workspace contracts", () => {
     expect(workspacePlanLabel("personal_plus", false)).toBe("Personal+")
     expect(workspacePlanLabel("free", false)).toBe("Free plan")
     expect(workspacePlanLabel(null, false)).toBe("Personal workspace")
-    expect(workspacePlanLabel("pro", true)).toBe("Team workspace")
+    expect(workspacePlanLabel("pro", true)).toBe("Pro")
   })
 })

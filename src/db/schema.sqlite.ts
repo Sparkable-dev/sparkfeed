@@ -85,8 +85,16 @@ export const billingRequests = sqliteTable('billing_requests', {
     email: text('email').notNull(),
     company: text('company').notNull(),
     message: text('message').notNull(),
+    requesterUserId: text('requester_user_id'),
+    requestType: text('request_type').notNull().default('create_workspace'),
+    workspaceName: text('workspace_name'),
+    expectedSeats: integer('expected_seats'),
+    requestedPlan: text('requested_plan'),
+    workspaceId: text('workspace_id'),
     status: text('status').default('pending'),
+    decisionNote: text('decision_note'),
     createdAt: text('created_at').default(new Date().toISOString()),
+    updatedAt: text('updated_at').default(new Date().toISOString()),
 })
 
 export const scrapedFeeds = sqliteTable('scraped_feeds', {

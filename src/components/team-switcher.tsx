@@ -1,9 +1,8 @@
 import * as React from "react"
+import { useNavigate } from "@tanstack/react-router"
 import { toast } from "sonner"
 import { ChevronDownIcon, PlusIcon, User } from "lucide-react"
 import { CreateWorkspaceModal } from "./CreateWorkspaceModal"
-import { WorkspaceSettingsModal } from "./WorkspaceSettingsModal"
-import { UserSettingsModal } from "./UserSettingsModal"
 import type { EntitlementPlan } from "@/server/entitlements/types"
 import { authClient } from "@/lib/auth-client"
 import { DEMO_MODE } from "@/lib/demo"
@@ -26,9 +25,32 @@ import {
 import { Button } from "@/components/ui/button"
 
 export function TeamSwitcher() {
+  return DEMO_MODE ? <DemoTeamSwitcher /> : <AuthenticatedTeamSwitcher />
+}
+
+function DemoTeamSwitcher() {
+  return (
+    <SidebarMenu>
+      <SidebarMenuItem>
+        <SidebarMenuButton size="lg" className="rounded-full">
+          <div className="flex aspect-square size-8 items-center justify-center rounded-full bg-violet-600 text-white">
+            <User className="size-4" />
+          </div>
+          <div className="min-w-0 flex-1 text-left leading-tight group-data-[collapsible=icon]:hidden">
+            <p className="truncate text-sm font-semibold">Personal workspace</p>
+            <p className="truncate text-[10px] text-muted-foreground">
+              Demo workspace
+            </p>
+          </div>
+        </SidebarMenuButton>
+      </SidebarMenuItem>
+    </SidebarMenu>
+  )
+}
+
+function AuthenticatedTeamSwitcher() {
   const [showCreateModal, setShowCreateModal] = React.useState(false)
-  const [showWorkspaceModal, setShowWorkspaceModal] = React.useState(false)
-  const [showUserModal, setShowUserModal] = React.useState(false)
+  const navigate = useNavigate()
   const { data: orgs } = authClient.useListOrganizations()
   const { data: activeOrg } = authClient.useActiveOrganization()
   const session = authClient.useSession()
@@ -153,7 +175,7 @@ export function TeamSwitcher() {
                       className="h-6 rounded-md border-zinc-800 bg-white/5 px-2 text-[10px] font-bold transition-all hover:bg-white/10 hover:text-white"
                       onClick={(e) => {
                         e.stopPropagation()
-                        setShowUserModal(true)
+                        window.location.href = "/settings?tab=profile"
                       }}
                     >
                       Manage
@@ -193,7 +215,11 @@ export function TeamSwitcher() {
                         className="h-6 rounded-md border-zinc-800 bg-white/5 px-2 text-[10px] font-bold transition-all hover:bg-white/10 hover:text-white"
                         onClick={(e) => {
                           e.stopPropagation()
-                          setShowWorkspaceModal(true)
+                          navigate({
+                            to: "/settings/workspaces/$slug",
+                            params: { slug: org.slug },
+                            search: { section: "general" },
+                          } as never)
                         }}
                       >
                         Manage
@@ -230,14 +256,6 @@ export function TeamSwitcher() {
           onOpenChange={setShowCreateModal}
         />
       ) : null}
-
-      <WorkspaceSettingsModal
-        open={showWorkspaceModal}
-        onOpenChange={setShowWorkspaceModal}
-        organizationId={activeOrg?.id || null}
-      />
-
-      <UserSettingsModal open={showUserModal} onOpenChange={setShowUserModal} />
     </SidebarMenu>
   )
 }

@@ -200,13 +200,15 @@ Store the platform-admin actor, action, target type, target ID, required reason,
 
 Use Better Auth Organization as the only invitation system. Remove the custom invitation flow after all callers use Better Auth.
 
-Require a verified email before invitation acceptance. Keep owner, admin, and member organization roles.
+Require a verified email before invitation acceptance. Use owner, admin, and editor organization roles. The owner controls billing, transfer, and deletion. Admins manage workspace identity, invitations, and editors. Editors collaborate on workspace content without administration access.
+
+As of 2026-09-01, Cloud team workspaces use a tracked request and audited manual provisioning flow. Self-service Pro checkout remains deferred to Phase 5. The customer application must not expose Pro pricing or a team checkout action before that payment lifecycle is implemented and tested.
 
 The organization owner is a paid seat. Every accepted member is a paid seat. Every pending invitation reserves a seat.
 
 Only the owner can start checkout, change the billing interval, increase paid seat quantity, reduce paid seat quantity, cancel, or open the billing portal.
 
-An organization admin can invite a member only when unused paid capacity exists. If an invitation requires another seat, ask the owner to approve the immediate prorated increase.
+An organization admin can invite an editor only when unused paid capacity exists. Only the owner can appoint or demote admins. If an invitation requires another seat, direct the owner to request a seat change.
 
 When a member leaves or an invitation is revoked, schedule the seat reduction for the next renewal. If the workspace reuses that capacity before renewal, cancel the scheduled reduction.
 

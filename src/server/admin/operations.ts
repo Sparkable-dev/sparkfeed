@@ -10,6 +10,7 @@ import {
 import type { PlatformAdminActor } from "./access"
 import { db } from "@/db/index"
 import {
+  billingRequests,
   creditLedger,
   dodoWebhookInbox,
   invitation,
@@ -103,6 +104,25 @@ export const adminMutationSchema = z.discriminatedUnion("action", [
     ...workspaceRefSchema.shape,
     reason,
   }),
+  z.object({
+    action: z.literal("mark_team_request_in_review"),
+    requestId: z.string().min(1),
+    reason,
+  }),
+  z.object({
+    action: z.literal("decline_team_request"),
+    requestId: z.string().min(1),
+    decisionNote: z.string().trim().min(1).max(1000),
+    reason,
+  }),
+  z.object({
+    action: z.literal("approve_team_request"),
+    requestId: z.string().min(1),
+    planKey: z.enum(["pro", "enterprise"]),
+    seatCapacity: z.number().int().positive().max(500),
+    decisionNote: z.string().trim().max(1000),
+    reason,
+  }),
 ])
 
 export type AdminMutation = z.infer<typeof adminMutationSchema>
@@ -152,6 +172,69 @@ export async function listPlatformUsers(query = "") {
       return { ...row, lastActivityAt: activity?.lastActivityAt ?? null }
     })
   )
+}
+
+export async function listTeamRequests(query = "") {
+  const term = query.trim()
+  return db
+    .select({
+      id: billingRequests.id,
+      requestType: billingRequests.requestType,
+      requesterUserId: billingRequests.requesterUserId,
+      name: billingRequests.name,
+      email: billingRequests.email,
+      workspaceName: billingRequests.workspaceName,
+      expectedSeats: billingRequests.expectedSeats,
+      requestedPlan: billingRequests.requestedPlan,
+      workspaceId: billingRequests.workspaceId,
+      status: billingRequests.status,
+      message: billingRequests.message,
+      decisionNote: billingRequests.decisionNote,
+      createdAt: billingRequests.createdAt,
+      updatedAt: billingRequests.updatedAt,
+    })
+    .from(billingRequests)
+    .where(
+      term
+        ? or(
+            ilike(billingRequests.email, `%${term}%`),
+            ilike(billingRequests.company, `%${term}%`),
+            ilike(billingRequests.workspaceName, `%${term}%`)
+          )
+        : undefined
+    )
+    .orderBy(desc(billingRequests.createdAt))
+    .limit(100)
+}
+
+async function teamRequest(requestId: string) {
+  const [request] = await db
+    .select()
+    .from(billingRequests)
+    .where(eq(billingRequests.id, requestId))
+    .limit(1)
+  if (!request) throw new Error("Team request not found.")
+  return request
+}
+
+async function availableOrganizationSlug(name: string): Promise<string> {
+  const base =
+    name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "")
+      .slice(0, 40) || "workspace"
+  let slug = base
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    const [existing] = await db
+      .select({ id: organization.id })
+      .from(organization)
+      .where(eq(organization.slug, slug))
+      .limit(1)
+    if (!existing) return slug
+    slug = `${base}-${attempt + 2}`
+  }
+  return `${base}-${randomUUID().slice(0, 8)}`
 }
 
 export async function getPlatformUser(userId: string) {
@@ -733,6 +816,166 @@ export async function executeAdminMutation(
       run: () =>
         reconcileSubscription(mutation.workspaceType, mutation.workspaceId),
       afterState: (result) => result?.subscription,
+    })
+  }
+
+  if (
+    mutation.action === "mark_team_request_in_review" ||
+    mutation.action === "decline_team_request"
+  ) {
+    const before = await teamRequest(mutation.requestId)
+    if (before.status === "approved" || before.status === "declined") {
+      throw new Error("This request is already closed.")
+    }
+    const status =
+      mutation.action === "mark_team_request_in_review"
+        ? "in_review"
+        : "declined"
+    const decisionNote =
+      mutation.action === "decline_team_request"
+        ? mutation.decisionNote
+        : before.decisionNote
+    return withAudit({
+      actor,
+      action: mutation.action,
+      targetType: "team_request",
+      targetId: mutation.requestId,
+      reason: mutation.reason,
+      beforeState: before,
+      run: async () => {
+        await db
+          .update(billingRequests)
+          .set({
+            status,
+            decisionNote,
+            updatedAt: new Date().toISOString(),
+          })
+          .where(eq(billingRequests.id, mutation.requestId))
+        return teamRequest(mutation.requestId)
+      },
+      afterState: (result) => result,
+    })
+  }
+
+  if (mutation.action === "approve_team_request") {
+    const before = await teamRequest(mutation.requestId)
+    if (before.status === "declined")
+      throw new Error("This request was declined.")
+    if (mutation.planKey === "pro" && mutation.seatCapacity > 10) {
+      throw new Error("Pro supports up to 10 seats. Use Enterprise above 10.")
+    }
+    const now = new Date().toISOString()
+    const newWorkspaceId = before.workspaceId || randomUUID()
+    const workspaceName = before.workspaceName || before.company
+    const slug =
+      before.requestType === "create_workspace" && !before.workspaceId
+        ? await availableOrganizationSlug(workspaceName)
+        : null
+    return withAudit({
+      actor,
+      action: mutation.action,
+      targetType: "team_request",
+      targetId: mutation.requestId,
+      reason: mutation.reason,
+      beforeState: before,
+      run: async () => {
+        await db.transaction(async (tx) => {
+          if (before.requestType === "create_workspace") {
+            if (!before.requesterUserId) {
+              throw new Error("The request has no requester account.")
+            }
+            const [requester] = await tx
+              .select({ id: user.id })
+              .from(user)
+              .where(eq(user.id, before.requesterUserId))
+              .limit(1)
+            if (!requester) throw new Error("Requester account not found.")
+            if (!before.workspaceId) {
+              await tx.insert(organization).values({
+                id: newWorkspaceId,
+                name: workspaceName,
+                slug: slug!,
+                createdAt: new Date(),
+              })
+              await tx.insert(member).values({
+                id: randomUUID(),
+                organizationId: newWorkspaceId,
+                userId: requester.id,
+                role: "owner",
+                createdAt: new Date(),
+              })
+            }
+          } else if (!before.workspaceId) {
+            throw new Error("This plan request has no workspace.")
+          }
+
+          if (before.requestType === "cancel_plan") {
+            await tx
+              .update(workspaceSubscriptions)
+              .set({
+                subscriptionStatus: "canceled",
+                accessState: "read_only",
+                updatedAt: now,
+              })
+              .where(
+                and(
+                  eq(workspaceSubscriptions.workspaceType, "organization"),
+                  eq(workspaceSubscriptions.workspaceId, newWorkspaceId)
+                )
+              )
+          } else {
+            await tx
+              .insert(workspaceSubscriptions)
+              .values({
+                workspaceType: "organization",
+                workspaceId: newWorkspaceId,
+                planKey: mutation.planKey,
+                billingSource: "manual",
+                subscriptionStatus: "active",
+                accessState: "active",
+                paidSeatQuantity: mutation.seatCapacity,
+                overrideSeatLimit:
+                  mutation.planKey === "enterprise"
+                    ? mutation.seatCapacity
+                    : null,
+                createdAt: now,
+                updatedAt: now,
+              })
+              .onConflictDoUpdate({
+                target: [
+                  workspaceSubscriptions.workspaceType,
+                  workspaceSubscriptions.workspaceId,
+                ],
+                set: {
+                  planKey: mutation.planKey,
+                  billingSource: "manual",
+                  subscriptionStatus: "active",
+                  accessState: "active",
+                  paidSeatQuantity: mutation.seatCapacity,
+                  overrideSeatLimit:
+                    mutation.planKey === "enterprise"
+                      ? mutation.seatCapacity
+                      : null,
+                  updatedAt: now,
+                },
+              })
+          }
+
+          await tx
+            .update(billingRequests)
+            .set({
+              status: "approved",
+              workspaceId: newWorkspaceId,
+              requestedPlan: mutation.planKey,
+              expectedSeats: mutation.seatCapacity,
+              decisionNote: mutation.decisionNote || null,
+              updatedAt: now,
+            })
+            .where(eq(billingRequests.id, mutation.requestId))
+        })
+        return teamRequest(mutation.requestId)
+      },
+      afterState: (result) => result,
     })
   }
 

@@ -53,7 +53,7 @@ describe("personal billing tab", () => {
     expect(screen.getByText("$48")).toBeTruthy()
     expect(screen.getByRole("button", { name: "Choose monthly" })).toBeTruthy()
     expect(screen.getByRole("button", { name: "Choose annual" })).toBeTruthy()
-    expect(screen.queryByText("Manage subscription and invoices")).toBeNull()
+    expect(screen.queryByText("Open billing portal")).toBeNull()
   })
 
   it("shows the portal action for an active Personal+ subscription", async () => {
@@ -72,12 +72,12 @@ describe("personal billing tab", () => {
     await waitFor(() =>
       expect(
         screen.getByRole("button", {
-          name: "Manage subscription and invoices",
+          name: "Open billing portal",
         })
       ).toBeTruthy()
     )
     expect(screen.queryByText("Upgrade to Personal+")).toBeNull()
-    expect(screen.getByText("Team plans are coming soon")).toBeTruthy()
+    expect(screen.queryByText("Team plans are coming soon")).toBeNull()
   })
 
   it("waits for a pending checkout instead of offering another checkout", async () => {

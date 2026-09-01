@@ -1,6 +1,7 @@
 import { createAuthClient } from "better-auth/react"
 import { organizationClient, twoFactorClient } from "better-auth/client/plugins"
 import { dodopaymentsClient } from "@dodopayments/better-auth/client"
+import { workspaceAccess, workspaceRoles } from "@/lib/workspace-roles"
 
 // Default to the site's own origin in the browser so the auth client always
 // talks to the same domain it was served from (e.g. https://demo.sparkfeed.dev).
@@ -17,7 +18,7 @@ const authBaseURL =
 export const authClient = createAuthClient({
   baseURL: authBaseURL,
   plugins: [
-    organizationClient(),
+    organizationClient({ ac: workspaceAccess, roles: workspaceRoles }),
     dodopaymentsClient(),
     twoFactorClient({
       onTwoFactorRedirect() {

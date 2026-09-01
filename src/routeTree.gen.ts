@@ -54,6 +54,7 @@ import { Route as ApiV1SplatRouteImport } from './routes/api/v1.$'
 import { Route as ProtectedFolderSlugFeedSlugIndexRouteImport } from './routes/_protected/$folderSlug/$feedSlug/index'
 import { Route as ProtectedDashboardAiIndexRouteImport } from './routes/_protected/dashboard.ai/index'
 import { Route as ProtectedDashboardAiThreadIdRouteImport } from './routes/_protected/dashboard.ai/$threadId'
+import { Route as ProtectedSettingsWorkspacesSlugRouteImport } from './routes/_protected/settings_.workspaces.$slug'
 import { Route as ProtectedWorkspacesSlugSettingsRouteImport } from './routes/_protected/workspaces.$slug.settings'
 
 const ProtectedRoute = ProtectedRouteImport.update({
@@ -286,6 +287,12 @@ const ProtectedDashboardAiThreadIdRoute =
     path: '/$threadId',
     getParentRoute: () => ProtectedDashboardAiRoute,
   } as any)
+const ProtectedSettingsWorkspacesSlugRoute =
+  ProtectedSettingsWorkspacesSlugRouteImport.update({
+    id: '/settings_/workspaces/$slug',
+    path: '/settings/workspaces/$slug',
+    getParentRoute: () => ProtectedRoute,
+  } as any)
 const ProtectedWorkspacesSlugSettingsRoute =
   ProtectedWorkspacesSlugSettingsRouteImport.update({
     id: '/workspaces/$slug/settings',
@@ -336,6 +343,7 @@ export interface FileRoutesByFullPath {
   '/$folderSlug/': typeof ProtectedFolderSlugIndexRoute
   '/discover/': typeof ProtectedDiscoverIndexRoute
   '/dashboard/ai/$threadId': typeof ProtectedDashboardAiThreadIdRoute
+  '/settings/workspaces/$slug': typeof ProtectedSettingsWorkspacesSlugRoute
   '/workspaces/$slug/settings': typeof ProtectedWorkspacesSlugSettingsRoute
   '/$folderSlug/$feedSlug/': typeof ProtectedFolderSlugFeedSlugIndexRoute
   '/dashboard/ai/': typeof ProtectedDashboardAiIndexRoute
@@ -380,6 +388,7 @@ export interface FileRoutesByTo {
   '/$folderSlug': typeof ProtectedFolderSlugIndexRoute
   '/discover': typeof ProtectedDiscoverIndexRoute
   '/dashboard/ai/$threadId': typeof ProtectedDashboardAiThreadIdRoute
+  '/settings/workspaces/$slug': typeof ProtectedSettingsWorkspacesSlugRoute
   '/workspaces/$slug/settings': typeof ProtectedWorkspacesSlugSettingsRoute
   '/$folderSlug/$feedSlug': typeof ProtectedFolderSlugFeedSlugIndexRoute
   '/dashboard/ai': typeof ProtectedDashboardAiIndexRoute
@@ -429,6 +438,7 @@ export interface FileRoutesById {
   '/_protected/$folderSlug/': typeof ProtectedFolderSlugIndexRoute
   '/_protected/discover/': typeof ProtectedDiscoverIndexRoute
   '/_protected/dashboard/ai/$threadId': typeof ProtectedDashboardAiThreadIdRoute
+  '/_protected/settings_/workspaces/$slug': typeof ProtectedSettingsWorkspacesSlugRoute
   '/_protected/workspaces/$slug/settings': typeof ProtectedWorkspacesSlugSettingsRoute
   '/_protected/$folderSlug/$feedSlug/': typeof ProtectedFolderSlugFeedSlugIndexRoute
   '/_protected/dashboard/ai/': typeof ProtectedDashboardAiIndexRoute
@@ -478,6 +488,7 @@ export interface FileRouteTypes {
     | '/$folderSlug/'
     | '/discover/'
     | '/dashboard/ai/$threadId'
+    | '/settings/workspaces/$slug'
     | '/workspaces/$slug/settings'
     | '/$folderSlug/$feedSlug/'
     | '/dashboard/ai/'
@@ -522,6 +533,7 @@ export interface FileRouteTypes {
     | '/$folderSlug'
     | '/discover'
     | '/dashboard/ai/$threadId'
+    | '/settings/workspaces/$slug'
     | '/workspaces/$slug/settings'
     | '/$folderSlug/$feedSlug'
     | '/dashboard/ai'
@@ -570,6 +582,7 @@ export interface FileRouteTypes {
     | '/_protected/$folderSlug/'
     | '/_protected/discover/'
     | '/_protected/dashboard/ai/$threadId'
+    | '/_protected/settings_/workspaces/$slug'
     | '/_protected/workspaces/$slug/settings'
     | '/_protected/$folderSlug/$feedSlug/'
     | '/_protected/dashboard/ai/'
@@ -922,6 +935,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProtectedDashboardAiThreadIdRouteImport
       parentRoute: typeof ProtectedDashboardAiRoute
     }
+    '/_protected/settings_/workspaces/$slug': {
+      id: '/_protected/settings_/workspaces/$slug'
+      path: '/settings/workspaces/$slug'
+      fullPath: '/settings/workspaces/$slug'
+      preLoaderRoute: typeof ProtectedSettingsWorkspacesSlugRouteImport
+      parentRoute: typeof ProtectedRoute
+    }
     '/_protected/workspaces/$slug/settings': {
       id: '/_protected/workspaces/$slug/settings'
       path: '/workspaces/$slug/settings'
@@ -984,6 +1004,7 @@ interface ProtectedRouteChildren {
   ProtectedDeveloperKeysRoute: typeof ProtectedDeveloperKeysRoute
   ProtectedDeveloperMcpRoute: typeof ProtectedDeveloperMcpRoute
   ProtectedFeedFeedSlugRoute: typeof ProtectedFeedFeedSlugRoute
+  ProtectedSettingsWorkspacesSlugRoute: typeof ProtectedSettingsWorkspacesSlugRoute
   ProtectedWorkspacesSlugSettingsRoute: typeof ProtectedWorkspacesSlugSettingsRoute
 }
 
@@ -1000,6 +1021,7 @@ const ProtectedRouteChildren: ProtectedRouteChildren = {
   ProtectedDeveloperKeysRoute: ProtectedDeveloperKeysRoute,
   ProtectedDeveloperMcpRoute: ProtectedDeveloperMcpRoute,
   ProtectedFeedFeedSlugRoute: ProtectedFeedFeedSlugRoute,
+  ProtectedSettingsWorkspacesSlugRoute: ProtectedSettingsWorkspacesSlugRoute,
   ProtectedWorkspacesSlugSettingsRoute: ProtectedWorkspacesSlugSettingsRoute,
 }
 

@@ -15,6 +15,7 @@ import {
   listAdminAudit,
   listPlatformUsers,
   listPlatformWorkspaces,
+  listTeamRequests,
   listWebhookFailures,
 } from "@/server/admin/operations"
 
@@ -63,6 +64,8 @@ async function serveGet(request: Request): Promise<Response> {
   }
   if (path[0] === "webhooks")
     return json({ webhooks: await listWebhookFailures() })
+  if (path[0] === "requests")
+    return json({ requests: await listTeamRequests(query) })
   if (path[0] === "audit") return json({ audit: await listAdminAudit() })
   return json({ error: "Not found." }, 404)
 }

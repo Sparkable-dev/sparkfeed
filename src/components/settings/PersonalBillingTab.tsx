@@ -9,7 +9,6 @@ import {
   startPersonalCheckout,
   updateFreePersonalSources,
 } from "@/server/personal-billing-actions"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -130,12 +129,6 @@ export function PersonalBillingTab() {
   if (DEMO_MODE) {
     return (
       <div className="space-y-8">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Billing</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Demo mode does not use Sparkfeed Cloud billing.
-          </p>
-        </div>
         <Card>
           <CardHeader>
             <CardTitle>Demo mode</CardTitle>
@@ -159,12 +152,6 @@ export function PersonalBillingTab() {
   if (summary.plan === "community") {
     return (
       <div className="space-y-8">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Billing</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Community Edition does not use Sparkfeed Cloud billing.
-          </p>
-        </div>
         <Card>
           <CardHeader>
             <CardTitle>Community Edition</CardTitle>
@@ -184,18 +171,6 @@ export function PersonalBillingTab() {
 
   return (
     <div className="space-y-8">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Billing</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Manage the plan for your personal workspace.
-          </p>
-        </div>
-        <Badge variant="secondary">
-          {isPersonalPlus ? "Personal+" : "Free"}
-        </Badge>
-      </div>
-
       <Card>
         <CardHeader>
           <CardTitle>{isPersonalPlus ? "Personal+" : "Free"}</CardTitle>
@@ -253,7 +228,7 @@ export function PersonalBillingTab() {
               ) : (
                 <ExternalLink className="mr-2 h-4 w-4" />
               )}
-              Manage subscription and invoices
+              Open billing portal
             </Button>
           ) : null}
         </CardContent>
@@ -318,18 +293,6 @@ export function PersonalBillingTab() {
               </Button>
             </div>
           </CardContent>
-        </Card>
-      ) : null}
-
-      {isPersonalPlus ? (
-        <Card>
-          <CardHeader>
-            <CardTitle>Team plans are coming soon</CardTitle>
-            <CardDescription>
-              Personal+ is for one person. Team and Enterprise workspaces will
-              be offered separately when collaborative plans launch.
-            </CardDescription>
-          </CardHeader>
         </Card>
       ) : null}
 

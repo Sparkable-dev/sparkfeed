@@ -1,7 +1,4 @@
-import type {
-  EntitlementPlan,
-  WorkspaceRef,
-} from "@/server/entitlements/types"
+import type { EntitlementPlan, WorkspaceRef } from "@/server/entitlements/types"
 
 export function personalWorkspaceRef(userId: string): WorkspaceRef {
   return { type: "personal", id: userId }
@@ -30,6 +27,9 @@ export function workspacePlanLabel(
   plan: EntitlementPlan | null,
   organization: boolean
 ): string {
+  if (organization && plan === "community") return "Community Edition"
+  if (organization && plan === "pro") return "Pro"
+  if (organization && plan === "enterprise") return "Enterprise"
   if (organization) return "Team workspace"
   if (plan === "personal_plus") return "Personal+"
   if (plan === "community") return "Community Edition"

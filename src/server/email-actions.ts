@@ -6,69 +6,6 @@ import { invitation, user } from "@/db/schema"
 
 const APP_URL = process.env.APP_URL || "http://localhost:3000"
 
-async function requestAuth() {
-  const { auth } = await import("@/lib/auth")
-  const { getRequestHeaders } = await import("@tanstack/react-start/server")
-  const headers = getRequestHeaders()
-  const session = await auth.api.getSession({ headers })
-  if (!session) throw new Error("Unauthorized")
-  return { auth, headers }
-}
-
-/** Better Auth Organization is the only writer for workspace invitations. */
-export const inviteUser = createServerFn({ method: "POST" })
-  .validator(
-    z.object({
-      email: z.email(),
-      workspaceId: z.string().min(1),
-      role: z.enum(["admin", "member"]),
-    })
-  )
-  .handler(async ({ data }) => {
-    const { auth, headers } = await requestAuth()
-    await auth.api.createInvitation({
-      headers,
-      body: {
-        email: data.email,
-        organizationId: data.workspaceId,
-        role: data.role,
-      },
-    })
-    return { success: true }
-  })
-
-export const revokeInvite = createServerFn({ method: "POST" })
-  .validator(z.object({ inviteId: z.string().min(1) }))
-  .handler(async ({ data }) => {
-    const { auth, headers } = await requestAuth()
-    await auth.api.cancelInvitation({
-      headers,
-      body: { invitationId: data.inviteId },
-    })
-    return { success: true }
-  })
-
-export const getInvitations = createServerFn({ method: "GET" })
-  .validator(z.string().min(1))
-  .handler(async ({ data: organizationId }) => {
-    const { auth, headers } = await requestAuth()
-    return auth.api.listInvitations({
-      headers,
-      query: { organizationId },
-    })
-  })
-
-export const getWorkspaceMembers = createServerFn({ method: "GET" })
-  .validator(z.string().min(1))
-  .handler(async ({ data: organizationId }) => {
-    const { auth, headers } = await requestAuth()
-    const result = await auth.api.listMembers({
-      headers,
-      query: { organizationId },
-    })
-    return result.members
-  })
-
 /**
  * The invitation id is an opaque Better Auth token. This read only decides
  * whether the recipient should sign in or create an account; acceptance still

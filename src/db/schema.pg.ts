@@ -8,6 +8,7 @@ import {
   timestamp,
   uniqueIndex,
 } from "drizzle-orm/pg-core"
+import { user } from "./auth-schema.pg"
 import type {
   BillingInterval,
   BillingSource,
@@ -159,15 +160,32 @@ export const passwordResets = pgTable("password_resets", {
   usedAt: timestamp("used_at"),
 })
 
-export const billingRequests = pgTable("billing_requests", {
-  id: text("id").primaryKey(),
-  name: text("name").notNull(),
-  email: text("email").notNull(),
-  company: text("company").notNull(),
-  message: text("message").notNull(),
-  status: text("status").default("pending"),
-  createdAt: text("created_at").$defaultFn(() => new Date().toISOString()),
-})
+export const billingRequests = pgTable(
+  "billing_requests",
+  {
+    id: text("id").primaryKey(),
+    name: text("name").notNull(),
+    email: text("email").notNull(),
+    company: text("company").notNull(),
+    message: text("message").notNull(),
+    requesterUserId: text("requester_user_id").references(() => user.id, {
+      onDelete: "set null",
+    }),
+    requestType: text("request_type").notNull().default("create_workspace"),
+    workspaceName: text("workspace_name"),
+    expectedSeats: integer("expected_seats"),
+    requestedPlan: text("requested_plan").$type<PlanKey>(),
+    workspaceId: text("workspace_id"),
+    status: text("status").notNull().default("pending"),
+    decisionNote: text("decision_note"),
+    createdAt: text("created_at").$defaultFn(() => new Date().toISOString()),
+    updatedAt: text("updated_at").$defaultFn(() => new Date().toISOString()),
+  },
+  (t) => [
+    index("billing_requests_requester_idx").on(t.requesterUserId, t.status),
+    index("billing_requests_workspace_idx").on(t.workspaceId),
+  ]
+)
 
 /**
  * API keys for the MCP server and, later, the public REST API.

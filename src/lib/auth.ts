@@ -21,12 +21,20 @@ import {
   registrationDecision,
 } from "@/server/community-policy"
 import {
+  assertInvitationRoleAllowed,
+  assertMemberRemovalAllowed,
+  assertMemberRoleChangeAllowed,
+  assertOrganizationInvitationCapacity,
   assertOrganizationManagementAllowed,
   clearRemovedOrganizationSessions,
 } from "@/server/entitlements/organization"
 import { sparkfeedEdition } from "@/server/entitlements/config"
 import { ensureCloudFreeAccount } from "@/server/entitlements/credits"
-import { personalWorkspaceRef } from "@/lib/workspaces"
+import {
+  organizationWorkspaceRef,
+  personalWorkspaceRef,
+} from "@/lib/workspaces"
+import { resolveEntitlements } from "@/server/entitlements/resolve"
 import {
   assertPersonalPortalAllowed,
   dodoBetterAuthPlugin,
@@ -39,6 +47,7 @@ import {
   platformTwoFactorOptions,
   resolveAuthSurfaceConfig,
 } from "@/lib/admin-auth"
+import { workspaceAccess, workspaceRoles } from "@/lib/workspace-roles"
 
 const dbProvider = import.meta.env.VITE_DEMO_MODE === "true" ? "sqlite" : "pg"
 const dodoPlugin = dodoBetterAuthPlugin()
@@ -59,6 +68,33 @@ export const auth = betterAuth({
   user: {
     deleteUser: {
       enabled: true,
+      beforeDelete: async (deletingUser) => {
+        const { hasManagedPersonalPlusSubscription, ownedWorkspacesForUser } =
+          await import("@/server/account-deletion")
+        const ownedWorkspaces = await ownedWorkspacesForUser(
+          db,
+          deletingUser.id
+        )
+        if (ownedWorkspaces.length > 0) {
+          throw new APIError("FORBIDDEN", {
+            message:
+              "Transfer ownership or delete these workspaces before deleting your account: " +
+              ownedWorkspaces.map((workspace) => workspace.name).join(", "),
+          })
+        }
+
+        if (await hasManagedPersonalPlusSubscription(db, deletingUser.id)) {
+          throw new APIError("FORBIDDEN", {
+            message:
+              "Cancel Personal+ and wait for your personal workspace to return to Free before deleting your account.",
+          })
+        }
+      },
+      afterDelete: async (deletedUser) => {
+        const { deletePersonalWorkspaceData } =
+          await import("@/server/account-deletion")
+        await deletePersonalWorkspaceData(db, deletedUser.id)
+      },
     },
   },
   databaseHooks: {
@@ -189,7 +225,21 @@ export const auth = betterAuth({
       ? [
           organization({
             creatorRole: "owner",
-            membershipLimit: COMMUNITY_USER_LIMIT,
+            ac: workspaceAccess,
+            roles: workspaceRoles,
+            membershipLimit: async (_user, org) => {
+              const entitlements = await resolveEntitlements(
+                organizationWorkspaceRef(org.id),
+                {
+                  type: "system",
+                  userId: null,
+                  emailVerified: false,
+                  workspaceId: org.id,
+                  demo: false,
+                }
+              )
+              return entitlements.seatCapacity ?? 100_000
+            },
             requireEmailVerificationOnInvitation: true,
             allowUserToCreateOrganization: async (user) =>
               canUserCreateWorkspace(user.id),
@@ -211,6 +261,16 @@ export const auth = betterAuth({
                   invitation.organizationId,
                   inviter
                 )
+                await assertOrganizationInvitationCapacity(
+                  invitation.organizationId,
+                  inviter,
+                  invitation.email
+                )
+                await assertInvitationRoleAllowed({
+                  organizationId: invitation.organizationId,
+                  actorUserId: inviter.id,
+                  invitedRole: invitation.role,
+                })
               },
               beforeAcceptInvitation: async ({ invitation, user }) => {
                 await assertOrganizationManagementAllowed(
@@ -229,12 +289,23 @@ export const auth = betterAuth({
                   member.organizationId,
                   user
                 )
+                await assertMemberRemovalAllowed({
+                  organizationId: member.organizationId,
+                  actorUserId: user.id,
+                  targetRole: member.role,
+                })
               },
-              beforeUpdateMemberRole: async ({ member, user }) => {
+              beforeUpdateMemberRole: async ({ member, newRole, user }) => {
                 await assertOrganizationManagementAllowed(
                   member.organizationId,
                   user
                 )
+                await assertMemberRoleChangeAllowed({
+                  organizationId: member.organizationId,
+                  actorUserId: user.id,
+                  targetRole: member.role,
+                  newRole,
+                })
               },
               afterRemoveMember: async ({ member }) => {
                 await clearRemovedOrganizationSessions(

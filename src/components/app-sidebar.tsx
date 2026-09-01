@@ -13,7 +13,6 @@ import {
   Telescope,
   Zap,
 } from "lucide-react"
-import { UserSettingsModal } from "./UserSettingsModal"
 import { GuestUpsellCard } from "./GuestUpsellCard"
 import type { FeedRow, FolderRow } from "@/components/Sidebar"
 import type {NavPageKey} from "@/config/nav-pages";
@@ -70,7 +69,6 @@ export function AppSidebar({
   ...props
 }: AppSidebarProps) {
   const { data: session } = useDemoAwareSession()
-  const [settingsOpen, setSettingsOpen] = React.useState(false)
   const guest = useGuestShare()
 
   /*
@@ -215,7 +213,12 @@ export function AppSidebar({
                 <div className="px-2 py-1.5 mb-1">
                   <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Account</p>
                 </div>
-                <DropdownMenuItem onClick={() => setSettingsOpen(true)} className="gap-2 p-2 rounded-lg text-zinc-300 hover:bg-white/5 cursor-pointer">
+                <DropdownMenuItem
+                  onClick={() => {
+                    window.location.href = "/settings?tab=profile"
+                  }}
+                  className="gap-2 p-2 rounded-lg text-zinc-300 hover:bg-white/5 cursor-pointer"
+                >
                   <Settings className="size-4" />
                   <span className="text-sm font-medium">Settings</span>
                 </DropdownMenuItem>
@@ -229,9 +232,6 @@ export function AppSidebar({
             )}
           </SidebarMenuItem>
         </SidebarMenu>
-        {!guest && (
-          <UserSettingsModal open={settingsOpen} onOpenChange={setSettingsOpen} />
-        )}
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>

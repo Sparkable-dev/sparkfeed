@@ -60,3 +60,34 @@ export async function sendVerificationEmail(toEmail: string, verificationUrl: st
   const html = await render(React.createElement(VerifyEmail, { verificationUrl }));
   await sendEmail(toEmail, "Verify your SparkFeed account", html);
 }
+
+function escapeHtml(value: string) {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+export async function sendTeamRequestNotification(input: {
+  requesterName: string;
+  requesterEmail: string;
+  workspaceName: string;
+  requestType: string;
+  expectedSeats: number | null;
+  message: string;
+}) {
+  const to = process.env.TEAM_REQUEST_TO ?? "hello@sparkable.dev";
+  const html = [
+    `<h1>Workspace request</h1>`,
+    `<p><strong>Requester:</strong> ${escapeHtml(input.requesterName)} (${escapeHtml(input.requesterEmail)})</p>`,
+    `<p><strong>Workspace:</strong> ${escapeHtml(input.workspaceName)}</p>`,
+    `<p><strong>Type:</strong> ${escapeHtml(input.requestType)}</p>`,
+    `<p><strong>Expected seats:</strong> ${input.expectedSeats ?? "Not specified"}</p>`,
+    input.message
+      ? `<p><strong>Notes:</strong><br>${escapeHtml(input.message).replaceAll("\n", "<br>")}</p>`
+      : "",
+  ].join("");
+  await sendEmail(to, `Sparkfeed request: ${input.workspaceName}`, html);
+}

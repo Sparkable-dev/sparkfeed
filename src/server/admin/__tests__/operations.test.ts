@@ -1,9 +1,13 @@
+import { mkdtempSync, rmSync } from "node:fs"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import type { createClient } from "@libsql/client"
 import type { Database } from "@/db/client"
 import { createDb } from "@/db/client"
 
 let db: Database
+let testDirectory: string
 const banUser = vi.fn()
 const unbanUser = vi.fn()
 const revokeUserSession = vi.fn()
@@ -59,7 +63,8 @@ beforeEach(async () => {
   process.env.SPARKFEED_EDITION = "cloud"
   process.env.SPARKFEED_SURFACE = "admin"
   vi.clearAllMocks()
-  db = createDb(":memory:", { sqlite: true })
+  testDirectory = mkdtempSync(join(tmpdir(), "sparkfeed-admin-"))
+  db = createDb(`file:${join(testDirectory, "admin.db")}`, { sqlite: true })
   const sql = raw()
   await sql.execute(`CREATE TABLE user (
     id TEXT PRIMARY KEY, name TEXT NOT NULL, email TEXT NOT NULL,
@@ -116,6 +121,13 @@ beforeEach(async () => {
     id TEXT PRIMARY KEY, actor_user_id TEXT NOT NULL, action TEXT NOT NULL,
     target_type TEXT NOT NULL, target_id TEXT NOT NULL, reason TEXT NOT NULL,
     before_state TEXT, after_state TEXT, created_at TEXT NOT NULL)`)
+  await sql.execute(`CREATE TABLE billing_requests (
+    id TEXT PRIMARY KEY, name TEXT NOT NULL, email TEXT NOT NULL,
+    company TEXT NOT NULL, message TEXT NOT NULL, requester_user_id TEXT,
+    request_type TEXT NOT NULL DEFAULT 'create_workspace', workspace_name TEXT,
+    expected_seats INTEGER, requested_plan TEXT, workspace_id TEXT,
+    status TEXT NOT NULL DEFAULT 'pending', decision_note TEXT,
+    created_at TEXT, updated_at TEXT)`)
 
   const now = new Date("2026-08-30T10:00:00.000Z")
   const { user, session, workspaceSubscriptions } = await import("@/db/schema")
@@ -174,7 +186,9 @@ beforeEach(async () => {
   })
 })
 
-afterEach(() => {
+afterEach(async () => {
+  await raw().close()
+  rmSync(testDirectory, { recursive: true, force: true })
   delete process.env.SPARKFEED_EDITION
   delete process.env.SPARKFEED_SURFACE
 })
@@ -263,6 +277,53 @@ describe("approved admin mutations", () => {
         reason: "reverse duplicate support grant",
       },
     ])
+  })
+
+  it("approves a tracked team request with one Owner and manual entitlements", async () => {
+    const sql = await raw()
+    await sql.execute(`INSERT INTO billing_requests (
+      id, name, email, company, message, requester_user_id, request_type,
+      workspace_name, expected_seats, status, created_at, updated_at)
+      VALUES ('request-1', 'Reader', 'reader@example.com', 'Research team', '',
+      'user-1', 'create_workspace', 'Research team', 5, 'pending',
+      '2026-08-30T10:00:00Z', '2026-08-30T10:00:00Z')`)
+
+    await executeAdminMutation(request, actor, {
+      action: "approve_team_request",
+      requestId: "request-1",
+      planKey: "pro",
+      seatCapacity: 5,
+      decisionNote: "Approved for beta",
+      reason: "approved customer request",
+    })
+
+    expect(
+      (await sql.execute("SELECT name, slug FROM organization")).rows
+    ).toEqual([{ name: "Research team", slug: "research-team" }])
+    expect(
+      (await sql.execute("SELECT user_id, role FROM member")).rows
+    ).toEqual([{ user_id: "user-1", role: "owner" }])
+    expect(
+      (
+        await sql.execute(
+          "SELECT plan_key, billing_source, paid_seat_quantity FROM workspace_subscriptions WHERE workspace_type='organization'"
+        )
+      ).rows
+    ).toEqual([
+      { plan_key: "pro", billing_source: "manual", paid_seat_quantity: 5 },
+    ])
+    expect(
+      (
+        await sql.execute(
+          "SELECT status, requested_plan, workspace_id FROM billing_requests"
+        )
+      ).rows[0]
+    ).toEqual(
+      expect.objectContaining({
+        status: "approved",
+        requested_plan: "pro",
+      })
+    )
   })
 
   it("replays a failed webhook by retrieving and reconciling current subscription state", async () => {

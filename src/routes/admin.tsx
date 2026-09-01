@@ -4,6 +4,7 @@ import {
   Activity,
   Ban,
   Building2,
+  ClipboardList,
   CreditCard,
   History,
   KeyRound,
@@ -19,7 +20,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { getPlatformAdminRouteState } from "@/server/admin/route-state"
 
-type Tab = "users" | "workspaces" | "webhooks" | "audit"
+type Tab = "users" | "workspaces" | "requests" | "webhooks" | "audit"
 type JsonRecord = Record<string, unknown>
 
 export const Route = createFileRoute("/admin")({
@@ -95,6 +96,11 @@ function AdminPortal() {
           `workspaces?q=${encodeURIComponent(query)}`
         )
         setRows(result.workspaces)
+      } else if (tab === "requests") {
+        const result = await api<{ requests: Array<JsonRecord> }>(
+          `requests?q=${encodeURIComponent(query)}`
+        )
+        setRows(result.requests)
       } else if (tab === "webhooks") {
         const result = await api<{ webhooks: Array<JsonRecord> }>("webhooks")
         setRows(result.webhooks)
@@ -150,6 +156,7 @@ function AdminPortal() {
   const tabs: Array<{ id: Tab; label: string; icon: typeof Users }> = [
     { id: "users", label: "Users", icon: Users },
     { id: "workspaces", label: "Workspaces", icon: Building2 },
+    { id: "requests", label: "Team requests", icon: ClipboardList },
     { id: "webhooks", label: "Webhook failures", icon: Webhook },
     { id: "audit", label: "Audit history", icon: History },
   ]
@@ -202,7 +209,9 @@ function AdminPortal() {
               </p>
             </div>
             <div className="flex gap-2">
-              {(tab === "users" || tab === "workspaces") && (
+              {(tab === "users" ||
+                tab === "workspaces" ||
+                tab === "requests") && (
                 <div className="relative">
                   <Search className="absolute top-2.5 left-3 size-4 text-zinc-500" />
                   <Input
@@ -289,12 +298,20 @@ function AdminTable({
               ["attemptCount", "Attempts"],
               ["lastError", "Last error"],
             ]
-          : [
-              ["action", "Action"],
-              ["targetId", "Target"],
-              ["reason", "Reason"],
-              ["createdAt", "When"],
-            ]
+          : tab === "requests"
+            ? [
+                ["workspaceName", "Workspace"],
+                ["email", "Requester"],
+                ["requestType", "Request"],
+                ["expectedSeats", "Seats"],
+                ["status", "Status"],
+              ]
+            : [
+                ["action", "Action"],
+                ["targetId", "Target"],
+                ["reason", "Reason"],
+                ["createdAt", "When"],
+              ]
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-sm">
@@ -351,6 +368,98 @@ function AdminTable({
                     Replay
                   </Button>
                 )}
+                {tab === "requests" &&
+                  row.status !== "approved" &&
+                  row.status !== "declined" && (
+                    <div className="flex justify-end gap-1">
+                      {row.status === "pending" ? (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => {
+                            const reason = reasonFor(
+                              "Mark this request in review?"
+                            )
+                            if (reason)
+                              void onMutate({
+                                action: "mark_team_request_in_review",
+                                requestId: row.id,
+                                reason,
+                              })
+                          }}
+                        >
+                          Review
+                        </Button>
+                      ) : null}
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          const suggestedSeats = Number(row.expectedSeats || 2)
+                          const planKey = window
+                            .prompt(
+                              "Plan to activate: pro or enterprise",
+                              suggestedSeats > 10 ? "enterprise" : "pro"
+                            )
+                            ?.trim()
+                          if (planKey !== "pro" && planKey !== "enterprise") {
+                            if (planKey !== undefined)
+                              toast.error("Plan must be pro or enterprise.")
+                            return
+                          }
+                          const rawSeats = window
+                            .prompt("Seat capacity", String(suggestedSeats))
+                            ?.trim()
+                          const seatCapacity = Number(rawSeats)
+                          if (
+                            !Number.isInteger(seatCapacity) ||
+                            seatCapacity < 1
+                          ) {
+                            toast.error(
+                              "Seat capacity must be a positive whole number."
+                            )
+                            return
+                          }
+                          const decisionNote =
+                            window.prompt("Customer-facing note", "")?.trim() ||
+                            ""
+                          const reason = reasonFor("Approve this team request?")
+                          if (reason)
+                            void onMutate({
+                              action: "approve_team_request",
+                              requestId: row.id,
+                              planKey,
+                              seatCapacity,
+                              decisionNote,
+                              reason,
+                            })
+                        }}
+                      >
+                        Approve
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="text-red-400"
+                        onClick={() => {
+                          const decisionNote = window
+                            .prompt("Why was this request declined?")
+                            ?.trim()
+                          if (!decisionNote) return
+                          const reason = reasonFor("Decline this team request?")
+                          if (reason)
+                            void onMutate({
+                              action: "decline_team_request",
+                              requestId: row.id,
+                              decisionNote,
+                              reason,
+                            })
+                        }}
+                      >
+                        Decline
+                      </Button>
+                    </div>
+                  )}
               </td>
             </tr>
           ))}

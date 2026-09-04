@@ -63,11 +63,18 @@ describe("platform-admin exposure and Better Auth permissions", () => {
     expect(regularUserRole.authorize({ user: ["list"] }).success).toBe(false)
   })
 
-  it("keeps TOTP enrollment verified, backup codes enabled, lockout on, and trust at 30 days", () => {
+  it("keeps verified TOTP enrollment, email fallback, lockout, and 30-day trust", () => {
     expect(platformTwoFactorOptions).toMatchObject({
       issuer: "Sparkfeed Admin",
       skipVerificationOnEnable: false,
       trustDeviceMaxAge: 2_592_000,
+      otpOptions: {
+        period: 10,
+        digits: 6,
+        allowedAttempts: 5,
+        storeOTP: "hashed",
+        sendOTP: expect.any(Function),
+      },
       accountLockout: {
         enabled: true,
         maxFailedAttempts: 10,

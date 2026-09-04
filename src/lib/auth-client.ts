@@ -21,14 +21,21 @@ export const authClient = createAuthClient({
     organizationClient({ ac: workspaceAccess, roles: workspaceRoles }),
     dodopaymentsClient(),
     twoFactorClient({
-      onTwoFactorRedirect() {
+      onTwoFactorRedirect({ twoFactorMethods }) {
         if (typeof window === "undefined") return
         const redirect = new URL(window.location.href).searchParams.get(
           "redirect"
         )
-        window.location.href = redirect
-          ? `/two-factor?redirect=${encodeURIComponent(redirect)}`
-          : "/two-factor"
+        const search = new URLSearchParams()
+        if (redirect) search.set("redirect", redirect)
+        if (
+          twoFactorMethods?.includes("otp") &&
+          !twoFactorMethods.includes("totp")
+        ) {
+          search.set("method", "email")
+        }
+        const query = search.toString()
+        window.location.href = query ? `/two-factor?${query}` : "/two-factor"
       },
     }),
   ],

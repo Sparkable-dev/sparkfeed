@@ -73,6 +73,7 @@
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "react-markdown": "^10.1.0",
+    "react-qr-code": "^2.2.0",
     "remark-gfm": "^4.0.1",
     "resend": "6.21.0",
     "rss-parser": "^3.13.0",

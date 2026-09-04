@@ -4,6 +4,22 @@ export const platformTwoFactorOptions = {
   issuer: "Sparkfeed Admin",
   skipVerificationOnEnable: false,
   trustDeviceMaxAge: 60 * 60 * 24 * 30,
+  otpOptions: {
+    period: 10,
+    digits: 6,
+    allowedAttempts: 5,
+    storeOTP: "hashed",
+    sendOTP: async ({
+      user,
+      otp,
+    }: {
+      user: { email: string }
+      otp: string
+    }) => {
+      const { sendTwoFactorOtpEmail } = await import("@/lib/email")
+      await sendTwoFactorOtpEmail(user.email, otp)
+    },
+  },
   accountLockout: {
     enabled: true,
     maxFailedAttempts: 10,

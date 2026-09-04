@@ -127,7 +127,10 @@ export async function requirePlatformAdmin(
     )
   }
   if (state.state === "totp_required") {
-    throw new PlatformAdminHttpError(403, "TOTP enrollment is required.")
+    throw new PlatformAdminHttpError(
+      403,
+      "Two-factor verification setup is required."
+    )
   }
   return state.actor
 }

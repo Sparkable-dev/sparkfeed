@@ -25,6 +25,8 @@
     "db:migrate": "bun scripts/migrate.ts",
     "db:auth-1-7:check": "bun scripts/auth-1-7-preflight.ts",
     "db:baseline": "bun scripts/baseline.ts",
+    "admin:check": "bun scripts/check-admin-readiness.ts",
+    "admin:bootstrap": "bunx auth@1.7.1 create-admin --config ./src/lib/auth.ts --role admin",
     "openapi:snapshot": "bun scripts/gen-openapi-snapshot.ts",
     "preview": "vite preview",
     "test": "vitest run",

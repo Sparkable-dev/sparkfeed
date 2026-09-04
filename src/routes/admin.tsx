@@ -8,6 +8,7 @@ import {
   CreditCard,
   History,
   KeyRound,
+  LogOut,
   RefreshCw,
   Search,
   ShieldCheck,
@@ -18,6 +19,7 @@ import {
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { authClient } from "@/lib/auth-client"
 import { getPlatformAdminRouteState } from "@/server/admin/route-state"
 
 type Tab = "users" | "workspaces" | "requests" | "webhooks" | "audit"
@@ -174,9 +176,23 @@ function AdminPortal() {
               <p className="text-xs text-zinc-500">Platform administration</p>
             </div>
           </div>
-          <div className="text-right">
-            <p className="text-sm text-zinc-300">{actor.email}</p>
-            <p className="text-xs text-emerald-400">TOTP verified</p>
+          <div className="flex items-center gap-3">
+            <div className="text-right">
+              <p className="text-sm text-zinc-300">{actor.email}</p>
+              <p className="text-xs text-emerald-400">TOTP verified</p>
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              className="border-white/10 bg-white/5"
+              onClick={async () => {
+                await authClient.signOut()
+                window.location.href = "/login"
+              }}
+            >
+              <LogOut className="size-4" />
+              Sign out
+            </Button>
           </div>
         </div>
       </header>
@@ -395,6 +411,26 @@ function AdminTable({
                         size="sm"
                         variant="outline"
                         onClick={() => {
+                          if (row.requestType === "cancel_plan") {
+                            const decisionNote =
+                              window
+                                .prompt(
+                                  "Customer-facing note",
+                                  "Cancellation approved"
+                                )
+                                ?.trim() || ""
+                            const reason = reasonFor(
+                              "Approve this team-plan cancellation?"
+                            )
+                            if (reason)
+                              void onMutate({
+                                action: "approve_team_cancellation",
+                                requestId: row.id,
+                                decisionNote,
+                                reason,
+                              })
+                            return
+                          }
                           const suggestedSeats = Number(row.expectedSeats || 2)
                           const planKey = window
                             .prompt(
@@ -435,7 +471,9 @@ function AdminTable({
                             })
                         }}
                       >
-                        Approve
+                        {row.requestType === "cancel_plan"
+                          ? "Approve cancellation"
+                          : "Approve"}
                       </Button>
                       <Button
                         size="sm"
@@ -610,6 +648,40 @@ function DetailPanel({
       }
     }
   }
+  const setWorkspacePlan = () => {
+    const planKey = window
+      .prompt(
+        "Team plan: pro or enterprise",
+        String(workspace.planKey || "pro")
+      )
+      ?.trim()
+    if (planKey !== "pro" && planKey !== "enterprise") {
+      if (planKey !== undefined) toast.error("Plan must be pro or enterprise.")
+      return
+    }
+    const rawSeats = window
+      .prompt("Seat capacity", String(workspace.seatCapacity || 2))
+      ?.trim()
+    const seatCapacity = Number(rawSeats)
+    if (!Number.isInteger(seatCapacity) || seatCapacity < 1) {
+      toast.error("Seat capacity must be a positive whole number.")
+      return
+    }
+    if (planKey === "pro" && seatCapacity > 10) {
+      toast.error("Pro supports up to 10 seats. Use Enterprise above 10.")
+      return
+    }
+    const reason = reasonFor(`Change this workspace to ${planKey}?`)
+    if (reason)
+      void onMutate({
+        action: "set_workspace_plan",
+        workspaceType: "organization",
+        workspaceId,
+        planKey,
+        seatCapacity,
+        reason,
+      })
+  }
   return (
     <aside className="mt-5 rounded-xl border border-white/8 bg-[#0d0f12] p-5">
       <div className="mb-4 flex items-center justify-between">
@@ -692,6 +764,18 @@ function DetailPanel({
                 "Reconcile subscription",
                 { workspaceType, workspaceId },
                 RefreshCw
+              )}
+            {workspaceType === "organization" &&
+              workspace.billingSource === "manual" && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="border-white/10 bg-white/5"
+                  onClick={setWorkspacePlan}
+                >
+                  <Building2 className="size-4" />
+                  Change team plan
+                </Button>
               )}
             <Button
               size="sm"

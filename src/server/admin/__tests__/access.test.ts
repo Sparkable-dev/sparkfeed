@@ -2,7 +2,10 @@ import { describe, expect, it } from "vitest"
 import {
   PlatformAdminHttpError,
   assertPlatformAdminSurface,
+  assertSameOrigin,
+  enforceAdminMutationRateLimit,
   platformAdminIsExposed,
+  resetAdminMutationRateLimitsForTests,
 } from "../access"
 import { redactAuditValue, requireAuditReason } from "../audit-values"
 import { platformAdminRole, regularUserRole } from "@/lib/admin-permissions"
@@ -100,6 +103,28 @@ describe("platform-admin exposure and Better Auth permissions", () => {
         BETTER_AUTH_URL: "https://app.sparkfeed.dev",
       })
     ).toThrow("must match the admin service origin")
+  })
+
+  it("rejects cross-origin mutations and rate-limits an administrator", () => {
+    expect(() =>
+      assertSameOrigin(
+        new Request(
+          "https://admin.sparkfeed.dev/api/platform-admin/mutations",
+          {
+            headers: { origin: "https://attacker.example" },
+          }
+        )
+      )
+    ).toThrow("Cross-origin")
+
+    resetAdminMutationRateLimitsForTests()
+    for (let attempt = 0; attempt < 30; attempt += 1) {
+      enforceAdminMutationRateLimit("admin-1", 1_000)
+    }
+    expect(() => enforceAdminMutationRateLimit("admin-1", 1_000)).toThrow(
+      "Too many admin mutations"
+    )
+    resetAdminMutationRateLimitsForTests()
   })
 })
 

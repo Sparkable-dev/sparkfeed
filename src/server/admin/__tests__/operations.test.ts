@@ -170,6 +170,16 @@ beforeEach(async () => {
     await db.delete(authSession).where(eq(authSession.userId, "user-1"))
     return { user: { id: "user-1" } }
   })
+  unbanUser.mockImplementation(async () => {
+    const { user: authUser } = await import("@/db/schema")
+    const { eq } = await import("drizzle-orm")
+    await db
+      .update(authUser)
+      .set({ banned: false, banReason: null })
+      .where(eq(authUser.id, "user-1"))
+    return { user: { id: "user-1" } }
+  })
+  requestPasswordReset.mockResolvedValue({ status: true })
   revokeUserSession.mockImplementation(
     async ({ body }: { body: { sessionToken: string } }) => {
       const { session: authSession } = await import("@/db/schema")
@@ -211,6 +221,41 @@ describe("approved admin mutations", () => {
     )
     expect(audit.rows[0]?.reason).toBe("security review")
     expect(JSON.stringify(audit.rows)).not.toContain("never-audited-token")
+  })
+
+  it("prevents the active administrator from self-banning", async () => {
+    await expect(
+      executeAdminMutation(request, actor, {
+        action: "ban_user",
+        targetUserId: "admin-1",
+        reason: "mistake",
+      })
+    ).rejects.toThrow("cannot self-ban")
+    expect(banUser).not.toHaveBeenCalled()
+  })
+
+  it("unbans a user and sends password resets to the customer app", async () => {
+    const sql = await raw()
+    await sql.execute(
+      "UPDATE user SET banned=1, ban_reason='review' WHERE id='user-1'"
+    )
+    await executeAdminMutation(request, actor, {
+      action: "unban_user",
+      targetUserId: "user-1",
+      reason: "review complete",
+    })
+    await executeAdminMutation(request, actor, {
+      action: "send_password_reset",
+      targetUserId: "user-1",
+      reason: "customer requested reset",
+    })
+    expect(unbanUser).toHaveBeenCalledOnce()
+    expect(requestPasswordReset).toHaveBeenCalledWith({
+      body: {
+        email: "reader@example.com",
+        redirectTo: "https://app.sparkfeed.dev/reset-password",
+      },
+    })
   })
 
   it("revokes a selected session through Better Auth Admin", async () => {
@@ -279,6 +324,109 @@ describe("approved admin mutations", () => {
     ])
   })
 
+  it("revokes a pending invitation", async () => {
+    const sql = await raw()
+    await sql.execute(`INSERT INTO organization (id, name, slug, created_at)
+      VALUES ('org-1', 'Research team', 'research-team', '2026-08-30T10:00:00Z')`)
+    await sql.execute(`INSERT INTO invitation (
+      id, organization_id, email, role, status, expires_at, created_at, inviter_id)
+      VALUES ('invite-1', 'org-1', 'invitee@example.com', 'editor', 'pending',
+      '2026-09-30T10:00:00Z', '2026-08-30T10:00:00Z', 'user-1')`)
+
+    await executeAdminMutation(request, actor, {
+      action: "revoke_invitation",
+      invitationId: "invite-1",
+      reason: "request withdrawn",
+    })
+
+    expect(
+      (await sql.execute("SELECT status FROM invitation WHERE id='invite-1'"))
+        .rows
+    ).toEqual([{ status: "canceled" }])
+  })
+
+  it("changes only manual team plans and clears stale Enterprise overrides", async () => {
+    const sql = await raw()
+    await sql.execute(`INSERT INTO organization (id, name, slug, created_at)
+      VALUES ('org-1', 'Research team', 'research-team', '2026-08-30T10:00:00Z')`)
+    await sql.execute(`INSERT INTO member (id, organization_id, user_id, role, created_at)
+      VALUES ('member-1', 'org-1', 'user-1', 'owner', '2026-08-30T10:00:00Z')`)
+    await sql.execute(`INSERT INTO workspace_subscriptions (
+      workspace_type, workspace_id, plan_key, billing_source,
+      subscription_status, access_state, paid_seat_quantity,
+      override_seat_limit, override_monthly_ai_credits, override_api_access,
+      created_at, updated_at)
+      VALUES ('organization', 'org-1', 'enterprise', 'manual', 'active',
+      'active', 20, 20, 500, 1, '2026-08-30T10:00:00Z',
+      '2026-08-30T10:00:00Z')`)
+
+    await executeAdminMutation(request, actor, {
+      action: "set_workspace_plan",
+      workspaceType: "organization",
+      workspaceId: "org-1",
+      planKey: "pro",
+      seatCapacity: 8,
+      reason: "customer moved to Pro",
+    })
+
+    expect(
+      (
+        await sql.execute(
+          "SELECT plan_key, paid_seat_quantity, override_seat_limit, override_monthly_ai_credits, override_api_access FROM workspace_subscriptions WHERE workspace_id='org-1'"
+        )
+      ).rows
+    ).toEqual([
+      {
+        plan_key: "pro",
+        paid_seat_quantity: 8,
+        override_seat_limit: null,
+        override_monthly_ai_credits: null,
+        override_api_access: null,
+      },
+    ])
+  })
+
+  it("updates typed Enterprise entitlements", async () => {
+    const sql = await raw()
+    await sql.execute(`INSERT INTO organization (id, name, slug, created_at)
+      VALUES ('org-1', 'Enterprise team', 'enterprise-team', '2026-08-30T10:00:00Z')`)
+    await sql.execute(`INSERT INTO workspace_subscriptions (
+      workspace_type, workspace_id, plan_key, billing_source,
+      subscription_status, access_state, paid_seat_quantity, created_at, updated_at)
+      VALUES ('organization', 'org-1', 'enterprise', 'manual', 'active',
+      'active', 20, '2026-08-30T10:00:00Z', '2026-08-30T10:00:00Z')`)
+
+    await executeAdminMutation(request, actor, {
+      action: "set_enterprise_entitlements",
+      workspaceType: "organization",
+      workspaceId: "org-1",
+      overrides: {
+        seatLimit: 25,
+        monthlyAiCredits: 1000,
+        sourceUnitLimit: 500,
+        apiAccess: true,
+        mcpAccess: false,
+      },
+      reason: "signed enterprise agreement",
+    })
+
+    expect(
+      (
+        await sql.execute(
+          "SELECT override_seat_limit, override_monthly_ai_credits, override_source_unit_limit, override_api_access, override_mcp_access FROM workspace_subscriptions WHERE workspace_id='org-1'"
+        )
+      ).rows
+    ).toEqual([
+      {
+        override_seat_limit: 25,
+        override_monthly_ai_credits: 1000,
+        override_source_unit_limit: 500,
+        override_api_access: 1,
+        override_mcp_access: 0,
+      },
+    ])
+  })
+
   it("approves a tracked team request with one Owner and manual entitlements", async () => {
     const sql = await raw()
     await sql.execute(`INSERT INTO billing_requests (
@@ -324,6 +472,96 @@ describe("approved admin mutations", () => {
         requested_plan: "pro",
       })
     )
+  })
+
+  it("approves a team-plan cancellation without replacement-plan inputs", async () => {
+    const sql = await raw()
+    await sql.execute(`INSERT INTO organization (id, name, slug, created_at)
+      VALUES ('org-cancel', 'Cancel team', 'cancel-team', '2026-08-30T10:00:00Z')`)
+    await sql.execute(`INSERT INTO workspace_subscriptions (
+      workspace_type, workspace_id, plan_key, billing_source,
+      subscription_status, access_state, paid_seat_quantity, created_at, updated_at)
+      VALUES ('organization', 'org-cancel', 'pro', 'manual', 'active',
+      'active', 5, '2026-08-30T10:00:00Z', '2026-08-30T10:00:00Z')`)
+    await sql.execute(`INSERT INTO billing_requests (
+      id, name, email, company, message, requester_user_id, request_type,
+      workspace_name, workspace_id, status, created_at, updated_at)
+      VALUES ('request-cancel', 'Reader', 'reader@example.com', 'Cancel team', '',
+      'user-1', 'cancel_plan', 'Cancel team', 'org-cancel', 'pending',
+      '2026-08-30T10:00:00Z', '2026-08-30T10:00:00Z')`)
+
+    await executeAdminMutation(request, actor, {
+      action: "approve_team_cancellation",
+      requestId: "request-cancel",
+      decisionNote: "Cancellation approved for the end of beta.",
+      reason: "owner requested cancellation",
+    })
+
+    expect(
+      (
+        await sql.execute(
+          "SELECT subscription_status, access_state FROM workspace_subscriptions WHERE workspace_id='org-cancel'"
+        )
+      ).rows
+    ).toEqual([{ subscription_status: "canceled", access_state: "read_only" }])
+    expect(
+      (
+        await sql.execute(
+          "SELECT status, decision_note FROM billing_requests WHERE id='request-cancel'"
+        )
+      ).rows
+    ).toEqual([
+      {
+        status: "approved",
+        decision_note: "Cancellation approved for the end of beta.",
+      },
+    ])
+  })
+
+  it("moves a team request through review and decline with a customer note", async () => {
+    const sql = await raw()
+    await sql.execute(`INSERT INTO billing_requests (
+      id, name, email, company, message, requester_user_id, request_type,
+      workspace_name, expected_seats, status, created_at, updated_at)
+      VALUES ('request-2', 'Reader', 'reader@example.com', 'Research team', '',
+      'user-1', 'create_workspace', 'Research team', 5, 'pending',
+      '2026-08-30T10:00:00Z', '2026-08-30T10:00:00Z')`)
+
+    await executeAdminMutation(request, actor, {
+      action: "mark_team_request_in_review",
+      requestId: "request-2",
+      reason: "review started",
+    })
+    await executeAdminMutation(request, actor, {
+      action: "decline_team_request",
+      requestId: "request-2",
+      decisionNote: "Not available during the private beta.",
+      reason: "beta capacity",
+    })
+
+    expect(
+      (
+        await sql.execute(
+          "SELECT status, decision_note FROM billing_requests WHERE id='request-2'"
+        )
+      ).rows
+    ).toEqual([
+      {
+        status: "declined",
+        decision_note: "Not available during the private beta.",
+      },
+    ])
+  })
+
+  it("reconciles a Personal+ subscription from Dodo", async () => {
+    await executeAdminMutation(request, actor, {
+      action: "reconcile_subscription",
+      workspaceType: "personal",
+      workspaceId: "user-1",
+      reason: "support reconciliation",
+    })
+    expect(retrieveSubscription).toHaveBeenCalledWith("sub-1")
+    expect(reconcile).toHaveBeenCalledOnce()
   })
 
   it("replays a failed webhook by retrieving and reconciling current subscription state", async () => {

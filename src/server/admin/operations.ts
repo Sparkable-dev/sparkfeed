@@ -84,6 +84,14 @@ export const adminMutationSchema = z.discriminatedUnion("action", [
     reason,
   }),
   z.object({
+    action: z.literal("set_workspace_plan"),
+    workspaceType: z.literal("organization"),
+    workspaceId: z.string().min(1),
+    planKey: z.enum(["pro", "enterprise"]),
+    seatCapacity: z.number().int().positive().max(500),
+    reason,
+  }),
+  z.object({
     action: z.literal("adjust_credits"),
     ...workspaceRefSchema.shape,
     beneficiaryUserId: z.string().min(1),
@@ -120,6 +128,12 @@ export const adminMutationSchema = z.discriminatedUnion("action", [
     requestId: z.string().min(1),
     planKey: z.enum(["pro", "enterprise"]),
     seatCapacity: z.number().int().positive().max(500),
+    decisionNote: z.string().trim().max(1000),
+    reason,
+  }),
+  z.object({
+    action: z.literal("approve_team_cancellation"),
+    requestId: z.string().min(1),
     decisionNote: z.string().trim().max(1000),
     reason,
   }),
@@ -544,6 +558,12 @@ export async function executeAdminMutation(
   const { auth } = await import("@/lib/auth")
 
   if (mutation.action === "ban_user" || mutation.action === "unban_user") {
+    if (
+      mutation.action === "ban_user" &&
+      mutation.targetUserId === actor.userId
+    ) {
+      throw new Error("The active platform administrator cannot self-ban.")
+    }
     const before = await readUserState(mutation.targetUserId)
     return withAudit({
       actor,
@@ -746,6 +766,69 @@ export async function executeAdminMutation(
     })
   }
 
+  if (mutation.action === "set_workspace_plan") {
+    const [before] = await db
+      .select()
+      .from(workspaceSubscriptions)
+      .where(
+        and(
+          eq(workspaceSubscriptions.workspaceType, "organization"),
+          eq(workspaceSubscriptions.workspaceId, mutation.workspaceId)
+        )
+      )
+      .limit(1)
+    if (!before) throw new Error("Workspace not found.")
+    if (before.billingSource !== "manual") {
+      throw new Error(
+        "Provider-managed subscriptions cannot be changed manually."
+      )
+    }
+    if (mutation.planKey === "pro" && mutation.seatCapacity > 10) {
+      throw new Error("Pro supports up to 10 seats. Use Enterprise above 10.")
+    }
+    return withAudit({
+      actor,
+      action: mutation.action,
+      targetType: "workspace",
+      targetId: `organization:${mutation.workspaceId}`,
+      reason: mutation.reason,
+      beforeState: before,
+      run: async () => {
+        await db
+          .update(workspaceSubscriptions)
+          .set({
+            planKey: mutation.planKey,
+            subscriptionStatus: "active",
+            accessState: "active",
+            paidSeatQuantity: mutation.seatCapacity,
+            overrideSeatLimit:
+              mutation.planKey === "enterprise" ? mutation.seatCapacity : null,
+            overrideMonthlyAiCredits:
+              mutation.planKey === "pro"
+                ? null
+                : before.overrideMonthlyAiCredits,
+            overrideSourceUnitLimit:
+              mutation.planKey === "pro"
+                ? null
+                : before.overrideSourceUnitLimit,
+            overrideApiAccess:
+              mutation.planKey === "pro" ? null : before.overrideApiAccess,
+            overrideMcpAccess:
+              mutation.planKey === "pro" ? null : before.overrideMcpAccess,
+            updatedAt: new Date().toISOString(),
+          })
+          .where(
+            and(
+              eq(workspaceSubscriptions.workspaceType, "organization"),
+              eq(workspaceSubscriptions.workspaceId, mutation.workspaceId)
+            )
+          )
+        return getPlatformWorkspace("organization", mutation.workspaceId)
+      },
+      afterState: (result) => result?.subscription,
+    })
+  }
+
   if (mutation.action === "adjust_credits") {
     const workspace = await getPlatformWorkspace(
       mutation.workspaceType,
@@ -857,8 +940,61 @@ export async function executeAdminMutation(
     })
   }
 
+  if (mutation.action === "approve_team_cancellation") {
+    const before = await teamRequest(mutation.requestId)
+    if (before.requestType !== "cancel_plan" || !before.workspaceId) {
+      throw new Error("This is not a valid team-plan cancellation request.")
+    }
+    if (before.status === "approved" || before.status === "declined") {
+      throw new Error("This request is already closed.")
+    }
+    const now = new Date().toISOString()
+    return withAudit({
+      actor,
+      action: mutation.action,
+      targetType: "team_request",
+      targetId: mutation.requestId,
+      reason: mutation.reason,
+      beforeState: before,
+      run: async () => {
+        await db.transaction(async (tx) => {
+          const updated = await tx
+            .update(workspaceSubscriptions)
+            .set({
+              subscriptionStatus: "canceled",
+              accessState: "read_only",
+              updatedAt: now,
+            })
+            .where(
+              and(
+                eq(workspaceSubscriptions.workspaceType, "organization"),
+                eq(workspaceSubscriptions.workspaceId, before.workspaceId!)
+              )
+            )
+            .returning({ workspaceId: workspaceSubscriptions.workspaceId })
+          if (updated.length !== 1) throw new Error("Workspace not found.")
+          await tx
+            .update(billingRequests)
+            .set({
+              status: "approved",
+              decisionNote: mutation.decisionNote || null,
+              updatedAt: now,
+            })
+            .where(eq(billingRequests.id, mutation.requestId))
+        })
+        return teamRequest(mutation.requestId)
+      },
+      afterState: (result) => result,
+    })
+  }
+
   if (mutation.action === "approve_team_request") {
     const before = await teamRequest(mutation.requestId)
+    if (before.requestType === "cancel_plan") {
+      throw new Error(
+        "Use the dedicated cancellation approval for cancel-plan requests."
+      )
+    }
     if (before.status === "declined")
       throw new Error("This request was declined.")
     if (mutation.planKey === "pro" && mutation.seatCapacity > 10) {
@@ -909,26 +1045,29 @@ export async function executeAdminMutation(
             throw new Error("This plan request has no workspace.")
           }
 
-          if (before.requestType === "cancel_plan") {
-            await tx
-              .update(workspaceSubscriptions)
-              .set({
-                subscriptionStatus: "canceled",
-                accessState: "read_only",
-                updatedAt: now,
-              })
-              .where(
-                and(
-                  eq(workspaceSubscriptions.workspaceType, "organization"),
-                  eq(workspaceSubscriptions.workspaceId, newWorkspaceId)
-                )
-              )
-          } else {
-            await tx
-              .insert(workspaceSubscriptions)
-              .values({
-                workspaceType: "organization",
-                workspaceId: newWorkspaceId,
+          await tx
+            .insert(workspaceSubscriptions)
+            .values({
+              workspaceType: "organization",
+              workspaceId: newWorkspaceId,
+              planKey: mutation.planKey,
+              billingSource: "manual",
+              subscriptionStatus: "active",
+              accessState: "active",
+              paidSeatQuantity: mutation.seatCapacity,
+              overrideSeatLimit:
+                mutation.planKey === "enterprise"
+                  ? mutation.seatCapacity
+                  : null,
+              createdAt: now,
+              updatedAt: now,
+            })
+            .onConflictDoUpdate({
+              target: [
+                workspaceSubscriptions.workspaceType,
+                workspaceSubscriptions.workspaceId,
+              ],
+              set: {
                 planKey: mutation.planKey,
                 billingSource: "manual",
                 subscriptionStatus: "active",
@@ -938,28 +1077,9 @@ export async function executeAdminMutation(
                   mutation.planKey === "enterprise"
                     ? mutation.seatCapacity
                     : null,
-                createdAt: now,
                 updatedAt: now,
-              })
-              .onConflictDoUpdate({
-                target: [
-                  workspaceSubscriptions.workspaceType,
-                  workspaceSubscriptions.workspaceId,
-                ],
-                set: {
-                  planKey: mutation.planKey,
-                  billingSource: "manual",
-                  subscriptionStatus: "active",
-                  accessState: "active",
-                  paidSeatQuantity: mutation.seatCapacity,
-                  overrideSeatLimit:
-                    mutation.planKey === "enterprise"
-                      ? mutation.seatCapacity
-                      : null,
-                  updatedAt: now,
-                },
-              })
-          }
+              },
+            })
 
           await tx
             .update(billingRequests)

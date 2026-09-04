@@ -1,8 +1,10 @@
-import { Outlet, createFileRoute, redirect } from "@tanstack/react-router";
-import { getSession } from "@/lib/auth.functions";
-import { RouteError } from "@/components/RouteError";
-import { CommandPaletteProvider } from "@/components/command/command-palette-context";
-import { AddFeedProvider } from "@/components/add-feed/add-feed-context";
+import { Outlet, createFileRoute, redirect } from "@tanstack/react-router"
+import { getSession } from "@/lib/auth.functions"
+import { RouteError } from "@/components/RouteError"
+import { CommandPaletteProvider } from "@/components/command/command-palette-context"
+import { AddFeedProvider } from "@/components/add-feed/add-feed-context"
+import { WorkspaceAccessNotice } from "@/components/WorkspaceAccessNotice"
+import { getIsPlatformAdminSurface } from "@/server/admin/route-state"
 
 export const Route = createFileRoute("/_protected")({
   beforeLoad: async ({ location }) => {
@@ -10,16 +12,19 @@ export const Route = createFileRoute("/_protected")({
       const { DEMO_SESSION } = await import("@/lib/demo")
       return { user: DEMO_SESSION.user }
     }
-    const session = await getSession();
+    if (await getIsPlatformAdminSurface()) {
+      throw redirect({ to: "/admin" })
+    }
+    const session = await getSession()
     if (!session || !session.user) {
       throw redirect({
         to: "/login",
         search: {
-          redirect: location.href !== "/login" ? location.href : undefined
+          redirect: location.href !== "/login" ? location.href : undefined,
         },
-      });
+      })
     }
-    return { user: session.user };
+    return { user: session.user }
   },
   /*
     The palette lives here rather than in the shell so that ⌘K state, and the
@@ -33,9 +38,10 @@ export const Route = createFileRoute("/_protected")({
   component: () => (
     <CommandPaletteProvider>
       <AddFeedProvider>
+        <WorkspaceAccessNotice />
         <Outlet />
       </AddFeedProvider>
     </CommandPaletteProvider>
   ),
   errorComponent: RouteError,
-});
+})

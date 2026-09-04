@@ -37,6 +37,42 @@ function roles(value: unknown): Array<string> {
     .filter(Boolean)
 }
 
+export async function bootstrapPlatformAdminIfEligible(account: {
+  id: string
+  email: string
+  emailVerified: boolean
+  role?: string | null
+}): Promise<boolean> {
+  const bootstrapEmail =
+    process.env.SPARKFEED_ADMIN_BOOTSTRAP_EMAIL?.trim().toLowerCase()
+  if (
+    !bootstrapEmail ||
+    !account.emailVerified ||
+    account.email.trim().toLowerCase() !== bootstrapEmail ||
+    roles(account.role).includes("admin")
+  ) {
+    return false
+  }
+
+  const [{ db }, { user }, { eq }] = await Promise.all([
+    import("@/db/index"),
+    import("@/db/schema"),
+    import("drizzle-orm"),
+  ])
+  return db.transaction(async (tx) => {
+    const people = await tx.select({ role: user.role }).from(user)
+    if (people.some((person) => roles(person.role).includes("admin"))) {
+      return false
+    }
+    const promoted = await tx
+      .update(user)
+      .set({ role: "admin", updatedAt: new Date() })
+      .where(eq(user.id, account.id))
+      .returning({ id: user.id })
+    return promoted.length === 1
+  })
+}
+
 export interface PlatformAdminActor {
   userId: string
   email: string
@@ -60,7 +96,16 @@ export async function readPlatformAdminSessionState(
     role?: string | null
     twoFactorEnabled?: boolean | null
   }
-  if (!roles(adminUser.role).includes("admin")) return { state: "forbidden" }
+  let isAdmin = roles(adminUser.role).includes("admin")
+  if (!isAdmin) {
+    isAdmin = await bootstrapPlatformAdminIfEligible({
+      id: adminUser.id,
+      email: adminUser.email,
+      emailVerified: adminUser.emailVerified,
+      role: adminUser.role,
+    })
+  }
+  if (!isAdmin) return { state: "forbidden" }
   if (adminUser.twoFactorEnabled !== true) return { state: "totp_required" }
   return {
     state: "authorized",

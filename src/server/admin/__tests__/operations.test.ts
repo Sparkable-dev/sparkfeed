@@ -42,6 +42,7 @@ vi.mock("@/server/billing/personal-webhooks", () => ({
 }))
 
 const { executeAdminMutation } = await import("../operations")
+const { bootstrapPlatformAdminIfEligible } = await import("../access")
 
 const actor = { userId: "admin-1", email: "admin@example.com" }
 const request = new Request(
@@ -201,6 +202,46 @@ afterEach(async () => {
   rmSync(testDirectory, { recursive: true, force: true })
   delete process.env.SPARKFEED_EDITION
   delete process.env.SPARKFEED_SURFACE
+  delete process.env.SPARKFEED_ADMIN_BOOTSTRAP_EMAIL
+})
+
+describe("platform administrator bootstrap", () => {
+  it("promotes the configured verified account when no admin exists", async () => {
+    process.env.SPARKFEED_ADMIN_BOOTSTRAP_EMAIL = "reader@example.com"
+    await expect(
+      bootstrapPlatformAdminIfEligible({
+        id: "user-1",
+        email: "reader@example.com",
+        emailVerified: true,
+        role: "user",
+      })
+    ).resolves.toBe(true)
+    expect(
+      (await (await raw()).execute("SELECT role FROM user WHERE id='user-1'"))
+        .rows
+    ).toEqual([{ role: "admin" }])
+  })
+
+  it("does not promote another account after an admin exists", async () => {
+    const sql = await raw()
+    await sql.execute(`INSERT INTO user (
+      id, name, email, email_verified, role, banned, two_factor_enabled,
+      created_at, updated_at)
+      VALUES ('admin-1', 'Admin', 'admin@example.com', 1, 'admin', 0, 1,
+      '2026-08-30T10:00:00Z', '2026-08-30T10:00:00Z')`)
+    process.env.SPARKFEED_ADMIN_BOOTSTRAP_EMAIL = "reader@example.com"
+    await expect(
+      bootstrapPlatformAdminIfEligible({
+        id: "user-1",
+        email: "reader@example.com",
+        emailVerified: true,
+        role: "user",
+      })
+    ).resolves.toBe(false)
+    expect(
+      (await sql.execute("SELECT role FROM user WHERE id='user-1'")).rows
+    ).toEqual([{ role: "user" }])
+  })
 })
 
 describe("approved admin mutations", () => {

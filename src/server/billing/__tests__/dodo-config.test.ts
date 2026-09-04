@@ -27,6 +27,19 @@ describe("Dodo billing configuration", () => {
     )
   })
 
+  it("does not require the app webhook secret on the admin surface", () => {
+    const { DODO_PAYMENTS_WEBHOOK_SECRET: _, ...withoutWebhookSecret } = cloud
+    expect(
+      readDodoBillingConfig({
+        ...withoutWebhookSecret,
+        SPARKFEED_SURFACE: "admin",
+      })
+    ).toMatchObject({
+      webhookSecret: null,
+      environment: "test_mode",
+    })
+  })
+
   it("requires HTTPS in live mode", () => {
     expect(() =>
       readDodoBillingConfig({

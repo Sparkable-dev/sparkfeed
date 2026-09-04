@@ -8,7 +8,7 @@ export type DodoEnvironment = "test_mode" | "live_mode"
 
 export interface DodoBillingConfig {
   apiKey: string
-  webhookSecret: string
+  webhookSecret: string | null
   environment: DodoEnvironment
   appUrl: string
   personalProducts: Record<PersonalBillingInterval, string>
@@ -26,7 +26,8 @@ function required(
 export function readDodoBillingConfig(
   env: Record<string, string | undefined> = process.env
 ): DodoBillingConfig | null {
-  if (readSparkfeedDeploymentConfig(env).edition === "community") return null
+  const deployment = readSparkfeedDeploymentConfig(env)
+  if (deployment.edition === "community") return null
 
   const rawEnvironment = required(env, "DODO_PAYMENTS_ENVIRONMENT")
   if (rawEnvironment !== "test_mode" && rawEnvironment !== "live_mode") {
@@ -43,7 +44,10 @@ export function readDodoBillingConfig(
 
   return {
     apiKey: required(env, "DODO_PAYMENTS_API_KEY"),
-    webhookSecret: required(env, "DODO_PAYMENTS_WEBHOOK_SECRET"),
+    webhookSecret:
+      deployment.surface === "app"
+        ? required(env, "DODO_PAYMENTS_WEBHOOK_SECRET")
+        : env.DODO_PAYMENTS_WEBHOOK_SECRET?.trim() || null,
     environment: rawEnvironment,
     appUrl: parsedAppUrl.origin,
     personalProducts: {

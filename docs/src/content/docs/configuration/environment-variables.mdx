@@ -50,11 +50,10 @@ Without an email provider, verification, invitation, and password-reset messages
 
 ## Demo mode
 
-Set both variables before the development build:
+Set `VITE_DEMO_MODE` before building and keep the same value at runtime:
 
 ```dotenv
 VITE_DEMO_MODE=true
-DEMO_MODE=true
 ```
 
 Demo mode ignores `DATABASE_URL`, uses `rss-demo.db`, bypasses auth, seeds sample content, and blocks mutations.

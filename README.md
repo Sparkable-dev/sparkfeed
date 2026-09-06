@@ -83,7 +83,7 @@ Demo mode uses an isolated local SQLite file. It does not require PostgreSQL, au
 
 ```bash
 bun install --frozen-lockfile
-VITE_DEMO_MODE=true DEMO_MODE=true bun run dev
+VITE_DEMO_MODE=true bun run dev
 ```
 
 Demo mode seeds sample content and blocks structural mutations. It does not share data with a Community installation.

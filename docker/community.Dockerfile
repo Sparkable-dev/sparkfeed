@@ -23,7 +23,6 @@ ENV NODE_ENV=production
 ENV HOST=0.0.0.0
 ENV PORT=3000
 ENV VITE_DEMO_MODE=false
-ENV DEMO_MODE=false
 
 COPY --from=build --chown=node:node /app/.output ./.output
 COPY --from=build --chown=node:node /app/drizzle ./drizzle

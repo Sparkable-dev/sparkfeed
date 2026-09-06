@@ -6,8 +6,8 @@
 # Railpack detects Bun from bun.lock and installs dependencies before the build.
 #
 # Demo vs. beta is controlled by Railway service variables:
-#   • Demo: VITE_DEMO_MODE=true and DEMO_MODE=true
-#   • Beta: VITE_DEMO_MODE=false and DEMO_MODE=false
+#   • Demo: VITE_DEMO_MODE=true
+#   • Beta: VITE_DEMO_MODE=false
 # Demo mode bypasses auth, seeds rss-demo.db, and locks structural mutations.
 # Beta needs DATABASE_URL and BETTER_AUTH_SECRET.
 #

@@ -39,7 +39,6 @@ jobs:
       ALLOW_REGISTRATION: "false"
       WORKSPACE_CREATION_POLICY: owner-only
       VITE_DEMO_MODE: "false"
-      DEMO_MODE: "false"
     steps:
       - name: Check out source
         uses: actions/checkout@v6

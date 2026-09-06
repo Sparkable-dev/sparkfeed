@@ -4,24 +4,12 @@ import { DEMO_MODE as DEMO_MODE_BUILD } from "@/lib/demo"
 import { sparkfeedEdition } from "@/server/entitlements/config"
 
 /**
- * Whether Spark AI is switched off for this deployment.
- *
- * The route this replaced gated *only* on `import.meta.env.VITE_DEMO_MODE` — a
- * build-time constant from the client env namespace. Vite inlines it, so it
- * could not be flipped at deploy time, and a client-side constant is a poor
- * sole basis for a server-side authorization decision. The runtime flags below
- * fix that: setting either on Railway takes effect on restart, not on rebuild.
- *
- * The build-time constant is still checked, and dropping it would be a
- * regression rather than a cleanup. `resolveWorkspaceContext*` short-circuits
- * on that same constant and hands back the demo workspace without consulting
- * any session, so on a demo deployment the auth gate in the route always
- * passes. If this returned false there, demo would go from "AI locked" to "AI
- * open to anyone" — the exact opposite of what the flag means. So: build-time
- * OR runtime, never one replacing the other.
- *
- * `DEMO_MODE` is the server-side twin of `VITE_DEMO_MODE`; set both together
- * (see .env.example).
+ * Disable AI for demo builds or when the runtime kill switch is enabled.
+ * VITE_DEMO_MODE is the single demo setting at build time and runtime.
+ * Always retain the build-time check: demo builds bypass customer auth, so
+ * clearing the runtime value must never enable AI for anonymous visitors.
+ * Changing the application mode requires a rebuild; DISABLE_AI can change
+ * independently at runtime.
  */
 export const aiDisabled = createServerOnlyFn(
   (): boolean => isDemo() || process.env.DISABLE_AI === "true"
@@ -34,7 +22,7 @@ export const aiDisabled = createServerOnlyFn(
  * sign up, a self-hoster with DISABLE_AI set should not.
  */
 export const isDemo = createServerOnlyFn(
-  (): boolean => DEMO_MODE_BUILD || process.env.DEMO_MODE === "true"
+  (): boolean => DEMO_MODE_BUILD || process.env.VITE_DEMO_MODE === "true"
 )
 
 /** Which providers have credentials configured, by provider id. */

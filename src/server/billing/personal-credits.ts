@@ -1,7 +1,9 @@
 import { randomUUID } from "node:crypto"
 import { and, eq, sql } from "drizzle-orm"
 import type { CreditBucket, WorkspaceRef } from "@/server/entitlements/types"
-import { creditLedger, workspaceSubscriptions } from "@/db/schema"
+import { readEffectiveSubscription } from "@/server/entitlements/effective"
+import { grantWorkspaceAllowance } from "@/server/entitlements/allowances"
+import { creditLedger, member, user } from "@/db/schema"
 import { db } from "@/db/index"
 
 export const PERSONAL_MONTHLY_CREDIT_GRANT = 100
@@ -17,10 +19,6 @@ export interface AiCreditReservation {
   workspace: WorkspaceRef
   userId: string
   buckets: Array<BucketReservation>
-}
-
-function grantKey(userId: string, periodStart: string): string {
-  return `personal-plus:${userId}:${periodStart}`
 }
 
 async function balanceInTransaction(
@@ -59,38 +57,11 @@ export async function grantPersonalMonthlyCredits(
   userId: string,
   periodStart: string
 ): Promise<number> {
-  const workspace: WorkspaceRef = { type: "personal", id: userId }
-
-  return db.transaction(async (tx) => {
-    await lockCreditAccount(tx, workspace, userId)
-    const current = await balanceInTransaction(tx, workspace, userId, "paid")
-    const amount = Math.max(
-      0,
-      Math.min(
-        PERSONAL_MONTHLY_CREDIT_GRANT,
-        PERSONAL_PAID_CREDIT_CAP - current
-      )
-    )
-
-    await tx
-      .insert(creditLedger)
-      .values({
-        id: randomUUID(),
-        workspaceType: "personal",
-        workspaceId: userId,
-        beneficiaryUserId: userId,
-        creditBucket: "paid",
-        amount,
-        entryType: "grant",
-        grantPeriod: periodStart,
-        reason: "personal_plus_monthly_grant",
-        idempotencyKey: grantKey(userId, periodStart),
-        createdAt: new Date().toISOString(),
-      })
-      .onConflictDoNothing()
-
-    return amount
-  })
+  if (!Number.isFinite(Date.parse(periodStart)))
+    throw new Error("Invalid billing period start.")
+  // Webhooks may be replayed months later. The stored allowance clock selects
+  // the current period; replaying an old provider period must not back-grant.
+  return grantWorkspaceAllowance({ type: "personal", id: userId }, userId)
 }
 
 export async function reserveManagedAiCredits(
@@ -101,19 +72,35 @@ export async function reserveManagedAiCredits(
   return db.transaction(async (tx) => {
     await lockCreditAccount(tx, workspace, userId)
 
-    const [subscription] = await tx
-      .select({
-        planKey: workspaceSubscriptions.planKey,
-        accessState: workspaceSubscriptions.accessState,
-      })
-      .from(workspaceSubscriptions)
-      .where(
-        and(
-          eq(workspaceSubscriptions.workspaceType, workspace.type),
-          eq(workspaceSubscriptions.workspaceId, workspace.id)
-        )
-      )
+    const [account] = await tx
+      .select({ banned: user.banned, banExpires: user.banExpires })
+      .from(user)
+      .where(eq(user.id, userId))
       .limit(1)
+    if (
+      account?.banned &&
+      (!account.banExpires || account.banExpires > new Date())
+    )
+      return null
+    if (workspace.type === "organization") {
+      const [accepted] = await tx
+        .select({ id: member.id })
+        .from(member)
+        .where(
+          and(
+            eq(member.organizationId, workspace.id),
+            eq(member.userId, userId)
+          )
+        )
+        .limit(1)
+      if (!accepted) return null
+    }
+    const subscription = await readEffectiveSubscription(
+      tx,
+      workspace,
+      new Date(),
+      true
+    )
 
     if (!subscription || subscription.accessState !== "active") return null
 

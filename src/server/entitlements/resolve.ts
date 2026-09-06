@@ -1,6 +1,8 @@
-import { and, eq } from "drizzle-orm"
+import { eq } from "drizzle-orm"
 import { sparkfeedEdition } from "./config"
 import { creditBalance, ensureCloudFreeAccount } from "./credits"
+import { readEffectiveSubscription } from "./effective"
+import { grantWorkspaceAllowance } from "./allowances"
 import type {
   EntitlementOverrides,
   PlanKey,
@@ -8,7 +10,8 @@ import type {
   ResolvedEntitlements,
   WorkspaceRef,
 } from "./types"
-import { workspaceSubscriptions } from "@/db/schema"
+import type { workspaceSubscriptions } from "@/db/schema"
+import { user } from "@/db/schema"
 import { db } from "@/db/index"
 import { refreshPersonalSubscriptionLifecycle } from "@/server/billing/personal-lifecycle"
 
@@ -70,22 +73,27 @@ export async function resolveEntitlements(
     await refreshPersonalSubscriptionLifecycle(workspace.id)
   }
 
-  const [row] = await db
-    .select()
-    .from(workspaceSubscriptions)
-    .where(
-      and(
-        eq(workspaceSubscriptions.workspaceType, workspace.type),
-        eq(workspaceSubscriptions.workspaceId, workspace.id)
-      )
+  const row = await readEffectiveSubscription(db, workspace)
+  let banned = false
+  const accountId =
+    principal.userId ?? (workspace.type === "personal" ? workspace.id : null)
+  if (accountId) {
+    const [account] = await db
+      .select({ banned: user.banned, until: user.banExpires })
+      .from(user)
+      .where(eq(user.id, accountId))
+      .limit(1)
+    banned = Boolean(
+      account?.banned && (!account.until || account.until > new Date())
     )
-    .limit(1)
+  }
 
   if (!row) {
     return {
       plan: "free",
       billingStatus: "free",
-      accessState: workspace.type === "personal" ? "active" : "suspended",
+      accessState:
+        !banned && workspace.type === "personal" ? "active" : "suspended",
       seatCapacity: 1,
       sourceUnitCapacity: 5,
       monthlySparkAiCredits: 0,
@@ -116,7 +124,9 @@ export async function resolveEntitlements(
   }
 
   const overrides = overridesFrom(row)
-  const active = row.accessState === "active"
+  const active = !banned && row.accessState === "active"
+  if (active && principal.userId && row.planKey !== "free")
+    await grantWorkspaceAllowance(workspace, principal.userId)
   const beneficiary = principal.userId
   const balance = beneficiary
     ? await creditBalance(
@@ -167,7 +177,7 @@ export async function resolveEntitlements(
   return {
     plan: row.planKey,
     billingStatus: row.subscriptionStatus,
-    accessState: row.accessState,
+    accessState: banned ? "suspended" : row.accessState,
     seatCapacity: overrides.seatLimit ?? defaults.seats,
     sourceUnitCapacity: overrides.sourceUnitLimit ?? defaults.sources,
     monthlySparkAiCredits:

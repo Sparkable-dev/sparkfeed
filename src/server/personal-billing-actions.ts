@@ -26,6 +26,7 @@ import {
 } from "@/server/entitlements/credits"
 import { sparkfeedEdition } from "@/server/entitlements/config"
 import { resolveEntitlements } from "@/server/entitlements/resolve"
+import { activeOverride, readWorkspaceOverride } from "@/server/entitlements/effective"
 import { personalWorkspaceRef } from "@/lib/workspaces"
 
 export interface PersonalBillingSource {
@@ -37,6 +38,9 @@ export interface PersonalBillingSource {
 
 export interface PersonalBillingSummary {
   plan: EntitlementPlan
+  billedPlan?: EntitlementPlan
+  complimentary?: boolean
+  overrideExpiresAt?: string | null
   billingStatus: BillingStatus
   accessState: WorkspaceAccessState
   interval: BillingInterval | null
@@ -153,6 +157,9 @@ export const getPersonalBillingSummary = createServerFn({
 
   return {
     plan: entitlements.plan,
+    billedPlan: subscription?.planKey ?? "free",
+    complimentary: Boolean(activeOverride(await readWorkspaceOverride(db, workspace))),
+    overrideExpiresAt: activeOverride(await readWorkspaceOverride(db, workspace))?.expiresAt ?? null,
     billingStatus: entitlements.billingStatus,
     accessState: entitlements.accessState,
     interval: subscription?.billingInterval ?? null,

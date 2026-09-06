@@ -16,6 +16,9 @@ beforeEach(async () => {
   raw = (db as unknown as { $client: ReturnType<typeof createClient> }).$client
 
   const statements = [
+    `CREATE TABLE workspace_overrides (workspace_type TEXT, workspace_id TEXT)`,
+    `CREATE TABLE platform_activity_days (user_id TEXT, workspace_type TEXT, workspace_id TEXT, day TEXT, last_seen_at TEXT)`,
+    `CREATE TABLE workspace_credit_schedules (workspace_type TEXT, workspace_id TEXT, user_id TEXT)`,
     `CREATE TABLE organization (id TEXT PRIMARY KEY, name TEXT NOT NULL, slug TEXT NOT NULL)`,
     `CREATE TABLE member (id TEXT PRIMARY KEY, organization_id TEXT NOT NULL, user_id TEXT NOT NULL, role TEXT NOT NULL, created_at TEXT)`,
     `CREATE TABLE folders (id TEXT PRIMARY KEY, name TEXT NOT NULL, workspace_id TEXT, parent_id TEXT, position INTEGER, created_at TEXT)`,

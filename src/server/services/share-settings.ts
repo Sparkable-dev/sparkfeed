@@ -3,6 +3,7 @@ import { resolveWorkspaceContextFromHeaders } from "./context"
 import { assertOwnsFeed, assertOwnsFolder } from "./ownership"
 import {  hashSharePassword } from "./shares"
 import type {ShareKind} from "./shares";
+import { assertWorkspaceWritable } from "@/server/entitlements/browser-write"
 import { DEMO_MODE } from "@/lib/demo"
 import { feedShares, folderShares } from "@/db/schema"
 import { db } from "@/db/index"
@@ -96,6 +97,8 @@ export async function writeShareSettings(
 
   const auth = await authorize(kind, entityId, headers)
   if (!auth.ok) return auth
+  try { await assertWorkspaceWritable(await resolveWorkspaceContextFromHeaders(headers)) }
+  catch { return {ok:false,status:403,error:"This workspace is not writable."} }
 
   // Hashed at rest. Turning sharing off clears the password outright rather
   // than keeping a hash for a link that no longer resolves.

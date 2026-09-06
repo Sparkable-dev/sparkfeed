@@ -6,7 +6,6 @@ import {
 
 const cloud = {
   SPARKFEED_EDITION: "cloud",
-  SPARKFEED_SURFACE: "app",
   APP_URL: "https://app.sparkfeed.dev",
   DODO_PAYMENTS_ENVIRONMENT: "test_mode",
   DODO_PAYMENTS_API_KEY: "test-key",
@@ -25,19 +24,6 @@ describe("Dodo billing configuration", () => {
     expect(() => readDodoBillingConfig(missingWebhook)).toThrow(
       "DODO_PAYMENTS_WEBHOOK_SECRET"
     )
-  })
-
-  it("does not require the app webhook secret on the admin surface", () => {
-    const { DODO_PAYMENTS_WEBHOOK_SECRET: _, ...withoutWebhookSecret } = cloud
-    expect(
-      readDodoBillingConfig({
-        ...withoutWebhookSecret,
-        SPARKFEED_SURFACE: "admin",
-      })
-    ).toMatchObject({
-      webhookSecret: null,
-      environment: "test_mode",
-    })
   })
 
   it("requires HTTPS in live mode", () => {

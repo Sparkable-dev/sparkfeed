@@ -7,6 +7,7 @@ import {
   renameThread,
 } from "./services/chats"
 import { resolveWorkspaceContext } from "./services/context"
+import { workspaceWriteMiddleware } from "@/server/entitlements/browser-write"
 
 /**
  * The chat history, for the app's own UI.
@@ -53,14 +54,14 @@ export const loadChat = createServerFn({ method: "GET" })
     }
   })
 
-export const renameChat = createServerFn({ method: "POST" })
+export const renameChat = createServerFn({ method: "POST" }).middleware([workspaceWriteMiddleware])
   .validator(threadId.extend({ title: z.string().min(1).max(200) }))
   .handler(async ({ data }) => {
     const context = await resolveWorkspaceContext()
     return await renameThread(context, data)
   })
 
-export const deleteChat = createServerFn({ method: "POST" })
+export const deleteChat = createServerFn({ method: "POST" }).middleware([workspaceWriteMiddleware])
   .validator(threadId)
   .handler(async ({ data }) => {
     const context = await resolveWorkspaceContext()

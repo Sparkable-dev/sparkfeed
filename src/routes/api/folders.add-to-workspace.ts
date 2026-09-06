@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto"
 import { createFileRoute } from "@tanstack/react-router"
 import { and, eq } from "drizzle-orm"
+import { assertWorkspaceWritable } from "@/server/entitlements/browser-write"
 import { db } from "@/db/index"
 import { feeds, folders } from "@/db/schema"
 import { resolveWorkspaceContextFromHeaders } from "@/server/services/context"
@@ -22,6 +23,9 @@ export const Route = createFileRoute("/api/folders/add-to-workspace")({
               headers: { "Content-Type": "application/json" },
             })
           }
+
+          try { await assertWorkspaceWritable(caller) }
+          catch { return Response.json({error:"This workspace is not writable."},{status:403}) }
 
           // 2. Get user's active workspaceId
           const userWorkspaceId = caller.workspaceId

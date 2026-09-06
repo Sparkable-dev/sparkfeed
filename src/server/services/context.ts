@@ -96,6 +96,12 @@ export const resolveWorkspaceContextFromHeaders = createServerOnlyFn(
       ? workspaceRefForSession(userId, organizationId)
       : null
 
+    const supportSession = session?.session && "impersonatedBy" in session.session && session.session.impersonatedBy
+    if (userId && workspace && !supportSession) {
+      const { recordPlatformActivity } = await import("@/server/platform/activity")
+      await recordPlatformActivity(userId,workspace)
+    }
+
     return {
       workspaceId: workspace?.id ?? null,
       workspace,

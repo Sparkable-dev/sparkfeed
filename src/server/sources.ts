@@ -5,6 +5,7 @@ import { FOLDER_ORDER } from "./services/ordering"
 import { folderInWorkspace } from "./services/tenancy"
 import { resolveWorkspaceId } from "./services/context"
 import type { SourceOrderResult } from "./services/source-order"
+import { workspaceWriteMiddleware } from "@/server/entitlements/browser-write"
 import { db } from "@/db/index"
 import { folders } from "@/db/schema"
 import { DEMO_MODE } from "@/lib/demo"
@@ -41,7 +42,7 @@ const saveSourceOrderInput = z
 
 export type SaveSourceOrderResult = SourceOrderResult | { status: "demo_locked" }
 
-export const saveSourceOrder = createServerFn({ method: "POST" })
+export const saveSourceOrder = createServerFn({ method: "POST" }).middleware([workspaceWriteMiddleware])
   .validator((d: unknown) => saveSourceOrderInput.parse(d))
   .handler(async ({ data }): Promise<SaveSourceOrderResult> => {
     // A typed result rather than a throw, following `updateFeed`: the client

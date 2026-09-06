@@ -1,9 +1,8 @@
-import { DEPLOYMENT_SURFACES, EDITIONS } from "./types"
-import type { DeploymentSurface, SparkfeedEdition } from "./types"
+import { EDITIONS } from "./types"
+import type { SparkfeedEdition } from "./types"
 
 export interface SparkfeedDeploymentConfig {
   edition: SparkfeedEdition
-  surface: DeploymentSurface
 }
 
 function oneOf<T extends string>(
@@ -25,29 +24,11 @@ export function readSparkfeedDeploymentConfig(
     EDITIONS,
     "SPARKFEED_EDITION"
   )
-  const surface = oneOf(
-    env.SPARKFEED_SURFACE ?? "app",
-    DEPLOYMENT_SURFACES,
-    "SPARKFEED_SURFACE"
-  )
-
-  if (edition === "community" && surface === "admin") {
-    throw new Error(
-      "[config] SPARKFEED_SURFACE=admin is only valid when SPARKFEED_EDITION=cloud."
-    )
-  }
-
-  return { edition, surface }
+  return { edition }
 }
 
 export function sparkfeedEdition(
   env: Record<string, string | undefined> = process.env
 ): SparkfeedEdition {
   return readSparkfeedDeploymentConfig(env).edition
-}
-
-export function sparkfeedSurface(
-  env: Record<string, string | undefined> = process.env
-): DeploymentSurface {
-  return readSparkfeedDeploymentConfig(env).surface
 }

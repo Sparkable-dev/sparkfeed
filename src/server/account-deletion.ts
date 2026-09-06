@@ -1,4 +1,4 @@
-import { and, eq, inArray } from "drizzle-orm"
+import { and, eq, inArray, isNotNull, or } from "drizzle-orm"
 import type { Database } from "@/db/client"
 import {
   apiKeys,
@@ -13,10 +13,13 @@ import {
   invites,
   member,
   organization,
+  platformActivityDays,
   scrapedArticles,
   scrapedFeeds,
   session,
   usageCounters,
+  workspaceCreditSchedules,
+  workspaceOverrides,
   workspaceSubscriptions,
 } from "@/db/schema"
 
@@ -48,7 +51,7 @@ export async function hasManagedPersonalPlusSubscription(
       and(
         eq(workspaceSubscriptions.workspaceType, "personal"),
         eq(workspaceSubscriptions.workspaceId, userId),
-        eq(workspaceSubscriptions.planKey, "personal_plus"),
+        or(eq(workspaceSubscriptions.planKey, "personal_plus"), isNotNull(workspaceSubscriptions.dodoSubscriptionId), eq(workspaceSubscriptions.subscriptionStatus, "checkout_pending")),
         eq(workspaceSubscriptions.billingSource, "dodo")
       )
     )
@@ -126,6 +129,9 @@ export async function deletePersonalWorkspaceData(
         eq(creditLedger.workspaceId, userId)
       )
     )
+  await database.delete(platformActivityDays).where(eq(platformActivityDays.userId,userId))
+  await database.delete(workspaceOverrides).where(and(eq(workspaceOverrides.workspaceType,"personal"),eq(workspaceOverrides.workspaceId,userId)))
+  await database.delete(workspaceCreditSchedules).where(and(eq(workspaceCreditSchedules.workspaceType,"personal"),eq(workspaceCreditSchedules.workspaceId,userId)))
   await database
     .delete(workspaceSubscriptions)
     .where(
@@ -202,6 +208,9 @@ export async function deleteOrganizationWorkspaceData(
         eq(creditLedger.workspaceId, organizationId)
       )
     )
+  await database.delete(platformActivityDays).where(and(eq(platformActivityDays.workspaceType,"organization"),eq(platformActivityDays.workspaceId,organizationId)))
+  await database.delete(workspaceOverrides).where(and(eq(workspaceOverrides.workspaceType,"organization"),eq(workspaceOverrides.workspaceId,organizationId)))
+  await database.delete(workspaceCreditSchedules).where(and(eq(workspaceCreditSchedules.workspaceType,"organization"),eq(workspaceCreditSchedules.workspaceId,organizationId)))
   await database
     .delete(workspaceSubscriptions)
     .where(

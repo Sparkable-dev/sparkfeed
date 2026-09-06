@@ -4,16 +4,12 @@ import { RouteError } from "@/components/RouteError"
 import { CommandPaletteProvider } from "@/components/command/command-palette-context"
 import { AddFeedProvider } from "@/components/add-feed/add-feed-context"
 import { WorkspaceAccessNotice } from "@/components/WorkspaceAccessNotice"
-import { getIsPlatformAdminSurface } from "@/server/admin/route-state"
 
 export const Route = createFileRoute("/_protected")({
   beforeLoad: async ({ location }) => {
     if (import.meta.env.VITE_DEMO_MODE === "true") {
       const { DEMO_SESSION } = await import("@/lib/demo")
       return { user: DEMO_SESSION.user }
-    }
-    if (await getIsPlatformAdminSurface()) {
-      throw redirect({ to: "/admin" })
     }
     const session = await getSession()
     if (!session || !session.user) {

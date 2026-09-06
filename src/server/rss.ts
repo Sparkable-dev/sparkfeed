@@ -44,6 +44,7 @@ import type { FeedError } from "./utils/feed-errors"
 import type { DiscoveredFeed } from "./utils/discover"
 import type { ResolvedFeed } from "./utils/detectRSS"
 import type { FeedSignals } from "./utils/feed-signals"
+import { workspaceWriteMiddleware } from "@/server/entitlements/browser-write"
 import { articles, feedShares, feeds, folderShares, folders } from "@/db/schema"
 import { db } from "@/db/index"
 import { feedUrlKey, feedUrlSchema } from "@/lib/validation"
@@ -218,7 +219,7 @@ export const getAllData = createServerFn({ method: "GET" }).handler(
 // CREATE FOLDER
 // ─────────────────────────────────────────────
 
-export const createFolder = createServerFn({ method: "POST" })
+export const createFolder = createServerFn({ method: "POST" }).middleware([workspaceWriteMiddleware])
   .validator((d: any) => z.object({ name: z.string().min(1) }).parse(d))
   .handler(async ({ data }) => {
     if (DEMO_MODE) throw new Error(DEMO_LOCKED_MSG)
@@ -708,7 +709,7 @@ export type CreateFeedsResult =
  * workspace has not actually resolved recently is resolved now — see
  * `feed-resolution-cache.ts`.
  */
-export const createFeeds = createServerFn({ method: "POST" })
+export const createFeeds = createServerFn({ method: "POST" }).middleware([workspaceWriteMiddleware])
   .validator((d: any) =>
     z
       .object({
@@ -821,7 +822,7 @@ export const createFeeds = createServerFn({ method: "POST" })
     return { status: "ok", folderId, added, skipped, failed }
   })
 
-export const createFeed = createServerFn({ method: "POST" })
+export const createFeed = createServerFn({ method: "POST" }).middleware([workspaceWriteMiddleware])
   .validator((d: any) =>
     z
       .object({
@@ -886,7 +887,7 @@ export const createFeed = createServerFn({ method: "POST" })
 // REFRESH ALL FEEDS
 // ─────────────────────────────────────────────
 
-export const refreshAllFeeds = createServerFn({ method: "POST" }).handler(
+export const refreshAllFeeds = createServerFn({ method: "POST" }).middleware([workspaceWriteMiddleware]).handler(
   async () => {
     const workspaceId = await resolveWorkspaceId()
 
@@ -926,7 +927,7 @@ export const refreshAllFeeds = createServerFn({ method: "POST" }).handler(
  * failure, so the caller does not need to interpret the outcome: reloading
  * shows the source's real state either way.
  */
-export const refreshFeed = createServerFn({ method: "POST" })
+export const refreshFeed = createServerFn({ method: "POST" }).middleware([workspaceWriteMiddleware])
   .validator((d: any) => z.object({ feedId: z.string() }).parse(d))
   .handler(async ({ data }) => {
     // Refresh triggers an outbound fetch to a URL the row supplies, so
@@ -962,7 +963,7 @@ export const refreshFeed = createServerFn({ method: "POST" })
 // REFRESH SINGLE FOLDER
 // ─────────────────────────────────────────────
 
-export const refreshFolder = createServerFn({ method: "POST" })
+export const refreshFolder = createServerFn({ method: "POST" }).middleware([workspaceWriteMiddleware])
   .validator((d: any) => z.object({ folderId: z.string() }).parse(d))
   .handler(async ({ data }) => {
     // Scoped by workspace as well as folder: a folder id alone is guessable,
@@ -1013,7 +1014,7 @@ export const refreshFolder = createServerFn({ method: "POST" })
  * while the sole caller was a UI that never rendered another workspace's ids.
  */
 
-export const toggleBookmark = createServerFn({ method: "POST" })
+export const toggleBookmark = createServerFn({ method: "POST" }).middleware([workspaceWriteMiddleware])
   .validator(z.object({ id: z.string(), state: z.boolean() }))
   .handler(async ({ data }) => {
     const workspaceId = await resolveWorkspaceId()
@@ -1023,7 +1024,7 @@ export const toggleBookmark = createServerFn({ method: "POST" })
       .where(and(eq(articles.id, data.id), articleInWorkspace(workspaceId)))
   })
 
-export const toggleReadLater = createServerFn({ method: "POST" })
+export const toggleReadLater = createServerFn({ method: "POST" }).middleware([workspaceWriteMiddleware])
   .validator(z.object({ id: z.string(), state: z.boolean() }))
   .handler(async ({ data }) => {
     const workspaceId = await resolveWorkspaceId()
@@ -1033,7 +1034,7 @@ export const toggleReadLater = createServerFn({ method: "POST" })
       .where(and(eq(articles.id, data.id), articleInWorkspace(workspaceId)))
   })
 
-export const toggleFavorite = createServerFn({ method: "POST" })
+export const toggleFavorite = createServerFn({ method: "POST" }).middleware([workspaceWriteMiddleware])
   .validator(z.object({ id: z.string(), state: z.boolean() }))
   .handler(async ({ data }) => {
     const workspaceId = await resolveWorkspaceId()
@@ -1151,7 +1152,7 @@ export const getArticlePreview = createServerFn({ method: "POST" })
     return { readerHtml, canEmbed, link, domain }
   })
 
-export const deleteFeed = createServerFn({ method: "POST" })
+export const deleteFeed = createServerFn({ method: "POST" }).middleware([workspaceWriteMiddleware])
   .validator(z.object({ id: z.string() }))
   .handler(async ({ data }) => {
     if (DEMO_MODE) throw new Error(DEMO_LOCKED_MSG)
@@ -1167,7 +1168,7 @@ export const deleteFeed = createServerFn({ method: "POST" })
     await db.delete(feeds).where(eq(feeds.id, data.id))
   })
 
-export const deleteFolder = createServerFn({ method: "POST" })
+export const deleteFolder = createServerFn({ method: "POST" }).middleware([workspaceWriteMiddleware])
   .validator(z.object({ id: z.string() }))
   .handler(async ({ data }) => {
     if (DEMO_MODE) throw new Error(DEMO_LOCKED_MSG)
@@ -1286,7 +1287,7 @@ export const getFolderManageData = createServerFn({ method: "GET" })
     }
   )
 
-export const renameFolder = createServerFn({ method: "POST" })
+export const renameFolder = createServerFn({ method: "POST" }).middleware([workspaceWriteMiddleware])
   .validator(z.object({ id: z.string(), name: z.string().min(1) }))
   .handler(async ({ data }) => {
     if (DEMO_MODE) throw new Error(DEMO_LOCKED_MSG)
@@ -1297,7 +1298,7 @@ export const renameFolder = createServerFn({ method: "POST" })
       .where(and(eq(folders.id, data.id), folderInWorkspace(workspaceId)))
   })
 
-export const renameFeed = createServerFn({ method: "POST" })
+export const renameFeed = createServerFn({ method: "POST" }).middleware([workspaceWriteMiddleware])
   .validator(z.object({ id: z.string(), name: z.string().min(1) }))
   .handler(async ({ data }) => {
     if (DEMO_MODE) throw new Error(DEMO_LOCKED_MSG)
@@ -1308,7 +1309,7 @@ export const renameFeed = createServerFn({ method: "POST" })
       .where(and(eq(feeds.id, data.id), feedInWorkspace(workspaceId)))
   })
 
-export const updateFeed = createServerFn({ method: "POST" })
+export const updateFeed = createServerFn({ method: "POST" }).middleware([workspaceWriteMiddleware])
   .validator((d: any) =>
     z
       .object({

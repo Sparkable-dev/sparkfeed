@@ -25,6 +25,8 @@ Sparkfeed follows RSS and Atom feeds, monitors sites that do not publish a feed,
 
 Community Edition includes the core product under `AGPL-3.0-only`. It supports up to 10 registered people and does not depend on Sparkable's hosted billing or platform-administration systems. Sparkable's commercial service sells managed hosting, operations, provider credits, support, and isolated deployments for larger organizations.
 
+This repository runs the customer application only. It does not include an embedded platform-admin UI, admin deployment mode, or customer-role bootstrap. Optional Cloud service APIs connect an independently deployed private operations dashboard. They require signed service assertions; customer accounts cannot authorize them. Workspace ownership and billing enforcement remain in this application.
+
 ## Start with Docker Compose
 
 Install Docker with the Compose plugin, then clone the repository:

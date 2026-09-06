@@ -3,6 +3,7 @@ import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools"
 import { TanStackDevtools } from "@tanstack/react-devtools"
 import appCss from "../styles.css?url"
 import { TooltipProvider } from "@/components/ui/tooltip"
+import { SupportSessionBanner } from "@/components/SupportSessionBanner"
 import { Toaster } from "@/components/ui/sonner"
 
 
@@ -61,6 +62,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
       </head>
       <body>
         <TooltipProvider>
+          {import.meta.env.VITE_DEMO_MODE !== "true" && <SupportSessionBanner />}
           {children}
           <Toaster />
           {/* Dev-only: never ship devtools to a public/production build. */}

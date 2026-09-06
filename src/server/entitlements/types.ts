@@ -1,9 +1,6 @@
 export const EDITIONS = ["community", "cloud"] as const
 export type SparkfeedEdition = (typeof EDITIONS)[number]
 
-export const DEPLOYMENT_SURFACES = ["app", "admin"] as const
-export type DeploymentSurface = (typeof DEPLOYMENT_SURFACES)[number]
-
 export const PLAN_KEYS = ["free", "personal_plus", "pro", "enterprise"] as const
 export type PlanKey = (typeof PLAN_KEYS)[number]
 export type EntitlementPlan = "community" | PlanKey

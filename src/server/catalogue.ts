@@ -13,6 +13,7 @@ import { resolveWorkspaceId } from "./services/context"
 import { feedInWorkspace } from "./services/tenancy"
 import type {PreviewFeed} from "./services/catalogue-preview";
 import type {CatalogueCategoryView} from "./services/catalogue";
+import { workspaceWriteMiddleware } from "@/server/entitlements/browser-write"
 import { db } from "@/db/index"
 import { articles, catalogueCollections, catalogueFeeds, feeds, folders } from "@/db/schema"
 import { normalizeFeedUrl } from "@/lib/validation"
@@ -81,7 +82,7 @@ export type ImportResult =
  * already proven resolves, where a transient failure should leave the row and
  * retry later.
  */
-export const importCatalogueItem = createServerFn({ method: "POST" })
+export const importCatalogueItem = createServerFn({ method: "POST" }).middleware([workspaceWriteMiddleware])
   .validator(
     z.object({
       kind: z.enum(["collection", "feed"]),

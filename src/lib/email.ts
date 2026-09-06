@@ -76,19 +76,6 @@ export async function sendVerificationEmail(
   await sendEmail(toEmail, "Verify your SparkFeed account", html)
 }
 
-export async function sendTwoFactorOtpEmail(toEmail: string, otp: string) {
-  const safeOtp = escapeHtml(otp)
-  const html = [
-    `<div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto;color:#18181b">`,
-    `<h1 style="font-size:24px;margin:0 0 16px">Sparkfeed Admin sign-in code</h1>`,
-    `<p style="font-size:16px;line-height:24px;margin:0 0 20px">Enter this code to continue to the admin panel:</p>`,
-    `<p style="font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:32px;font-weight:700;letter-spacing:8px;margin:0 0 20px">${safeOtp}</p>`,
-    `<p style="font-size:14px;line-height:20px;color:#71717a;margin:0">This code expires in 10 minutes. If you did not request it, you can ignore this email.</p>`,
-    `</div>`,
-  ].join("")
-  await sendEmail(toEmail, "Your Sparkfeed Admin sign-in code", html)
-}
-
 function escapeHtml(value: string) {
   return value
     .replaceAll("&", "&amp;")

@@ -216,6 +216,8 @@ export async function recordFeedHealth(feedId: string, error: unknown | null) {
 }
 
 export async function fetchAndInsertArticles(feedId: string, url: string): Promise<IngestResult> {
+  const { canIngestFeed } = await import("@/server/entitlements/ingestion")
+  if (!(await canIngestFeed(feedId))) return { inserted: 0, skipped: 1, failed: 0 }
   try {
     const result = await ingestFeed(feedId, url)
     await recordFeedHealth(feedId, null)

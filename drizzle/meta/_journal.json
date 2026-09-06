@@ -113,6 +113,34 @@
       "when": 1788258261233,
       "tag": "0015_misty_zeigeist",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1788619562678,
+      "tag": "0016_overjoyed_greymalkin",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1788630144984,
+      "tag": "0017_next_green_goblin",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1788639430443,
+      "tag": "0018_complex_king_cobra",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1788687623953,
+      "tag": "0019_retire_embedded_admin",
+      "breakpoints": true
     }
   ]
 }

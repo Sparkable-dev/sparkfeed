@@ -25,6 +25,7 @@ export default defineConfig({
       plugins: [
         "src/server/plugins/deployment-config.ts",
         "src/server/plugins/demo-boot.ts",
+        "src/server/plugins/allowance-maintenance.ts",
       ],
     }),
     viteReact(),

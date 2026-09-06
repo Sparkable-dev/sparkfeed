@@ -7,7 +7,8 @@ import {
 import { drizzleAdapter } from "better-auth/adapters/drizzle"
 import { tanstackStartCookies } from "better-auth/tanstack-start"
 import { organization } from "better-auth/plugins/organization"
-import { admin, twoFactor } from "better-auth/plugins"
+import { customerAccountSecurity } from "@/lib/auth-security"
+import { hostedDashboardPlugin } from "@/server/platform/hosted-auth"
 import { db } from "@/db/index"
 import * as schema from "@/db/schema"
 import {
@@ -39,26 +40,20 @@ import {
   assertPersonalPortalAllowed,
   dodoBetterAuthPlugin,
 } from "@/server/billing/dodo-auth"
-import {
-  platformAdminAccess,
-  platformAdminRoles,
-} from "@/lib/admin-permissions"
-import {
-  platformTwoFactorOptions,
-  resolveAuthSurfaceConfig,
-} from "@/lib/admin-auth"
+import { resolveAuthConfig } from "@/lib/auth-config"
 import { workspaceAccess, workspaceRoles } from "@/lib/workspace-roles"
 
 const dbProvider = import.meta.env.VITE_DEMO_MODE === "true" ? "sqlite" : "pg"
 const dodoPlugin = dodoBetterAuthPlugin()
-const authSurface = resolveAuthSurfaceConfig()
-const { platformAdminEnabled } = authSurface
+const hostedPlugin = hostedDashboardPlugin()
+const authConfig = resolveAuthConfig()
+const cloudAuth = sparkfeedEdition() === "cloud"
 
 export const auth = betterAuth({
-  appName: platformAdminEnabled ? "Sparkfeed Admin" : "Sparkfeed",
-  trustedOrigins: authSurface.trustedOrigins,
+  appName: "Sparkfeed",
+  trustedOrigins: authConfig.trustedOrigins,
   advanced: {
-    cookiePrefix: authSurface.cookiePrefix,
+    cookiePrefix: authConfig.cookiePrefix,
     useSecureCookies: process.env.NODE_ENV === "production",
   },
   database: drizzleAdapter(db as Parameters<typeof drizzleAdapter>[0], {
@@ -140,12 +135,8 @@ export const auth = betterAuth({
   },
   hooks: {
     before: createAuthMiddleware(async (ctx) => {
-      if (
-        platformAdminEnabled &&
-        (ctx.path.startsWith("/sign-up") ||
-          ctx.path.startsWith("/organization/") ||
-          ctx.path.startsWith("/dodopayments/"))
-      ) {
+      // Customer roles never authorize platform administration.
+      if (ctx.path.startsWith("/admin/")) {
         throw new APIError("NOT_FOUND", { message: "Not found" })
       }
       if (!ctx.path.startsWith("/dodopayments/customer/")) return
@@ -176,7 +167,6 @@ export const auth = betterAuth({
       banned: false,
       banReason: null,
       banExpires: null,
-      twoFactorEnabled: false,
       ...additionalFields,
       id,
     }),
@@ -210,133 +200,107 @@ export const auth = betterAuth({
     },
   },
   plugins: [
-    ...(platformAdminEnabled
-      ? [
-          admin({
-            ac: platformAdminAccess,
-            roles: platformAdminRoles,
-            adminRoles: ["admin"],
-          }),
-          twoFactor(platformTwoFactorOptions),
-        ]
-      : []),
-    ...(!platformAdminEnabled && dodoPlugin ? [dodoPlugin] : []),
-    ...(!platformAdminEnabled
-      ? [
-          organization({
-            creatorRole: "owner",
-            ac: workspaceAccess,
-            roles: workspaceRoles,
-            membershipLimit: async (_user, org) => {
-              const entitlements = await resolveEntitlements(
-                organizationWorkspaceRef(org.id),
-                {
-                  type: "system",
-                  userId: null,
-                  emailVerified: false,
-                  workspaceId: org.id,
-                  demo: false,
-                }
-              )
-              return entitlements.seatCapacity ?? 100_000
-            },
-            requireEmailVerificationOnInvitation: true,
-            allowUserToCreateOrganization: async (user) =>
-              canUserCreateWorkspace(user.id),
-            organizationHooks: {
-              beforeUpdateOrganization: async ({ organization: org, user }) => {
-                await assertOrganizationManagementAllowed(org.id, user)
-              },
-              beforeDeleteOrganization: async ({ organization: org, user }) => {
-                await assertOrganizationManagementAllowed(org.id, user)
-              },
-              beforeAddMember: async ({ member, user }) => {
-                await assertOrganizationManagementAllowed(
-                  member.organizationId,
-                  user
-                )
-              },
-              beforeCreateInvitation: async ({ invitation, inviter }) => {
-                await assertOrganizationManagementAllowed(
-                  invitation.organizationId,
-                  inviter
-                )
-                await assertOrganizationInvitationCapacity(
-                  invitation.organizationId,
-                  inviter,
-                  invitation.email
-                )
-                await assertInvitationRoleAllowed({
-                  organizationId: invitation.organizationId,
-                  actorUserId: inviter.id,
-                  invitedRole: invitation.role,
-                })
-              },
-              beforeAcceptInvitation: async ({ invitation, user }) => {
-                await assertOrganizationManagementAllowed(
-                  invitation.organizationId,
-                  user
-                )
-              },
-              beforeCancelInvitation: async ({ invitation, cancelledBy }) => {
-                await assertOrganizationManagementAllowed(
-                  invitation.organizationId,
-                  cancelledBy
-                )
-              },
-              beforeRemoveMember: async ({ member, user }) => {
-                await assertOrganizationManagementAllowed(
-                  member.organizationId,
-                  user
-                )
-                await assertMemberRemovalAllowed({
-                  organizationId: member.organizationId,
-                  actorUserId: user.id,
-                  targetRole: member.role,
-                })
-              },
-              beforeUpdateMemberRole: async ({ member, newRole, user }) => {
-                await assertOrganizationManagementAllowed(
-                  member.organizationId,
-                  user
-                )
-                await assertMemberRoleChangeAllowed({
-                  organizationId: member.organizationId,
-                  actorUserId: user.id,
-                  targetRole: member.role,
-                  newRole,
-                })
-              },
-              afterRemoveMember: async ({ member }) => {
-                await clearRemovedOrganizationSessions(
-                  member.userId,
-                  member.organizationId
-                )
-              },
-            },
-            sendInvitationEmail: async ({ email, invitation }) => {
-              console.log(
-                `[DEBUG] sendInvitationEmail hook triggered for ${email}`
-              )
-              try {
-                const baseUrl =
-                  process.env.BETTER_AUTH_URL ||
-                  process.env.APP_URL ||
-                  "http://localhost:3000"
-                const inviteUrl = `${baseUrl}/invite?token=${encodeURIComponent(invitation.id)}&email=${encodeURIComponent(email)}`
-                await sendInviteEmail(email, inviteUrl)
-                console.log(`[DEBUG] sendInviteEmail successful for ${email}`)
-              } catch (err) {
-                console.error(
-                  `[ERROR] sendInviteEmail failed for ${email}:`,
-                  err
-                )
-                throw err
-              }
-            },
-          }),
-        ]
-      : []),
+    ...(cloudAuth ? [customerAccountSecurity()] : []),
+    ...(dodoPlugin ? [dodoPlugin] : []),
+    organization({
+      creatorRole: "owner",
+      ac: workspaceAccess,
+      roles: workspaceRoles,
+      membershipLimit: async (_user, org) => {
+        const entitlements = await resolveEntitlements(
+          organizationWorkspaceRef(org.id),
+          {
+            type: "system",
+            userId: null,
+            emailVerified: false,
+            workspaceId: org.id,
+            demo: false,
+          }
+        )
+        return entitlements.seatCapacity ?? 100_000
+      },
+      requireEmailVerificationOnInvitation: true,
+      allowUserToCreateOrganization: async (user) =>
+        canUserCreateWorkspace(user.id),
+      organizationHooks: {
+        beforeUpdateOrganization: async ({ organization: org, user }) => {
+          await assertOrganizationManagementAllowed(org.id, user)
+        },
+        beforeDeleteOrganization: async ({ organization: org, user }) => {
+          await assertOrganizationManagementAllowed(org.id, user)
+        },
+        beforeAddMember: async ({ member, user }) => {
+          await assertOrganizationManagementAllowed(member.organizationId, user)
+        },
+        beforeCreateInvitation: async ({ invitation, inviter }) => {
+          await assertOrganizationManagementAllowed(
+            invitation.organizationId,
+            inviter
+          )
+          await assertOrganizationInvitationCapacity(
+            invitation.organizationId,
+            inviter,
+            invitation.email
+          )
+          await assertInvitationRoleAllowed({
+            organizationId: invitation.organizationId,
+            actorUserId: inviter.id,
+            invitedRole: invitation.role,
+          })
+        },
+        beforeAcceptInvitation: async ({ invitation, user }) => {
+          await assertOrganizationManagementAllowed(
+            invitation.organizationId,
+            user
+          )
+        },
+        beforeCancelInvitation: async ({ invitation, cancelledBy }) => {
+          await assertOrganizationManagementAllowed(
+            invitation.organizationId,
+            cancelledBy
+          )
+        },
+        beforeRemoveMember: async ({ member, user }) => {
+          await assertOrganizationManagementAllowed(member.organizationId, user)
+          await assertMemberRemovalAllowed({
+            organizationId: member.organizationId,
+            actorUserId: user.id,
+            targetRole: member.role,
+          })
+        },
+        beforeUpdateMemberRole: async ({ member, newRole, user }) => {
+          await assertOrganizationManagementAllowed(member.organizationId, user)
+          await assertMemberRoleChangeAllowed({
+            organizationId: member.organizationId,
+            actorUserId: user.id,
+            targetRole: member.role,
+            newRole,
+          })
+        },
+        afterRemoveMember: async ({ member }) => {
+          await clearRemovedOrganizationSessions(
+            member.userId,
+            member.organizationId
+          )
+        },
+      },
+      sendInvitationEmail: async ({ email, invitation }) => {
+        console.log(`[DEBUG] sendInvitationEmail hook triggered for ${email}`)
+        try {
+          const baseUrl =
+            process.env.BETTER_AUTH_URL ||
+            process.env.APP_URL ||
+            "http://localhost:3000"
+          const inviteUrl = `${baseUrl}/invite?token=${encodeURIComponent(invitation.id)}&email=${encodeURIComponent(email)}`
+          await sendInviteEmail(email, inviteUrl)
+          console.log(`[DEBUG] sendInviteEmail successful for ${email}`)
+        } catch (err) {
+          console.error(`[ERROR] sendInviteEmail failed for ${email}:`, err)
+          throw err
+        }
+      },
+    }),
+    ...(hostedPlugin ? [hostedPlugin] : []),
     tanstackStartCookies(), // must be last plugin
   ],
 })

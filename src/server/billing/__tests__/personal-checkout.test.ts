@@ -18,12 +18,22 @@ beforeEach(async () => {
   db = createDb(":memory:", { sqlite: true })
   const raw = (db as unknown as { $client: ReturnType<typeof createClient> })
     .$client
-  await raw.execute(`CREATE TABLE user (
+  await raw.execute(`CREATE TABLE user (last_active_at TEXT,
     id TEXT PRIMARY KEY, name TEXT NOT NULL, email TEXT NOT NULL,
     email_verified INTEGER NOT NULL, image TEXT, dodo_customer_id TEXT,
     role TEXT NOT NULL DEFAULT 'user', banned INTEGER NOT NULL DEFAULT 0,
     ban_reason TEXT, ban_expires TEXT, two_factor_enabled INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL, updated_at TEXT NOT NULL)`)
+  await raw.execute(`CREATE TABLE workspace_overrides (
+    workspace_type TEXT NOT NULL, workspace_id TEXT NOT NULL, plan_key TEXT,
+    access_restriction TEXT, seat_limit INTEGER, monthly_ai_credits INTEGER,
+    source_unit_limit INTEGER, api_access INTEGER, mcp_access INTEGER,
+    reason TEXT NOT NULL, actor_id TEXT NOT NULL, expires_at TEXT,
+    revision INTEGER NOT NULL DEFAULT 1, created_at TEXT NOT NULL, updated_at TEXT NOT NULL,
+    PRIMARY KEY(workspace_type, workspace_id))`)
+  await raw.execute(`CREATE TABLE workspace_credit_schedules (
+    workspace_type TEXT NOT NULL, workspace_id TEXT NOT NULL, user_id TEXT NOT NULL,
+    anchor_at TEXT NOT NULL, PRIMARY KEY(workspace_type, workspace_id, user_id))`)
   await raw.execute(`CREATE TABLE workspace_subscriptions (
     workspace_type TEXT NOT NULL, workspace_id TEXT NOT NULL,
     plan_key TEXT NOT NULL, billing_source TEXT NOT NULL,

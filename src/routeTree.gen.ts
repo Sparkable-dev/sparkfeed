@@ -10,13 +10,11 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as ProtectedRouteImport } from './routes/_protected'
-import { Route as AdminRouteImport } from './routes/admin'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as InviteRouteImport } from './routes/invite'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as SignupRouteImport } from './routes/signup'
-import { Route as TwoFactorRouteImport } from './routes/two-factor'
 import { Route as VerifyEmailRouteImport } from './routes/verify-email'
 import { Route as FolderSlugFeedRouteImport } from './routes/$folderSlug.feed'
 import { Route as FolderSlugXmlRouteImport } from './routes/$folderSlug.xml'
@@ -47,7 +45,6 @@ import { Route as ApiDodoWebhooksRouteImport } from './routes/api/dodo.webhooks'
 import { Route as ApiFeedsShareRouteImport } from './routes/api/feeds.share'
 import { Route as ApiFoldersAddToWorkspaceRouteImport } from './routes/api/folders.add-to-workspace'
 import { Route as ApiFoldersShareRouteImport } from './routes/api/folders.share'
-import { Route as ApiPlatformAdminSplatRouteImport } from './routes/api/platform-admin.$'
 import { Route as ApiRssSlugRouteImport } from './routes/api/rss.$slug'
 import { Route as ApiSharedFolderIdRouteImport } from './routes/api/shared.$folderId'
 import { Route as ApiV1SplatRouteImport } from './routes/api/v1.$'
@@ -56,14 +53,10 @@ import { Route as ProtectedDashboardAiIndexRouteImport } from './routes/_protect
 import { Route as ProtectedDashboardAiThreadIdRouteImport } from './routes/_protected/dashboard.ai/$threadId'
 import { Route as ProtectedSettingsWorkspacesSlugRouteImport } from './routes/_protected/settings_.workspaces.$slug'
 import { Route as ProtectedWorkspacesSlugSettingsRouteImport } from './routes/_protected/workspaces.$slug.settings'
+import { Route as ApiInternalPlatformSplatRouteImport } from './routes/api/internal.platform.$'
 
 const ProtectedRoute = ProtectedRouteImport.update({
   id: '/_protected',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AdminRoute = AdminRouteImport.update({
-  id: '/admin',
-  path: '/admin',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
@@ -89,11 +82,6 @@ const ResetPasswordRoute = ResetPasswordRouteImport.update({
 const SignupRoute = SignupRouteImport.update({
   id: '/signup',
   path: '/signup',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const TwoFactorRoute = TwoFactorRouteImport.update({
-  id: '/two-factor',
-  path: '/two-factor',
   getParentRoute: () => rootRouteImport,
 } as any)
 const VerifyEmailRoute = VerifyEmailRouteImport.update({
@@ -249,11 +237,6 @@ const ApiFoldersShareRoute = ApiFoldersShareRouteImport.update({
   path: '/api/folders/share',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiPlatformAdminSplatRoute = ApiPlatformAdminSplatRouteImport.update({
-  id: '/api/platform-admin/$',
-  path: '/api/platform-admin/$',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ApiRssSlugRoute = ApiRssSlugRouteImport.update({
   id: '/api/rss/$slug',
   path: '/api/rss/$slug',
@@ -299,16 +282,20 @@ const ProtectedWorkspacesSlugSettingsRoute =
     path: '/workspaces/$slug/settings',
     getParentRoute: () => ProtectedRoute,
   } as any)
+const ApiInternalPlatformSplatRoute =
+  ApiInternalPlatformSplatRouteImport.update({
+    id: '/api/internal/platform/$',
+    path: '/api/internal/platform/$',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof ProtectedIndexRoute
-  '/admin': typeof AdminRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/invite': typeof InviteRoute
   '/login': typeof LoginRoute
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
-  '/two-factor': typeof TwoFactorRoute
   '/verify-email': typeof VerifyEmailRoute
   '/$folderSlug/feed': typeof FolderSlugFeedRoute
   '/$folderSlug/xml': typeof FolderSlugXmlRoute
@@ -336,7 +323,6 @@ export interface FileRoutesByFullPath {
   '/api/feeds/share': typeof ApiFeedsShareRoute
   '/api/folders/add-to-workspace': typeof ApiFoldersAddToWorkspaceRoute
   '/api/folders/share': typeof ApiFoldersShareRoute
-  '/api/platform-admin/$': typeof ApiPlatformAdminSplatRoute
   '/api/rss/$slug': typeof ApiRssSlugRoute
   '/api/shared/$folderId': typeof ApiSharedFolderIdRoute
   '/api/v1/$': typeof ApiV1SplatRoute
@@ -345,17 +331,16 @@ export interface FileRoutesByFullPath {
   '/dashboard/ai/$threadId': typeof ProtectedDashboardAiThreadIdRoute
   '/settings/workspaces/$slug': typeof ProtectedSettingsWorkspacesSlugRoute
   '/workspaces/$slug/settings': typeof ProtectedWorkspacesSlugSettingsRoute
+  '/api/internal/platform/$': typeof ApiInternalPlatformSplatRoute
   '/$folderSlug/$feedSlug/': typeof ProtectedFolderSlugFeedSlugIndexRoute
   '/dashboard/ai/': typeof ProtectedDashboardAiIndexRoute
 }
 export interface FileRoutesByTo {
-  '/admin': typeof AdminRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/invite': typeof InviteRoute
   '/login': typeof LoginRoute
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
-  '/two-factor': typeof TwoFactorRoute
   '/verify-email': typeof VerifyEmailRoute
   '/$folderSlug/feed': typeof FolderSlugFeedRoute
   '/$folderSlug/xml': typeof FolderSlugXmlRoute
@@ -381,7 +366,6 @@ export interface FileRoutesByTo {
   '/api/feeds/share': typeof ApiFeedsShareRoute
   '/api/folders/add-to-workspace': typeof ApiFoldersAddToWorkspaceRoute
   '/api/folders/share': typeof ApiFoldersShareRoute
-  '/api/platform-admin/$': typeof ApiPlatformAdminSplatRoute
   '/api/rss/$slug': typeof ApiRssSlugRoute
   '/api/shared/$folderId': typeof ApiSharedFolderIdRoute
   '/api/v1/$': typeof ApiV1SplatRoute
@@ -390,19 +374,18 @@ export interface FileRoutesByTo {
   '/dashboard/ai/$threadId': typeof ProtectedDashboardAiThreadIdRoute
   '/settings/workspaces/$slug': typeof ProtectedSettingsWorkspacesSlugRoute
   '/workspaces/$slug/settings': typeof ProtectedWorkspacesSlugSettingsRoute
+  '/api/internal/platform/$': typeof ApiInternalPlatformSplatRoute
   '/$folderSlug/$feedSlug': typeof ProtectedFolderSlugFeedSlugIndexRoute
   '/dashboard/ai': typeof ProtectedDashboardAiIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_protected': typeof ProtectedRouteWithChildren
-  '/admin': typeof AdminRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/invite': typeof InviteRoute
   '/login': typeof LoginRoute
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
-  '/two-factor': typeof TwoFactorRoute
   '/verify-email': typeof VerifyEmailRoute
   '/$folderSlug/feed': typeof FolderSlugFeedRoute
   '/$folderSlug/xml': typeof FolderSlugXmlRoute
@@ -431,7 +414,6 @@ export interface FileRoutesById {
   '/api/feeds/share': typeof ApiFeedsShareRoute
   '/api/folders/add-to-workspace': typeof ApiFoldersAddToWorkspaceRoute
   '/api/folders/share': typeof ApiFoldersShareRoute
-  '/api/platform-admin/$': typeof ApiPlatformAdminSplatRoute
   '/api/rss/$slug': typeof ApiRssSlugRoute
   '/api/shared/$folderId': typeof ApiSharedFolderIdRoute
   '/api/v1/$': typeof ApiV1SplatRoute
@@ -440,6 +422,7 @@ export interface FileRoutesById {
   '/_protected/dashboard/ai/$threadId': typeof ProtectedDashboardAiThreadIdRoute
   '/_protected/settings_/workspaces/$slug': typeof ProtectedSettingsWorkspacesSlugRoute
   '/_protected/workspaces/$slug/settings': typeof ProtectedWorkspacesSlugSettingsRoute
+  '/api/internal/platform/$': typeof ApiInternalPlatformSplatRoute
   '/_protected/$folderSlug/$feedSlug/': typeof ProtectedFolderSlugFeedSlugIndexRoute
   '/_protected/dashboard/ai/': typeof ProtectedDashboardAiIndexRoute
 }
@@ -447,13 +430,11 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | '/admin'
     | '/forgot-password'
     | '/invite'
     | '/login'
     | '/reset-password'
     | '/signup'
-    | '/two-factor'
     | '/verify-email'
     | '/$folderSlug/feed'
     | '/$folderSlug/xml'
@@ -481,7 +462,6 @@ export interface FileRouteTypes {
     | '/api/feeds/share'
     | '/api/folders/add-to-workspace'
     | '/api/folders/share'
-    | '/api/platform-admin/$'
     | '/api/rss/$slug'
     | '/api/shared/$folderId'
     | '/api/v1/$'
@@ -490,17 +470,16 @@ export interface FileRouteTypes {
     | '/dashboard/ai/$threadId'
     | '/settings/workspaces/$slug'
     | '/workspaces/$slug/settings'
+    | '/api/internal/platform/$'
     | '/$folderSlug/$feedSlug/'
     | '/dashboard/ai/'
   fileRoutesByTo: FileRoutesByTo
   to:
-    | '/admin'
     | '/forgot-password'
     | '/invite'
     | '/login'
     | '/reset-password'
     | '/signup'
-    | '/two-factor'
     | '/verify-email'
     | '/$folderSlug/feed'
     | '/$folderSlug/xml'
@@ -526,7 +505,6 @@ export interface FileRouteTypes {
     | '/api/feeds/share'
     | '/api/folders/add-to-workspace'
     | '/api/folders/share'
-    | '/api/platform-admin/$'
     | '/api/rss/$slug'
     | '/api/shared/$folderId'
     | '/api/v1/$'
@@ -535,18 +513,17 @@ export interface FileRouteTypes {
     | '/dashboard/ai/$threadId'
     | '/settings/workspaces/$slug'
     | '/workspaces/$slug/settings'
+    | '/api/internal/platform/$'
     | '/$folderSlug/$feedSlug'
     | '/dashboard/ai'
   id:
     | '__root__'
     | '/_protected'
-    | '/admin'
     | '/forgot-password'
     | '/invite'
     | '/login'
     | '/reset-password'
     | '/signup'
-    | '/two-factor'
     | '/verify-email'
     | '/$folderSlug/feed'
     | '/$folderSlug/xml'
@@ -575,7 +552,6 @@ export interface FileRouteTypes {
     | '/api/feeds/share'
     | '/api/folders/add-to-workspace'
     | '/api/folders/share'
-    | '/api/platform-admin/$'
     | '/api/rss/$slug'
     | '/api/shared/$folderId'
     | '/api/v1/$'
@@ -584,19 +560,18 @@ export interface FileRouteTypes {
     | '/_protected/dashboard/ai/$threadId'
     | '/_protected/settings_/workspaces/$slug'
     | '/_protected/workspaces/$slug/settings'
+    | '/api/internal/platform/$'
     | '/_protected/$folderSlug/$feedSlug/'
     | '/_protected/dashboard/ai/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   ProtectedRoute: typeof ProtectedRouteWithChildren
-  AdminRoute: typeof AdminRoute
   ForgotPasswordRoute: typeof ForgotPasswordRoute
   InviteRoute: typeof InviteRoute
   LoginRoute: typeof LoginRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   SignupRoute: typeof SignupRoute
-  TwoFactorRoute: typeof TwoFactorRoute
   VerifyEmailRoute: typeof VerifyEmailRoute
   FolderSlugFeedRoute: typeof FolderSlugFeedRoute
   FolderSlugXmlRoute: typeof FolderSlugXmlRoute
@@ -612,10 +587,10 @@ export interface RootRouteChildren {
   ApiFeedsShareRoute: typeof ApiFeedsShareRoute
   ApiFoldersAddToWorkspaceRoute: typeof ApiFoldersAddToWorkspaceRoute
   ApiFoldersShareRoute: typeof ApiFoldersShareRoute
-  ApiPlatformAdminSplatRoute: typeof ApiPlatformAdminSplatRoute
   ApiRssSlugRoute: typeof ApiRssSlugRoute
   ApiSharedFolderIdRoute: typeof ApiSharedFolderIdRoute
   ApiV1SplatRoute: typeof ApiV1SplatRoute
+  ApiInternalPlatformSplatRoute: typeof ApiInternalPlatformSplatRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -625,13 +600,6 @@ declare module '@tanstack/react-router' {
       path: ''
       fullPath: '/'
       preLoaderRoute: typeof ProtectedRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/admin': {
-      id: '/admin'
-      path: '/admin'
-      fullPath: '/admin'
-      preLoaderRoute: typeof AdminRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/forgot-password': {
@@ -667,13 +635,6 @@ declare module '@tanstack/react-router' {
       path: '/signup'
       fullPath: '/signup'
       preLoaderRoute: typeof SignupRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/two-factor': {
-      id: '/two-factor'
-      path: '/two-factor'
-      fullPath: '/two-factor'
-      preLoaderRoute: typeof TwoFactorRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/verify-email': {
@@ -886,13 +847,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiFoldersShareRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/platform-admin/$': {
-      id: '/api/platform-admin/$'
-      path: '/api/platform-admin/$'
-      fullPath: '/api/platform-admin/$'
-      preLoaderRoute: typeof ApiPlatformAdminSplatRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/api/rss/$slug': {
       id: '/api/rss/$slug'
       path: '/api/rss/$slug'
@@ -948,6 +902,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/workspaces/$slug/settings'
       preLoaderRoute: typeof ProtectedWorkspacesSlugSettingsRouteImport
       parentRoute: typeof ProtectedRoute
+    }
+    '/api/internal/platform/$': {
+      id: '/api/internal/platform/$'
+      path: '/api/internal/platform/$'
+      fullPath: '/api/internal/platform/$'
+      preLoaderRoute: typeof ApiInternalPlatformSplatRouteImport
+      parentRoute: typeof rootRouteImport
     }
   }
 }
@@ -1031,13 +992,11 @@ const ProtectedRouteWithChildren = ProtectedRoute._addFileChildren(
 
 const rootRouteChildren: RootRouteChildren = {
   ProtectedRoute: ProtectedRouteWithChildren,
-  AdminRoute: AdminRoute,
   ForgotPasswordRoute: ForgotPasswordRoute,
   InviteRoute: InviteRoute,
   LoginRoute: LoginRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   SignupRoute: SignupRoute,
-  TwoFactorRoute: TwoFactorRoute,
   VerifyEmailRoute: VerifyEmailRoute,
   FolderSlugFeedRoute: FolderSlugFeedRoute,
   FolderSlugXmlRoute: FolderSlugXmlRoute,
@@ -1053,10 +1012,10 @@ const rootRouteChildren: RootRouteChildren = {
   ApiFeedsShareRoute: ApiFeedsShareRoute,
   ApiFoldersAddToWorkspaceRoute: ApiFoldersAddToWorkspaceRoute,
   ApiFoldersShareRoute: ApiFoldersShareRoute,
-  ApiPlatformAdminSplatRoute: ApiPlatformAdminSplatRoute,
   ApiRssSlugRoute: ApiRssSlugRoute,
   ApiSharedFolderIdRoute: ApiSharedFolderIdRoute,
   ApiV1SplatRoute: ApiV1SplatRoute,
+  ApiInternalPlatformSplatRoute: ApiInternalPlatformSplatRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

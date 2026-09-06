@@ -1,5 +1,5 @@
 import { createAuthClient } from "better-auth/react"
-import { organizationClient, twoFactorClient } from "better-auth/client/plugins"
+import { organizationClient } from "better-auth/client/plugins"
 import { dodopaymentsClient } from "@dodopayments/better-auth/client"
 import { workspaceAccess, workspaceRoles } from "@/lib/workspace-roles"
 
@@ -20,24 +20,6 @@ export const authClient = createAuthClient({
   plugins: [
     organizationClient({ ac: workspaceAccess, roles: workspaceRoles }),
     dodopaymentsClient(),
-    twoFactorClient({
-      onTwoFactorRedirect({ twoFactorMethods }) {
-        if (typeof window === "undefined") return
-        const redirect = new URL(window.location.href).searchParams.get(
-          "redirect"
-        )
-        const search = new URLSearchParams()
-        if (redirect) search.set("redirect", redirect)
-        if (
-          twoFactorMethods?.includes("otp") &&
-          !twoFactorMethods.includes("totp")
-        ) {
-          search.set("method", "email")
-        }
-        const query = search.toString()
-        window.location.href = query ? `/two-factor?${query}` : "/two-factor"
-      },
-    }),
   ],
 })
 

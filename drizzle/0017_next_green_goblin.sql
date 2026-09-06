@@ -1,0 +1,2 @@
+ALTER TABLE "user" ADD COLUMN "last_active_at" timestamp;--> statement-breakpoint
+CREATE UNIQUE INDEX IF NOT EXISTS "member_organization_user_uidx" ON "member" USING btree ("organization_id","user_id");

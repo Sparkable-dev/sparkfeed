@@ -174,6 +174,9 @@ export async function ingestSource(
     return fetchAndInsertArticles(feedId, url)
   }
 
+  const { canIngestFeed } = await import("@/server/entitlements/ingestion")
+  if (!(await canIngestFeed(feedId))) return { inserted: 0, skipped: 1, failed: 0 }
+
   try {
     const result = await fetchPageArticles(feedId, url)
     await recordFeedHealth(feedId, null)

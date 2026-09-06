@@ -11,7 +11,7 @@ export const Route = createFileRoute("/api/dodo/webhooks")({
     handlers: {
       POST: async ({ request }: { request: Request }) => {
         const deployment = readSparkfeedDeploymentConfig()
-        if (deployment.edition !== "cloud" || deployment.surface !== "app") {
+        if (deployment.edition !== "cloud") {
           return new Response(null, { status: 404 })
         }
         try {

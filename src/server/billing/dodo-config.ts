@@ -8,7 +8,7 @@ export type DodoEnvironment = "test_mode" | "live_mode"
 
 export interface DodoBillingConfig {
   apiKey: string
-  webhookSecret: string | null
+  webhookSecret: string
   environment: DodoEnvironment
   appUrl: string
   personalProducts: Record<PersonalBillingInterval, string>
@@ -44,10 +44,7 @@ export function readDodoBillingConfig(
 
   return {
     apiKey: required(env, "DODO_PAYMENTS_API_KEY"),
-    webhookSecret:
-      deployment.surface === "app"
-        ? required(env, "DODO_PAYMENTS_WEBHOOK_SECRET")
-        : env.DODO_PAYMENTS_WEBHOOK_SECRET?.trim() || null,
+    webhookSecret: required(env, "DODO_PAYMENTS_WEBHOOK_SECRET"),
     environment: rawEnvironment,
     appUrl: parsedAppUrl.origin,
     personalProducts: {

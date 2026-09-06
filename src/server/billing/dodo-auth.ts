@@ -4,10 +4,8 @@ import { createDodoClient } from "./dodo-client"
 import { readDodoBillingConfig } from "./dodo-config"
 import { db } from "@/db/index"
 import { user, workspaceSubscriptions } from "@/db/schema"
-import { readSparkfeedDeploymentConfig } from "@/server/entitlements/config"
 
 export function dodoBetterAuthPlugin() {
-  if (readSparkfeedDeploymentConfig().surface !== "app") return null
   const config = readDodoBillingConfig()
   if (!config) return null
 

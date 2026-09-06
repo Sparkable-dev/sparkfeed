@@ -623,3 +623,73 @@ export const platformAdminAuditLog = pgTable(
     index("platform_admin_audit_target_idx").on(t.targetType, t.targetId),
   ]
 )
+
+/** Operator decisions are independent of provider-owned billing state. */
+export const workspaceOverrides = pgTable(
+  "workspace_overrides",
+  {
+    workspaceType: text("workspace_type")
+      .$type<WorkspaceRef["type"]>()
+      .notNull(),
+    workspaceId: text("workspace_id").notNull(),
+    planKey: text("plan_key").$type<PlanKey>(),
+    accessRestriction: text("access_restriction").$type<
+      "read_only" | "suspended"
+    >(),
+    seatLimit: integer("seat_limit"),
+    monthlyAiCredits: integer("monthly_ai_credits"),
+    sourceUnitLimit: integer("source_unit_limit"),
+    apiAccess: boolean("api_access"),
+    mcpAccess: boolean("mcp_access"),
+    reason: text("reason").notNull(),
+    actorId: text("actor_id").notNull(),
+    expiresAt: text("expires_at"),
+    revision: integer("revision").notNull().default(1),
+    createdAt: text("created_at").notNull(),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.workspaceType, t.workspaceId] })]
+)
+
+export const platformRequestNonces = pgTable(
+  "platform_request_nonces",
+  {
+    id: text("id").primaryKey(),
+    expiresAt: text("expires_at").notNull(),
+  },
+  (t) => [index("platform_request_nonces_expiry_idx").on(t.expiresAt)]
+)
+
+/** A stable allowance clock survives payment/complimentary plan changes. */
+export const workspaceCreditSchedules = pgTable(
+  "workspace_credit_schedules",
+  {
+    workspaceType: text("workspace_type")
+      .$type<WorkspaceRef["type"]>()
+      .notNull(),
+    workspaceId: text("workspace_id").notNull(),
+    userId: text("user_id").notNull(),
+    anchorAt: text("anchor_at").notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.workspaceType, t.workspaceId, t.userId] })]
+)
+
+/** UTC activity days, captured from authenticated customer requests. No historical estimates. */
+export const platformActivityDays = pgTable(
+  "platform_activity_days",
+  {
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    workspaceType: text("workspace_type")
+      .$type<WorkspaceRef["type"]>()
+      .notNull(),
+    workspaceId: text("workspace_id").notNull(),
+    day: text("day").notNull(),
+    lastSeenAt: text("last_seen_at").notNull(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.userId, t.workspaceType, t.workspaceId, t.day] }),
+    index("platform_activity_day_idx").on(t.day),
+  ]
+)

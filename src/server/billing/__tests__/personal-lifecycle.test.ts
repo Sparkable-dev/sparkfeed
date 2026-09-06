@@ -1,9 +1,13 @@
-import { beforeEach, describe, expect, it, vi } from "vitest"
+import { mkdtempSync, rmSync } from "node:fs"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import type { createClient } from "@libsql/client"
 import type { Database } from "@/db/client"
 import { createDb } from "@/db/client"
 
 let db: Database
+let testDirectory: string
 
 vi.mock("@/db/index", () => ({
   get db() {
@@ -18,7 +22,8 @@ const {
 } = await import("../personal-lifecycle")
 
 beforeEach(async () => {
-  db = createDb(":memory:", { sqlite: true })
+  testDirectory = mkdtempSync(join(tmpdir(), "sparkfeed-lifecycle-"))
+  db = createDb(`file:${join(testDirectory, "test.db")}`, { sqlite: true })
   const raw = (db as unknown as { $client: ReturnType<typeof createClient> })
     .$client
   await raw.execute(`CREATE TABLE feeds (
@@ -27,6 +32,16 @@ beforeEach(async () => {
     include_keywords TEXT, exclude_keywords TEXT, position INTEGER,
     created_at TEXT, last_fetched_at TEXT, last_error TEXT,
     last_error_at TEXT, entitlement_paused_at TEXT)`)
+  await raw.execute(`CREATE TABLE workspace_overrides (
+    workspace_type TEXT NOT NULL, workspace_id TEXT NOT NULL, plan_key TEXT,
+    access_restriction TEXT, seat_limit INTEGER, monthly_ai_credits INTEGER,
+    source_unit_limit INTEGER, api_access INTEGER, mcp_access INTEGER,
+    reason TEXT NOT NULL, actor_id TEXT NOT NULL, expires_at TEXT,
+    revision INTEGER NOT NULL DEFAULT 1, created_at TEXT NOT NULL, updated_at TEXT NOT NULL,
+    PRIMARY KEY(workspace_type, workspace_id))`)
+  await raw.execute(`CREATE TABLE workspace_credit_schedules (
+    workspace_type TEXT NOT NULL, workspace_id TEXT NOT NULL, user_id TEXT NOT NULL,
+    anchor_at TEXT NOT NULL, PRIMARY KEY(workspace_type, workspace_id, user_id))`)
   await raw.execute(`CREATE TABLE workspace_subscriptions (
     workspace_type TEXT NOT NULL, workspace_id TEXT NOT NULL,
     plan_key TEXT NOT NULL, billing_source TEXT NOT NULL,
@@ -72,6 +87,13 @@ beforeEach(async () => {
     createdAt: "2026-07-01T00:00:00.000Z",
     updatedAt: "2026-07-01T00:00:00.000Z",
   })
+})
+
+afterEach(() => {
+  ;(
+    db as unknown as { $client: ReturnType<typeof createClient> }
+  ).$client.close()
+  rmSync(testDirectory, { recursive: true, force: true })
 })
 
 describe("Personal+ downgrade", () => {
@@ -163,5 +185,22 @@ describe("Personal+ downgrade", () => {
         product_key: null,
       },
     ])
+  })
+  it("keeps a funded subscription when its allowance grant is missing", async () => {
+    const { eq } = await import("drizzle-orm")
+    const { workspaceSubscriptions } = await import("@/db/schema")
+    await db
+      .update(workspaceSubscriptions)
+      .set({
+        subscriptionStatus: "past_due",
+        currentPeriodStart: "2026-08-01T00:00:00.000Z",
+        currentPeriodEnd: "2026-09-01T00:00:00.000Z",
+        dodoSubscriptionId: "sub-funded-with-grant-failure",
+      })
+      .where(eq(workspaceSubscriptions.workspaceId, "user-1"))
+    expect(await repairFailedInitialPersonalCheckout("user-1")).toBe(false)
+    const [row] = await db.select().from(workspaceSubscriptions)
+    expect(row.dodoSubscriptionId).toBe("sub-funded-with-grant-failure")
+    expect(row.planKey).toBe("personal_plus")
   })
 })

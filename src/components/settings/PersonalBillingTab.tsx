@@ -181,6 +181,7 @@ export function PersonalBillingTab() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          {summary.complimentary && <p className="rounded-lg border border-primary/20 bg-primary/5 p-3 text-sm">Your effective access includes an operator override{summary.overrideExpiresAt ? ` until ${new Date(summary.overrideExpiresAt).toLocaleDateString()}` : ""}. Your billed plan is {summary.billedPlan === "personal_plus" ? "Personal+" : "Free"}. This does not change subscription charges.</p>}
           <div className="grid gap-3 text-sm sm:grid-cols-3">
             <div className="rounded-lg border p-3">
               <div className="text-muted-foreground">Status</div>

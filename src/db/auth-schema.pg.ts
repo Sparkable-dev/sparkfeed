@@ -2,7 +2,6 @@ import { relations } from "drizzle-orm"
 import {
   boolean,
   index,
-  integer,
   pgTable,
   text,
   timestamp,
@@ -16,11 +15,11 @@ export const user = pgTable("user", {
   emailVerified: boolean("email_verified").notNull().default(false),
   image: text("image"),
   dodoCustomerId: text("dodo_customer_id"),
+  lastActiveAt: timestamp("last_active_at"),
   role: text("role").notNull().default("user"),
   banned: boolean("banned").notNull().default(false),
   banReason: text("ban_reason"),
   banExpires: timestamp("ban_expires"),
-  twoFactorEnabled: boolean("two_factor_enabled").notNull().default(false),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at")
     .notNull()
@@ -141,6 +140,10 @@ export const member = pgTable(
   (table) => [
     index("member_organizationId_idx").on(table.organizationId),
     index("member_userId_idx").on(table.userId),
+    uniqueIndex("member_organization_user_uidx").on(
+      table.organizationId,
+      table.userId
+    ),
   ]
 )
 
@@ -166,33 +169,11 @@ export const invitation = pgTable(
   ]
 )
 
-export const twoFactor = pgTable(
-  "two_factor",
-  {
-    id: text("id").primaryKey(),
-    userId: text("user_id")
-      .notNull()
-      .references(() => user.id, { onDelete: "cascade" }),
-    secret: text("secret").notNull(),
-    backupCodes: text("backup_codes").notNull(),
-    verified: boolean("verified").notNull().default(true),
-    failedVerificationCount: integer("failed_verification_count")
-      .notNull()
-      .default(0),
-    lockedUntil: timestamp("locked_until"),
-  },
-  (table) => [
-    index("two_factor_userId_idx").on(table.userId),
-    index("two_factor_secret_idx").on(table.secret),
-  ]
-)
-
 export const userRelations = relations(user, ({ many }) => ({
   sessions: many(session),
   accounts: many(account),
   members: many(member),
   invitations: many(invitation),
-  twoFactors: many(twoFactor),
 }))
 
 export const sessionRelations = relations(session, ({ one }) => ({
@@ -222,8 +203,4 @@ export const invitationRelations = relations(invitation, ({ one }) => ({
     references: [organization.id],
   }),
   user: one(user, { fields: [invitation.inviterId], references: [user.id] }),
-}))
-
-export const twoFactorRelations = relations(twoFactor, ({ one }) => ({
-  user: one(user, { fields: [twoFactor.userId], references: [user.id] }),
 }))

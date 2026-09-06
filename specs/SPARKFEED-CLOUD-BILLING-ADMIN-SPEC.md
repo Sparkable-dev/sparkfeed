@@ -1,3 +1,5 @@
+> September 6, 2026: The embedded Cloud admin service, customer-role bootstrap, and customer TOTP requirements below are superseded. Administration now uses the independent private `sparkfeed-dashboard` and signed Cloud APIs. See `sparkfeed-dashboard/docs/retire-embedded-admin.md` in the sibling repository for retirement and migration details. Workspace ownership, customer billing, and entitlement rules in this specification remain applicable.
+
 # Sparkfeed Cloud billing and administration specification
 
 > Internal implementation specification. Do not publish this file as customer documentation without a separate review.
@@ -32,25 +34,11 @@ The implementation must not create a private production fork of the Sparkfeed ap
 
 ## Deployment editions and services
 
-Use two server-only settings:
+Use the server-only `SPARKFEED_EDITION=community|cloud` setting. It defaults to `community`. Community Edition must not initialize Dodo clients or call Dodo APIs.
 
-```text
-SPARKFEED_EDITION=community|cloud
-SPARKFEED_SURFACE=app|admin
-```
+This repository deploys the customer application only. Private platform operations live in the separate `sparkfeed-dashboard` repository and deployment, with their own staff database and authentication secret. The dashboard calls Cloud-only APIs using request-bound signed assertions. Customer sessions never authorize platform operations, and the private backend never writes directly to the customer database.
 
-`SPARKFEED_EDITION` defaults to `community`. Community Edition must not initialize Dodo clients or call Dodo APIs.
-
-Sparkfeed Cloud deploys the same reviewed commit as two Railway services:
-
-| Service | Host | Configuration |
-| --- | --- | --- |
-| Customer application | `app.sparkfeed.dev` | `SPARKFEED_EDITION=cloud`, `SPARKFEED_SURFACE=app` |
-| Platform administration | `admin.sparkfeed.dev` | `SPARKFEED_EDITION=cloud`, `SPARKFEED_SURFACE=admin` |
-
-The services use the same Cloud database. They use separate host-only session cookies and trusted-origin lists. The admin service requires a separate sign-in.
-
-If the active surface is not `admin`, platform-admin routes and APIs return 404. Community Edition never exposes those routes.
+The optional hosted Better Auth console has separate credentials and explicit Cloud configuration. Keep host-only cookies and trusted origins scoped to each application.
 
 Cloud billing must fail closed when required Dodo configuration is absent. Do not expose Dodo API keys, webhook secrets, database credentials, or provider credentials through `VITE_` variables.
 
@@ -324,13 +312,9 @@ Enterprise uses manual, typed entitlements until a contract requires another bil
 
 ## Cloud platform administration
 
-Use Better Auth Admin and Better Auth Two-Factor Authentication on the Cloud admin service.
+The private dashboard uses invite-only staff accounts and verified MFA. Customer accounts cannot become platform administrators. The embedded admin UI, customer-role bootstrap, and customer MFA flow are retired.
 
-Sudharsan is the only platform administrator at launch. Create that account through Better Auth's official `create-admin` CLI. Every other account has the normal user role. Do not add support or billing administrator roles in the first release.
-
-Require TOTP for the platform administrator. Enable backup codes and Better Auth's failed-verification lockout. Allow a trusted device for 30 days.
-
-Do not implement impersonation, routine hard deletion, or customer-content browsing at launch.
+Keep customer ban enforcement and guarded domain operations in the customer application. Authentication administration is available through the optional hosted Better Auth connector. Operational plans, credits, workspaces, requests, and billing remain in the private dashboard.
 
 The portal must provide:
 
@@ -350,7 +334,7 @@ The portal must provide:
 
 Do not store or display raw card or bank details. Show only Dodo identifiers and billing state needed for support.
 
-Every mutation requires server-side platform-admin authorization and an audit reason. Banning a user revokes current sessions but keeps the account, personal workspace, memberships, and customer data. Permanent deletion belongs to a separate privacy workflow.
+Every private operational mutation requires a verified staff assertion and an audit reason. Banning a user revokes current sessions but keeps the account, personal workspace, memberships, and customer data. Permanent deletion belongs to a separate privacy workflow.
 
 ## Security rules
 
@@ -364,7 +348,7 @@ Every mutation requires server-side platform-admin authorization and an audit re
 - Do not manipulate PostgreSQL directly for routine administration.
 - Keep Railway, Dodo, customer, and incident runbooks private.
 
-Public admin source code is not an authorization boundary. Server checks, MFA, deployment settings, and audit records are the authorization boundary.
+Server-side signature verification, staff MFA, domain validation, and audit records enforce the boundary between private operations and customer access.
 
 ## Implementation phases
 
@@ -401,11 +385,11 @@ Stop after Phase 2. Run the full application verification before starting Person
 
 ### Phase 4: Cloud administration
 
-1. Add Better Auth Admin and Two-Factor Authentication schemas and plugins.
-2. Add the isolated admin service routes and sole-administrator bootstrap procedure.
-3. Build the user, workspace, billing, webhook, and audit views.
-4. Add suspension, session revocation, credit adjustment, and reconciliation actions.
-5. Verify all authorization, TOTP, audit, and app-service 404 boundaries.
+1. Maintain the independent private dashboard and staff authentication.
+2. Expose signed Cloud-only operational APIs with replay protection and audit records.
+3. Preserve customer workspace, billing, and entitlement safeguards behind those APIs.
+4. Retire legacy customer roles and MFA storage with migration 0019 after stopping the old deployment.
+5. Verify customer credentials cannot authorize private commands, while staff MFA and signed requests still work.
 
 ### Phase 5: Pro workspace billing
 
@@ -451,9 +435,9 @@ The last setup task must guide Sudharsan through Dodo test and live configuratio
 - A personal Dodo customer and an organization Dodo customer cannot collide when they share an email address.
 - Duplicate and out-of-order webhooks do not duplicate credits or regress subscription state.
 - Seat additions, reductions, invitations, membership changes, cancellation, grace, and reactivation match this specification.
-- Admin routes return 404 on Community and customer-app services.
+- Better Auth Admin endpoints are not registered, and no embedded admin UI ships in the customer application.
 - A normal user cannot read platform-admin data or run platform-admin operations.
-- TOTP, trusted devices, bans, session revocation, workspace suspension, audit reasons, and webhook replay work in the isolated beta environment.
+- Private staff MFA, customer bans, session revocation, workspace suspension, audit reasons, and webhook replay work in the isolated beta environment.
 - `beta.sparkfeed.dev` uses a separate database and Dodo test mode.
 - Production uses Dodo live mode, separate live products and webhooks, and reviewed Railway secrets.
 

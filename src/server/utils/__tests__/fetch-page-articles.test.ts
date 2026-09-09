@@ -66,13 +66,13 @@ beforeEach(async () => {
   db = createDb(":memory:", { sqlite: true })
   const raw = (db as unknown as { $client: ReturnType<typeof createClient> })
     .$client
-  await raw.execute(`CREATE TABLE feeds (
+  await raw.execute(`CREATE TABLE feeds (http_etag TEXT, http_last_modified TEXT,
     id TEXT PRIMARY KEY, name TEXT NOT NULL, url TEXT NOT NULL,
     folder_id TEXT, workspace_id TEXT, kind TEXT DEFAULT 'rss', include_keywords TEXT,
     exclude_keywords TEXT, position INTEGER, created_at TEXT,
     last_fetched_at TEXT, last_error TEXT, last_error_at TEXT,
     entitlement_paused_at TEXT)`)
-  await raw.execute(`CREATE TABLE articles (
+  await raw.execute(`CREATE TABLE articles (source_id TEXT, source_updated_at TEXT, content_source TEXT, content_error_at TEXT,
     id TEXT PRIMARY KEY, feed_id TEXT, title TEXT NOT NULL, description TEXT,
     content TEXT, content_fetched_at TEXT, link TEXT NOT NULL, image TEXT,
     published_at TEXT, is_used INTEGER DEFAULT 0, visit_count INTEGER DEFAULT 0,
@@ -207,6 +207,31 @@ describe("reading a listing page", () => {
 })
 
 describe("when a page stops working", () => {
+  it("retries a title-only article after its failure backoff", async () => {
+    const slugs = ["first-post-here", "second-post-here", "third-post-here"]
+    pages.set(LISTING, listing(slugs))
+    await fetchPageArticles("fd-1", LISTING)
+    const { articles } = await import("@/db/schema")
+    await db.update(articles).set({ contentErrorAt: "2020-01-01T00:00:00Z" })
+    for (const slug of slugs)
+      pages.set(`https://example.com/blog/${slug}`, article(slug, LONG))
+    await fetchPageArticles("fd-1", LISTING)
+    const rows = await storedArticles()
+    expect(rows).toHaveLength(3)
+    expect(rows.every((row) => row.content && !row.contentErrorAt)).toBe(true)
+  })
+  it("persists detected links beyond the twelve-body budget", async () => {
+    const slugs = Array.from({ length: 18 }, (_, i) => `article-number-${i}`)
+    pages.set(LISTING, listing(slugs))
+    for (const slug of slugs)
+      pages.set(`https://example.com/blog/${slug}`, article(slug, LONG))
+    expect((await fetchPageArticles("fd-1", LISTING)).inserted).toBe(18)
+    const rows = await storedArticles()
+    expect(rows.filter((row) => row.content)).toHaveLength(12)
+    expect(
+      rows.filter((row) => !row.content && !row.contentErrorAt)
+    ).toHaveLength(6)
+  })
   it("reports a listing it can no longer read posts on", async () => {
     // The old scraper's defining failure: a redesign turned it into a scrape
     // that succeeded with zero results, indistinguishable from a site that had

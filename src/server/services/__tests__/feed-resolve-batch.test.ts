@@ -4,7 +4,7 @@ import { feedSignals } from "../../utils/feed-signals"
 /**
  * The bulk tab's check step.
  *
- * `resolveFeed` is stubbed: what matters here is not whether rss-parser works
+ * `resolveFeed` is stubbed: what matters here is not whether feed parsing works
  * but that fifteen independent URLs stay independent. The failure this guards
  * against is the obvious one — a `Promise.all` where one rejection loses every
  * other result — and the subtle one, results arriving out of order so a row

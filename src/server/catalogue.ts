@@ -2,22 +2,26 @@ import { randomUUID } from "node:crypto"
 import { and, count, eq, inArray, sql } from "drizzle-orm"
 import { z } from "zod"
 import { createServerFn } from "@tanstack/react-start"
-import {  readCatalogue } from "./services/catalogue"
-import {
-
-  getCataloguePreview as readCataloguePreview
-} from "./services/catalogue-preview"
+import { readCatalogue } from "./services/catalogue"
+import { getCataloguePreview as readCataloguePreview } from "./services/catalogue-preview"
 import { enqueueIngest } from "./services/ingest-queue"
 import { freeFolderName } from "./services/feed-write"
 import { resolveWorkspaceId } from "./services/context"
 import { feedInWorkspace } from "./services/tenancy"
-import type {PreviewFeed} from "./services/catalogue-preview";
-import type {CatalogueCategoryView} from "./services/catalogue";
+import type { PreviewFeed } from "./services/catalogue-preview"
+import type { CatalogueCategoryView } from "./services/catalogue"
 import { workspaceWriteMiddleware } from "@/server/entitlements/browser-write"
 import { db } from "@/db/index"
-import { articles, catalogueCollections, catalogueFeeds, feeds, folders } from "@/db/schema"
+import {
+  articles,
+  catalogueCollections,
+  catalogueFeeds,
+  feeds,
+  folders,
+} from "@/db/schema"
 import { normalizeFeedUrl } from "@/lib/validation"
 import { DEMO_MODE } from "@/lib/demo"
+import { withNoRssSourceCapacity } from "@/server/entitlements/enforce"
 
 const DEMO_LOCKED_MSG = "This feature is locked in demo mode"
 
@@ -35,7 +39,7 @@ export const getCatalogue = createServerFn({ method: "GET" }).handler(
       await ensureDemoSchema()
     }
     return await readCatalogue()
-  },
+  }
 )
 
 /**
@@ -49,7 +53,7 @@ export const getCataloguePreview = createServerFn({ method: "POST" })
     z.object({
       kind: z.enum(["collection", "feed"]),
       slug: z.string().min(1).max(64),
-    }),
+    })
   )
   .handler(async ({ data }): Promise<{ feeds: Array<PreviewFeed> }> => {
     if (DEMO_MODE) {
@@ -64,7 +68,13 @@ export const getCataloguePreview = createServerFn({ method: "POST" })
 // ─────────────────────────────────────────────
 
 export type ImportResult =
-  | { status: "ok"; folderId: string | null; feedIds: Array<string>; added: number; skipped: number }
+  | {
+      status: "ok"
+      folderId: string | null
+      feedIds: Array<string>
+      added: number
+      skipped: number
+    }
   | { status: "already_added" }
   | { status: "error"; message: string }
 
@@ -82,12 +92,13 @@ export type ImportResult =
  * already proven resolves, where a transient failure should leave the row and
  * retry later.
  */
-export const importCatalogueItem = createServerFn({ method: "POST" }).middleware([workspaceWriteMiddleware])
+export const importCatalogueItem = createServerFn({ method: "POST" })
+  .middleware([workspaceWriteMiddleware])
   .validator(
     z.object({
       kind: z.enum(["collection", "feed"]),
       slug: z.string().min(1),
-    }),
+    })
   )
   .handler(async ({ data }): Promise<ImportResult> => {
     if (DEMO_MODE) return { status: "error", message: DEMO_LOCKED_MSG }
@@ -103,9 +114,16 @@ export const importCatalogueItem = createServerFn({ method: "POST" }).middleware
             .select()
             .from(catalogueFeeds)
             .where(eq(catalogueFeeds.collectionSlug, data.slug))
-        : await db.select().from(catalogueFeeds).where(eq(catalogueFeeds.slug, data.slug))
+        : await db
+            .select()
+            .from(catalogueFeeds)
+            .where(eq(catalogueFeeds.slug, data.slug))
 
-    if (entries.length === 0) return { status: "error", message: "Not found" }
+    if (
+      entries.length === 0 ||
+      entries.some((e) => e.retiredAt || e.status === "dead")
+    )
+      return { status: "error", message: "Not found" }
 
     // Dedupe BEFORE creating anything. Reversed, a second click on a collection
     // whose feeds are all present would leave behind an empty "OpenAI (2)".
@@ -116,38 +134,48 @@ export const importCatalogueItem = createServerFn({ method: "POST" }).middleware
       .where(and(feedInWorkspace(workspaceId), inArray(feeds.url, wanted)))
 
     const have = new Set(existing.map((f) => normalizeFeedUrl(f.url) ?? f.url))
-    const fresh = entries.filter((e) => !have.has(normalizeFeedUrl(e.feedUrl) ?? e.feedUrl))
+    const fresh = entries.filter(
+      (e) => !have.has(normalizeFeedUrl(e.feedUrl) ?? e.feedUrl)
+    )
 
     if (fresh.length === 0) return { status: "already_added" }
-
+    const pageCount = fresh.filter((e) => e.sourceKind === "page").length
     let folderId: string | null = null
-    if (data.kind === "collection") {
-      const [collection] = await db
-        .select()
-        .from(catalogueCollections)
-        .where(eq(catalogueCollections.slug, data.slug))
-        .limit(1)
-      if (!collection) return { status: "error", message: "Not found" }
-
-      folderId = randomUUID()
-      await db.insert(folders).values({
-        id: folderId,
-        name: await freeFolderName(workspaceId, collection.name),
-        workspaceId,
-        createdAt: new Date().toISOString(),
-      })
-    }
-
-    const rows = fresh.map((e) => ({
-      id: randomUUID(),
-      name: e.name,
-      url: e.feedUrl,
-      folderId,
+    const rows = await withNoRssSourceCapacity(
       workspaceId,
-      includeKeywords: "[]",
-      excludeKeywords: "[]",
-    }))
-    await db.insert(feeds).values(rows)
+      pageCount,
+      async (tx) => {
+        if (data.kind === "collection") {
+          const [collection] = await tx
+            .select()
+            .from(catalogueCollections)
+            .where(eq(catalogueCollections.slug, data.slug))
+            .limit(1)
+          if (!collection) throw new Error("Collection not found")
+
+          folderId = randomUUID()
+          await tx.insert(folders).values({
+            id: folderId,
+            name: await freeFolderName(workspaceId, collection.name),
+            workspaceId,
+            createdAt: new Date().toISOString(),
+          })
+        }
+
+        const created = fresh.map((e) => ({
+          id: randomUUID(),
+          name: e.name,
+          url: e.feedUrl,
+          kind: e.sourceKind === "page" ? "page" : "rss",
+          folderId,
+          workspaceId,
+          includeKeywords: "[]",
+          excludeKeywords: "[]",
+        }))
+        await tx.insert(feeds).values(created)
+        return created
+      }
+    )
 
     // Global counter, not per-user: there is no catalogue_imports table and no
     // reason to record who added what.
@@ -155,7 +183,12 @@ export const importCatalogueItem = createServerFn({ method: "POST" }).middleware
     await db
       .update(catalogueFeeds)
       .set(bump)
-      .where(inArray(catalogueFeeds.slug, fresh.map((e) => e.slug)))
+      .where(
+        inArray(
+          catalogueFeeds.slug,
+          fresh.map((e) => e.slug)
+        )
+      )
     if (data.kind === "collection") {
       await db
         .update(catalogueCollections)
@@ -165,7 +198,7 @@ export const importCatalogueItem = createServerFn({ method: "POST" }).middleware
 
     // Detached on purpose: the response returns now, the fetching continues in
     // this process. Nothing awaits this.
-    enqueueIngest(rows.map((r) => ({ feedId: r.id, url: r.url })))
+    enqueueIngest(rows.map((r) => ({ feedId: r.id, url: r.url, kind: r.kind })))
 
     return {
       status: "ok",
@@ -186,26 +219,37 @@ export const importCatalogueItem = createServerFn({ method: "POST" }).middleware
  */
 export const getImportStatus = createServerFn({ method: "POST" })
   .validator(z.object({ feedIds: z.array(z.string()).min(1).max(50) }))
-  .handler(async ({ data }): Promise<{ done: number; total: number; articles: number }> => {
-    const workspaceId = await resolveWorkspaceId()
+  .handler(
+    async ({
+      data,
+    }): Promise<{ done: number; total: number; articles: number }> => {
+      const workspaceId = await resolveWorkspaceId()
 
-    const rows = await db
-      .select({
-        id: feeds.id,
-        lastFetchedAt: feeds.lastFetchedAt,
-        lastErrorAt: feeds.lastErrorAt,
-      })
-      .from(feeds)
-      .where(and(feedInWorkspace(workspaceId), inArray(feeds.id, data.feedIds)))
+      const rows = await db
+        .select({
+          id: feeds.id,
+          lastFetchedAt: feeds.lastFetchedAt,
+          lastErrorAt: feeds.lastErrorAt,
+        })
+        .from(feeds)
+        .where(
+          and(feedInWorkspace(workspaceId), inArray(feeds.id, data.feedIds))
+        )
 
-    const [articleCount] = await db
-      .select({ value: count() })
-      .from(articles)
-      .where(inArray(articles.feedId, data.feedIds))
+      const [articleCount] = await db
+        .select({ value: count() })
+        .from(articles)
+        .where(
+          inArray(
+            articles.feedId,
+            rows.map((r) => r.id)
+          )
+        )
 
-    return {
-      done: rows.filter((r) => r.lastFetchedAt || r.lastErrorAt).length,
-      total: rows.length,
-      articles: Number(articleCount?.value ?? 0),
+      return {
+        done: rows.filter((r) => r.lastFetchedAt || r.lastErrorAt).length,
+        total: rows.length,
+        articles: Number(articleCount?.value ?? 0),
+      }
     }
-  })
+  )

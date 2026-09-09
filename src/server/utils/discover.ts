@@ -14,12 +14,12 @@
  * already found, derive a template from its path, fill it with section names
  * from the sitemap, and probe a bounded number of those.
  */
-import * as cheerio from 'cheerio'
-import Parser from 'rss-parser'
-import { BlockedUrlError, looksLikeFeedContentType, safeFetchText } from './fetch'
-import { mapWithConcurrency } from './concurrency'
-import { feedSignals } from './feed-signals'
-import type { FeedSignals } from './feed-signals'
+import * as cheerio from "cheerio"
+import { parseSyndication } from "./parse-feed"
+import { BlockedUrlError, safeFetchText } from "./fetch"
+import { mapWithConcurrency } from "./concurrency"
+import { feedSignals } from "./feed-signals"
+import type { FeedSignals } from "./feed-signals"
 
 export type DiscoveredFeed = {
   url: string
@@ -27,7 +27,7 @@ export type DiscoveredFeed = {
   itemCount: number
   sampleTitles: Array<string>
   /** 'primary' is the feed the user's URL resolved to; the rest are 'section'. */
-  kind: 'primary' | 'section'
+  kind: "primary" | "section"
   /** Short label for section feeds, e.g. "tech". Null for the primary feed. */
   section: string | null
   signals: FeedSignals
@@ -54,23 +54,60 @@ export const MAX_DISCOVERED = 12
  * pass finds nothing at all. Its feed lives at /news/rss.xml, and /news is
  * exactly what the sitemap reports.
  */
-const SECTION_SUFFIXES = ['rss.xml', 'feed', 'feed.xml', 'atom.xml', 'index.xml', 'rss']
-
-const parser = new Parser()
+const SECTION_SUFFIXES = [
+  "rss.xml",
+  "feed",
+  "feed.xml",
+  "atom.xml",
+  "index.xml",
+  "rss",
+]
 
 /** Path segments that are never a content section. */
 const SECTION_STOPWORDS = new Set([
-  'sitemap', 'sitemaps', 'feed', 'rss', 'atom', 'static', 'assets', 'cdn',
-  'api', 'auth', 'login', 'signup', 'search', 'tag', 'tags', 'author',
-  'authors', 'page', 'pages', 'category', 'wp-content', 'wp-json', 'legal',
-  'privacy', 'terms', 'cookie', 'cookies', 'contact', 'careers', 'jobs',
-  'pricing', 'docs', 'doc', 'support', 'help', 'account', 'settings',
+  "sitemap",
+  "sitemaps",
+  "feed",
+  "rss",
+  "atom",
+  "static",
+  "assets",
+  "cdn",
+  "api",
+  "auth",
+  "login",
+  "signup",
+  "search",
+  "tag",
+  "tags",
+  "author",
+  "authors",
+  "page",
+  "pages",
+  "category",
+  "wp-content",
+  "wp-json",
+  "legal",
+  "privacy",
+  "terms",
+  "cookie",
+  "cookies",
+  "contact",
+  "careers",
+  "jobs",
+  "pricing",
+  "docs",
+  "doc",
+  "support",
+  "help",
+  "account",
+  "settings",
 ])
 
 function isPlausibleSection(seg: string): boolean {
   if (!seg || seg.length > 24) return false
   if (SECTION_STOPWORDS.has(seg)) return false
-  if (/^\d+$/.test(seg)) return false          // ids, years
+  if (/^\d+$/.test(seg)) return false // ids, years
   if (/\.[a-z0-9]{2,5}$/i.test(seg)) return false // filenames
   return /^[a-z0-9][a-z0-9-]*$/i.test(seg)
 }
@@ -110,7 +147,7 @@ export async function sectionNames(origin: string): Promise<Array<string>> {
       try {
         const u = new URL(loc)
         if (u.origin !== origin) continue
-        seg = u.pathname.split('/').filter(Boolean)[0]
+        seg = u.pathname.split("/").filter(Boolean)[0]
       } catch {
         continue
       }
@@ -127,10 +164,10 @@ export async function sectionNames(origin: string): Promise<Array<string>> {
         timeoutMs: SITEMAP_TIMEOUT_MS,
         maxBytes: SITEMAP_MAX_BYTES,
       })
-      return res.ok ? text : ''
+      return res.ok ? text : ""
     } catch (err) {
       if (err instanceof BlockedUrlError) throw err
-      return ''
+      return ""
     }
   }
 
@@ -170,7 +207,10 @@ export async function sectionNames(origin: string): Promise<Array<string>> {
  *
  * Exported for tests.
  */
-export function sectionCandidates(anchorUrl: string, section: string): Array<string> {
+export function sectionCandidates(
+  anchorUrl: string,
+  section: string
+): Array<string> {
   let anchor: URL
   try {
     anchor = new URL(anchorUrl)
@@ -178,11 +218,11 @@ export function sectionCandidates(anchorUrl: string, section: string): Array<str
     return []
   }
 
-  const segments = anchor.pathname.split('/').filter(Boolean)
-  const trailingSlash = anchor.pathname.endsWith('/')
+  const segments = anchor.pathname.split("/").filter(Boolean)
+  const trailingSlash = anchor.pathname.endsWith("/")
   const out: Array<string> = []
   const push = (segs: Array<string>, slash: boolean) => {
-    const path = `/${segs.join('/')}${slash && segs.length ? '/' : ''}`
+    const path = `/${segs.join("/")}${slash && segs.length ? "/" : ""}`
     out.push(new URL(path, anchor.origin).href)
   }
 
@@ -218,8 +258,8 @@ export function sectionsInHtml(html: string, origin: string): Array<string> {
   const $ = cheerio.load(html)
   const counts = new Map<string, number>()
 
-  $('a[href]').each((_, el) => {
-    const href = $(el).attr('href')
+  $("a[href]").each((_, el) => {
+    const href = $(el).attr("href")
     if (!href) return
     let u: URL
     try {
@@ -228,7 +268,7 @@ export function sectionsInHtml(html: string, origin: string): Array<string> {
       return
     }
     if (u.origin !== origin) return
-    const seg = u.pathname.split('/').filter(Boolean)[0]?.toLowerCase()
+    const seg = u.pathname.split("/").filter(Boolean)[0]?.toLowerCase()
     if (!seg || !isPlausibleSection(seg)) return
     counts.set(seg, (counts.get(seg) ?? 0) + 1)
   })
@@ -243,10 +283,15 @@ export function sectionsInHtml(html: string, origin: string): Array<string> {
 export function feedLinksInHtml(html: string, baseUrl: string): Array<string> {
   const $ = cheerio.load(html)
   const out = new Set<string>()
-  $('a[href]').each((_, el) => {
-    const href = $(el).attr('href')
+  $("a[href]").each((_, el) => {
+    const href = $(el).attr("href")
     if (!href) return
-    if (!/(\/feed\/?$|\/rss\/?$|\.rss$|rss\.xml$|atom\.xml$|feed\.xml$|index\.xml$)/i.test(href)) return
+    if (
+      !/(\/feed\/?$|\/rss\/?$|\.rss$|rss\.xml$|atom\.xml$|feed\.xml$|index\.xml$)/i.test(
+        href
+      )
+    )
+      return
     try {
       out.add(new URL(href, baseUrl).href)
     } catch {
@@ -269,15 +314,15 @@ export function feedLinksInHtml(html: string, baseUrl: string): Array<string> {
 async function probeFeed(
   url: string,
   section: string | null,
-  requireItems: boolean,
+  requireItems: boolean
 ): Promise<DiscoveredFeed | null> {
   try {
-    const { res, text, contentType, finalUrl } = await safeFetchText(url, {
+    const { res, text, finalUrl } = await safeFetchText(url, {
       timeoutMs: PROBE_TIMEOUT_MS,
     })
-    if (!res.ok || !looksLikeFeedContentType(contentType)) return null
+    if (!res.ok) return null
 
-    const feed = await parser.parseString(text)
+    const feed = parseSyndication(text, finalUrl || url)
     const items = feed.items ?? []
     if (requireItems && items.length === 0) return null
 
@@ -289,9 +334,13 @@ async function probeFeed(
         .slice(0, 3)
         .map((i) => i.title?.trim())
         .filter((t): t is string => !!t),
-      kind: 'section',
+      kind: "section",
       section,
-      signals: feedSignals({ requestedUrl: url, finalUrl: finalUrl || url, feed }),
+      signals: feedSignals({
+        requestedUrl: url,
+        finalUrl: finalUrl || url,
+        feed,
+      }),
     }
   } catch {
     // A dead candidate is normal; only the caller's own URL is worth reporting.
@@ -346,10 +395,12 @@ export async function discoverMoreFeeds(opts: {
   // in sequence this was the bulk of the deep pass: several seconds of waiting
   // before the first probe went out.
   const [pageResult, sitemapSections] = await Promise.all([
-    safeFetchText(originUrl.origin, { timeoutMs: PROBE_TIMEOUT_MS }).catch((err) => {
-      if (err instanceof BlockedUrlError) throw err
-      return null
-    }),
+    safeFetchText(originUrl.origin, { timeoutMs: PROBE_TIMEOUT_MS }).catch(
+      (err) => {
+        if (err instanceof BlockedUrlError) throw err
+        return null
+      }
+    ),
     sectionNames(originUrl.origin).catch((err) => {
       if (err instanceof BlockedUrlError) throw err
       return [] as Array<string>
@@ -366,13 +417,21 @@ export async function discoverMoreFeeds(opts: {
 
   // Sitemap sections first (ranked by how much content sits under them), then
   // anything the nav adds.
-  const sections = [...new Set([...sitemapSections, ...navSections])].slice(0, MAX_SECTIONS)
+  const sections = [...new Set([...sitemapSections, ...navSections])].slice(
+    0,
+    MAX_SECTIONS
+  )
 
   // `explicit` is what the site links to itself; everything after it is our
   // guess. The distinction survives into `probeFeed`, which only demands items
   // of the guesses — see the note there.
-  const derived: Array<{ url: string; section: string | null; explicit: boolean }> = []
-  for (const url of explicit) derived.push({ url, section: null, explicit: true })
+  const derived: Array<{
+    url: string
+    section: string | null
+    explicit: boolean
+  }> = []
+  for (const url of explicit)
+    derived.push({ url, section: null, explicit: true })
 
   // Interleave by rank rather than finishing one section before starting the
   // next. Candidates outnumber the probe budget, and each section's first guess
@@ -380,8 +439,10 @@ export async function discoverMoreFeeds(opts: {
   const perSection = sections.map((section) =>
     (anchorUrl
       ? sectionCandidates(anchorUrl, section)
-      : SECTION_SUFFIXES.map((s) => new URL(`/${section}/${s}`, originUrl.origin).href)
-    ).map((url) => ({ url, section, explicit: false })),
+      : SECTION_SUFFIXES.map(
+          (s) => new URL(`/${section}/${s}`, originUrl.origin).href
+        )
+    ).map((url) => ({ url, section, explicit: false }))
   )
   const deepest = Math.max(0, ...perSection.map((c) => c.length))
   for (let rank = 0; rank < deepest; rank++) {
@@ -392,10 +453,10 @@ export async function discoverMoreFeeds(opts: {
 
   // Drop the anchor itself and any duplicate URL, then bound the work.
   const seenUrls = new Set<string>()
-  if (anchorUrl) seenUrls.add(anchorUrl.replace(/\/$/, ''))
+  if (anchorUrl) seenUrls.add(anchorUrl.replace(/\/$/, ""))
   const queue = derived
     .filter(({ url }) => {
-      const key = url.replace(/\/$/, '')
+      const key = url.replace(/\/$/, "")
       if (seenUrls.has(key)) return false
       seenUrls.add(key)
       return true
@@ -408,7 +469,7 @@ export async function discoverMoreFeeds(opts: {
 
     const batch = queue.slice(i, i + PROBE_CONCURRENCY)
     const results = await mapWithConcurrency(batch, PROBE_CONCURRENCY, (c) =>
-      probeFeed(c.url, c.section, !c.explicit),
+      probeFeed(c.url, c.section, !c.explicit)
     )
 
     for (const feed of results) {

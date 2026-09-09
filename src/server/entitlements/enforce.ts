@@ -1,8 +1,9 @@
-import { and, count, eq, isNull } from "drizzle-orm"
+import { and, count, eq, isNull, sql } from "drizzle-orm"
 import { resolveEntitlements } from "./resolve"
 import { workspaceRefFromId } from "./workspace"
 import type { Principal, ResolvedEntitlements } from "./types"
-import { feeds } from "@/db/schema"
+import type { Database } from "@/db/client"
+import { feeds, organization, user } from "@/db/schema"
 import { db } from "@/db/index"
 
 export class EntitlementError extends Error {
@@ -21,23 +22,27 @@ export async function entitlementsForWorkspaceId(
 
 export async function assertNoRssSourceCapacity(
   workspaceId: string,
-  additionalSources: number
+  additionalSources: number,
+  database: Pick<Database, "select"> = db,
+  resolved?: ResolvedEntitlements
 ): Promise<void> {
   if (additionalSources <= 0) return
 
-  const entitlements = await entitlementsForWorkspaceId(workspaceId, {
-    type: "system",
-    userId: null,
-    emailVerified: false,
-    workspaceId,
-    demo: false,
-  })
+  const entitlements =
+    resolved ??
+    (await entitlementsForWorkspaceId(workspaceId, {
+      type: "system",
+      userId: null,
+      emailVerified: false,
+      workspaceId,
+      demo: false,
+    }))
   if (entitlements.accessState !== "active") {
     throw new EntitlementError("This workspace is not writable.")
   }
   if (entitlements.sourceUnitCapacity === null) return
 
-  const [row] = await db
+  const [row] = await database
     .select({ value: count() })
     .from(feeds)
     .where(
@@ -54,4 +59,47 @@ export async function assertNoRssSourceCapacity(
       `This workspace can have ${entitlements.sourceUnitCapacity} active website sources without RSS.`
     )
   }
+}
+
+/** Reserve capacity and insert in one transaction, including across app replicas. */
+export async function withNoRssSourceCapacity<T>(
+  workspaceId: string | null,
+  additionalSources: number,
+  write: (tx: Database) => Promise<T>
+): Promise<T> {
+  if (!workspaceId || additionalSources <= 0) return write(db)
+  const workspace = await workspaceRefFromId(workspaceId)
+  const effective = await resolveEntitlements(workspace, {
+    type: "system",
+    userId: null,
+    emailVerified: false,
+    workspaceId,
+    demo: false,
+  })
+  if (effective.accessState !== "active")
+    throw new EntitlementError("This workspace is not writable.")
+  if (effective.sourceUnitCapacity === null) return write(db)
+  return db.transaction(async (tx) => {
+    // A portable no-op write locks the workspace row until commit. No advisory-lock dependency.
+    const locked =
+      workspace.type === "personal"
+        ? await tx
+            .update(user)
+            .set({ updatedAt: sql`${user.updatedAt}` })
+            .where(eq(user.id, workspaceId))
+            .returning({ id: user.id })
+        : await tx
+            .update(organization)
+            .set({ metadata: sql`${organization.metadata}` })
+            .where(eq(organization.id, workspaceId))
+            .returning({ id: organization.id })
+    if (!locked.length) throw new EntitlementError("Workspace not found.")
+    await assertNoRssSourceCapacity(
+      workspaceId,
+      additionalSources,
+      tx,
+      effective
+    )
+    return write(tx)
+  })
 }

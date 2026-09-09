@@ -39,10 +39,10 @@ src/server/
 │   └── folders/
 │       ├── index.get.ts
 │       └── index.post.ts
-└── lib/
-    ├── rss-parser.ts         # RSS/Atom parsing logic
-    ├── feed-fetcher.ts       # HTTP fetching with retry
-    └── scheduler.ts          # Background refresh scheduling
+└── utils/
+    ├── parse-feed.ts         # FeedSmith normalization
+    ├── fetch.ts              # Guarded publisher requests
+    └── fetch-page-articles.ts # Website article ingestion
 ```
 
 ## Example: Feed List Endpoint

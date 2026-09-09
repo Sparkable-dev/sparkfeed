@@ -1,10 +1,17 @@
 import { and, asc, eq, inArray, isNull, notInArray } from "drizzle-orm"
 import { ensureCatalogueSynced } from "./catalogue"
 import type { Database } from "@/db/client"
+import type { LinkedFeedItem } from "@/server/utils/fetch-articles"
 import { db as singleton } from "@/db/index"
 import { catalogueArticles, catalogueFeeds } from "@/db/schema"
-import { feedImageOf, fetchFeedItems, safeParseDate } from "@/server/utils/fetch-articles"
+import {
+  feedImageOf,
+  fetchFeedItems,
+  safeParseDate,
+} from "@/server/utils/fetch-articles"
 import { decodeEntities } from "@/server/utils/entities"
+import { fetchPagePreview } from "@/server/utils/fetch-page-articles"
+import { toFeedError } from "@/server/utils/feed-errors"
 
 /**
  * Recent articles for Discover cards, so a source can be read before it is added.
@@ -29,8 +36,7 @@ const TTL_MS = 6 * 60 * 60 * 1000
  * June tells you both what it publishes and how often — which is the more useful
  * half of the answer. Every row carries its real date, so nothing is oversold.
  *
- * Ingest still windows to 30 days. That is a different question: how much
- * history to import, not what to show someone deciding.
+ * Ingest also keeps older items, but bounds the number imported per refresh.
  */
 
 /** Deliberately shorter than the ingest timeout — this one is in front of a user. */
@@ -50,6 +56,8 @@ export interface PreviewArticle {
 export type PreviewFeedState = "ok" | "empty" | "unavailable"
 
 export interface PreviewFeed {
+  error?: string
+  stale?: boolean
   slug: string
   state: PreviewFeedState
   articles: Array<PreviewArticle>
@@ -65,11 +73,18 @@ export interface PreviewFeed {
  */
 const inFlight = new Map<string, Promise<void>>()
 
-function refreshOnce(db: Database, slug: string, url: string): Promise<void> {
+function refreshOnce(
+  db: Database,
+  slug: string,
+  url: string,
+  sourceKind = "rss"
+): Promise<void> {
   const existing = inFlight.get(slug)
   if (existing) return existing
 
-  const run = refreshFeed(db, slug, url).finally(() => inFlight.delete(slug))
+  const run = refreshFeed(db, slug, url, sourceKind).finally(() =>
+    inFlight.delete(slug)
+  )
   inFlight.set(slug, run)
   return run
 }
@@ -82,14 +97,28 @@ function refreshOnce(db: Database, slug: string, url: string): Promise<void> {
  * `sortOrder` stays honest, and there is no `onConflict` target to get wrong
  * across the SQLite cast that demo mode runs through.
  */
-async function refreshFeed(db: Database, slug: string, url: string): Promise<void> {
+async function refreshFeed(
+  db: Database,
+  slug: string,
+  url: string,
+  sourceKind: string
+): Promise<void> {
   const now = new Date().toISOString()
 
   let rows: Array<typeof catalogueArticles.$inferInsert> = []
   let error: string | null = null
 
   try {
-    const items = await fetchFeedItems(url, { timeoutMs: FETCH_TIMEOUT_MS })
+    const items: Array<LinkedFeedItem> =
+      sourceKind === "page"
+        ? (await fetchPagePreview(url)).map((i) => ({
+            link: i.link,
+            title: i.title,
+            contentSnippet: i.description ?? undefined,
+            image: i.image ?? undefined,
+            pubDate: i.publishedAt ?? undefined,
+          }))
+        : await fetchFeedItems(url, { timeoutMs: FETCH_TIMEOUT_MS })
 
     const seen = new Set<string>()
     rows = items
@@ -112,21 +141,22 @@ async function refreshFeed(db: Database, slug: string, url: string): Promise<voi
         link: item.link,
         title: decodeEntities(item.title?.trim() || "") || "Untitled",
         description:
-          decodeEntities((item.contentSnippet ?? item.summary)?.trim() ?? "").slice(
-            0,
-            MAX_DESCRIPTION,
-          ) || null,
+          decodeEntities(
+            (item.contentSnippet ?? item.summary)?.trim() ?? ""
+          ).slice(0, MAX_DESCRIPTION) || null,
         image: feedImageOf(item),
         publishedAt,
         sortOrder: index,
         fetchedAt: now,
       }))
   } catch (err) {
-    error = String(err instanceof Error ? err.message : err).slice(0, 500)
+    error = toFeedError(err).message
   }
 
   if (!error) {
-    await db.delete(catalogueArticles).where(eq(catalogueArticles.feedSlug, slug))
+    await db
+      .delete(catalogueArticles)
+      .where(eq(catalogueArticles.feedSlug, slug))
     if (rows.length > 0) await db.insert(catalogueArticles).values(rows)
   }
 
@@ -147,6 +177,8 @@ async function refreshFeed(db: Database, slug: string, url: string): Promise<voi
 }
 
 interface ResolvedFeed {
+  sourceKind: string
+  error: string | null
   slug: string
   feedUrl: string
   fetchedAt: string | null
@@ -163,13 +195,15 @@ interface ResolvedFeed {
 async function resolveFeeds(
   db: Database,
   kind: "collection" | "feed",
-  slug: string,
+  slug: string
 ): Promise<Array<ResolvedFeed>> {
   const rows = await db
     .select({
       slug: catalogueFeeds.slug,
       feedUrl: catalogueFeeds.feedUrl,
       fetchedAt: catalogueFeeds.articlesFetchedAt,
+      sourceKind: catalogueFeeds.sourceKind,
+      error: catalogueFeeds.articlesError,
     })
     .from(catalogueFeeds)
     .where(
@@ -178,17 +212,19 @@ async function resolveFeeds(
           ? eq(catalogueFeeds.slug, slug)
           : eq(catalogueFeeds.collectionSlug, slug),
         isNull(catalogueFeeds.retiredAt),
-        notInArray(catalogueFeeds.status, ["dead"]),
-      ),
+        notInArray(catalogueFeeds.status, ["dead"])
+      )
     )
     .orderBy(asc(catalogueFeeds.sortOrder))
 
   return rows
 }
 
-function isStale(fetchedAt: string | null): boolean {
+function isStale(fetchedAt: string | null, failed = false): boolean {
   if (!fetchedAt) return true
-  return Date.now() - new Date(fetchedAt).getTime() > TTL_MS
+  return (
+    Date.now() - new Date(fetchedAt).getTime() > (failed ? 5 * 60_000 : TTL_MS)
+  )
 }
 
 /**
@@ -202,7 +238,7 @@ function isStale(fetchedAt: string | null): boolean {
 export async function getCataloguePreview(
   kind: "collection" | "feed",
   slug: string,
-  db: Database = singleton,
+  db: Database = singleton
 ): Promise<{ feeds: Array<PreviewFeed> }> {
   // A deep link on a cold process would otherwise find an empty table.
   await ensureCatalogueSynced()
@@ -211,15 +247,26 @@ export async function getCataloguePreview(
   if (resolved.length === 0) return { feeds: [] }
 
   const cold = resolved.filter((f) => !f.fetchedAt)
-  const stale = resolved.filter((f) => f.fetchedAt && isStale(f.fetchedAt))
+  const stale = resolved.filter(
+    (f) => f.fetchedAt && isStale(f.fetchedAt, !!f.error)
+  )
 
   // allSettled, not all: one feed that 403s must not take down the two healthy
   // ones beside it in the same collection.
   if (cold.length > 0) {
-    await Promise.allSettled(cold.map((f) => refreshOnce(db, f.slug, f.feedUrl)))
+    await Promise.allSettled(
+      cold.map((f) => refreshOnce(db, f.slug, f.feedUrl, f.sourceKind))
+    )
   }
   for (const feed of stale) {
-    void refreshOnce(db, feed.slug, feed.feedUrl).catch(() => {})
+    if (feed.error)
+      await refreshOnce(db, feed.slug, feed.feedUrl, feed.sourceKind).catch(
+        () => {}
+      )
+    else
+      void refreshOnce(db, feed.slug, feed.feedUrl, feed.sourceKind).catch(
+        () => {}
+      )
   }
 
   return { feeds: await readCachedArticles(db, resolved) }
@@ -227,7 +274,7 @@ export async function getCataloguePreview(
 
 async function readCachedArticles(
   db: Database,
-  resolved: Array<ResolvedFeed>,
+  resolved: Array<ResolvedFeed>
 ): Promise<Array<PreviewFeed>> {
   const slugs = resolved.map((f) => f.slug)
 
@@ -241,14 +288,21 @@ async function readCachedArticles(
       .where(inArray(catalogueArticles.feedSlug, slugs))
       .orderBy(asc(catalogueArticles.sortOrder)),
     db
-      .select({ slug: catalogueFeeds.slug, error: catalogueFeeds.articlesError })
+      .select({
+        slug: catalogueFeeds.slug,
+        error: catalogueFeeds.articlesError,
+      })
       .from(catalogueFeeds)
       .where(inArray(catalogueFeeds.slug, slugs)),
   ])
 
-  const failed = new Set(health.filter((h) => h.error !== null).map((h) => h.slug))
+  const failed = new Set(
+    health.filter((h) => h.error !== null).map((h) => h.slug)
+  )
 
-  const bySlug = new Map<string, Array<PreviewArticle>>(slugs.map((s) => [s, []]))
+  const bySlug = new Map<string, Array<PreviewArticle>>(
+    slugs.map((s) => [s, []])
+  )
   for (const row of rows) {
     bySlug.get(row.feedSlug)?.push({
       link: row.link,
@@ -261,13 +315,22 @@ async function readCachedArticles(
 
   return resolved.map((feed) => {
     const articles = bySlug.get(feed.slug) ?? []
-    if (articles.length > 0) return { slug: feed.slug, state: "ok" as const, articles }
+    if (articles.length > 0)
+      return {
+        slug: feed.slug,
+        state: "ok" as const,
+        articles,
+        stale: failed.has(feed.slug),
+      }
     // Nothing cached is two different situations, and the UI says different
     // things about them: a quiet feed is still worth adding, a broken one is not.
     return {
       slug: feed.slug,
-      state: failed.has(feed.slug) ? ("unavailable" as const) : ("empty" as const),
+      state: failed.has(feed.slug)
+        ? ("unavailable" as const)
+        : ("empty" as const),
       articles: [],
+      error: health.find((h) => h.slug === feed.slug)?.error ?? undefined,
     }
   })
 }

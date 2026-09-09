@@ -4,7 +4,10 @@ import { AddCatalogueButton } from "./AddCatalogueButton"
 import { CatalogueArticleRow } from "./CatalogueArticleCard"
 import { useCataloguePreview } from "./use-catalogue-preview"
 import type { PreviewFeed } from "@/server/services/catalogue-preview"
-import type { CatalogueCard, CatalogueCardFeed } from "@/server/services/catalogue"
+import type {
+  CatalogueCard,
+  CatalogueCardFeed,
+} from "@/server/services/catalogue"
 import { copyText } from "@/lib/clipboard"
 import { normalizeFeedUrl } from "@/lib/validation"
 import {
@@ -134,12 +137,16 @@ function FeedSection({
           )}
           <button
             type="button"
-            onClick={() => void copyText(feed.feedUrl, { successMessage: "Feed URL copied" })}
+            onClick={() =>
+              void copyText(feed.feedUrl, { successMessage: "Feed URL copied" })
+            }
             className={CHIP}
             title={feed.feedUrl}
           >
             <Rss className="size-2.5 shrink-0" />
-            <span className={CHIP_LABEL}>RSS</span>
+            <span className={CHIP_LABEL}>
+              {feed.sourceKind === "page" ? "Website" : "Feed"}
+            </span>
           </button>
 
           <AddCatalogueButton
@@ -207,7 +214,11 @@ export function CataloguePreviewDialog({
   const loading = status === "loading"
 
   const isCollection = card?.kind === "collection"
-  const members: Array<CatalogueCardFeed> = !card ? [] : isCollection ? card.feeds : [card]
+  const members: Array<CatalogueCardFeed> = !card
+    ? []
+    : isCollection
+      ? card.feeds
+      : [card]
 
   const ownsFeed = (f: CatalogueCardFeed) =>
     ownedUrls.has(normalizeFeedUrl(f.feedUrl) ?? f.feedUrl)
@@ -270,11 +281,17 @@ export function CataloguePreviewDialog({
                 {isCollection && (
                   <span className="inline-flex items-center gap-1 rounded-md border border-white/10 bg-white/5 px-1.5 py-0.5 text-[10px] font-semibold tracking-wide text-zinc-300 uppercase">
                     <Layers className="size-2.5" />
-                    {card.feeds.length} {card.feeds.length === 1 ? "feed" : "feeds"}
+                    {card.feeds.length}{" "}
+                    {card.feeds.length === 1 ? "feed" : "feeds"}
                   </span>
                 )}
                 {primaryUrl && (
-                  <a href={primaryUrl} target="_blank" rel="noopener noreferrer" className={CHIP}>
+                  <a
+                    href={primaryUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={CHIP}
+                  >
                     <ExternalLink className="size-2.5" />
                     {domainOf(primaryUrl)}
                   </a>
@@ -288,13 +305,17 @@ export function CataloguePreviewDialog({
                   <button
                     type="button"
                     onClick={() =>
-                      void copyText(card.feedUrl, { successMessage: "Feed URL copied" })
+                      void copyText(card.feedUrl, {
+                        successMessage: "Feed URL copied",
+                      })
                     }
                     className={CHIP}
                     title={card.feedUrl}
                   >
                     <Rss className="size-2.5" />
-                    Copy RSS URL
+                    {card.sourceKind === "page"
+                      ? "Copy website URL"
+                      : "Copy feed URL"}
                   </button>
                 )}
               </div>
@@ -324,7 +345,9 @@ export function CataloguePreviewDialog({
             <div className="flex shrink-0 items-center justify-between gap-3 border-t border-zinc-800 bg-zinc-900/40 px-5 py-3">
               <span className="truncate text-[11px] text-zinc-500">
                 {members.length === 1
-                  ? "Adds one feed."
+                  ? !isCollection && card.sourceKind === "page"
+                    ? "Adds one website source."
+                    : "Adds one feed."
                   : `Adds ${members.length} feeds as a folder.`}
               </span>
               <AddCatalogueButton

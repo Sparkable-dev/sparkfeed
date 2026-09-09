@@ -66,7 +66,7 @@ beforeEach(async () => {
     grant_period TEXT, ai_request_id TEXT, reason TEXT,
     actor_user_id TEXT, idempotency_key TEXT NOT NULL UNIQUE,
     expires_at TEXT, created_at TEXT NOT NULL)`)
-  await raw.execute(`CREATE TABLE feeds (
+  await raw.execute(`CREATE TABLE feeds (http_etag TEXT, http_last_modified TEXT,
     id TEXT PRIMARY KEY, name TEXT NOT NULL, url TEXT NOT NULL,
     folder_id TEXT, workspace_id TEXT, kind TEXT NOT NULL DEFAULT 'rss',
     include_keywords TEXT, exclude_keywords TEXT, position INTEGER,

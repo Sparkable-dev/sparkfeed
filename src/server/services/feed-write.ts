@@ -6,7 +6,7 @@ import { enqueueIngest } from "./ingest-queue"
 import { db } from "@/db/index"
 import { feeds, folders } from "@/db/schema"
 import { feedUrlKey } from "@/lib/validation"
-import { assertNoRssSourceCapacity } from "@/server/entitlements/enforce"
+import { withNoRssSourceCapacity } from "@/server/entitlements/enforce"
 
 /**
  * The one way rows get written for a new subscription.
@@ -165,13 +165,6 @@ export async function insertFeedRows(
 ): Promise<Array<InsertedFeed>> {
   if (items.length === 0) return []
 
-  if (workspaceId) {
-    await assertNoRssSourceCapacity(
-      workspaceId,
-      items.filter((item) => item.kind === "page").length
-    )
-  }
-
   const rows = items.map((item) => ({
     id: randomUUID(),
     name: item.name,
@@ -183,7 +176,7 @@ export async function insertFeedRows(
     excludeKeywords: JSON.stringify(item.excludeKeywords ?? []),
   }))
 
-  await db.insert(feeds).values(rows)
+  await withNoRssSourceCapacity(workspaceId, items.filter((item) => item.kind === "page").length, async (tx) => { await tx.insert(feeds).values(rows) })
   enqueueIngest(rows.map((r) => ({ feedId: r.id, url: r.url, kind: r.kind })))
 
   return rows.map((r) => ({ id: r.id, url: r.url, name: r.name }))

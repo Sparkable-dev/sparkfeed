@@ -6,16 +6,16 @@
  *   2. every <link rel="alternate"> the page advertises
  *   3. conventional paths, relative to both the origin and the current directory
  *
- * Candidates are validated by really parsing them with rss-parser, not by
+ * Candidates are validated by really parsing them through the shared feed adapter, not by
  * looking for "<?xml" in the body. The old substring check matched any XHTML
  * page, which produced feeds that could never parse again.
  */
-import * as cheerio from 'cheerio'
-import Parser from 'rss-parser'
-import { BlockedUrlError, looksLikeFeedContentType, safeFetchText } from './fetch'
-import { feedSignals, publishedDates } from './feed-signals'
-import type { FeedSignals } from './feed-signals'
-import { normalizeFeedUrl } from '@/lib/validation'
+import * as cheerio from "cheerio"
+import { parseSyndication } from "./parse-feed"
+import { BlockedUrlError, safeFetchText } from "./fetch"
+import { feedSignals, publishedDates } from "./feed-signals"
+import type { FeedSignals } from "./feed-signals"
+import { normalizeFeedUrl } from "@/lib/validation"
 
 export type ResolvedFeed = {
   /** The URL that actually parsed as a feed. */
@@ -46,26 +46,28 @@ const PROBE_BATCH_SIZE = 3
 /** Hard ceiling on the whole resolution, so the Check button always returns promptly. */
 const TOTAL_BUDGET_MS = 20_000
 const COMMON_PATHS = [
-  'feed',
-  'rss',
-  'rss.xml',
-  'feed.xml',
-  'atom.xml',
-  'index.xml',
-  'feed/',
+  "feed",
+  "rss",
+  "rss.xml",
+  "feed.xml",
+  "atom.xml",
+  "index.xml",
+  "feed/",
 ]
 
-const parser = new Parser()
-
-async function tryCandidate(url: string): Promise<ResolvedFeed | null> {
+async function tryCandidate(
+  url: string,
+  fetched?: Awaited<ReturnType<typeof safeFetchText>>
+): Promise<ResolvedFeed | null> {
   try {
-    const { res, text, contentType, finalUrl } = await safeFetchText(url, {
-      timeoutMs: CANDIDATE_TIMEOUT_MS,
-    })
+    const { res, text, finalUrl } =
+      fetched ??
+      (await safeFetchText(url, {
+        timeoutMs: CANDIDATE_TIMEOUT_MS,
+      }))
     if (!res.ok) return null
-    if (!looksLikeFeedContentType(contentType)) return null
 
-    const feed = await parser.parseString(text)
+    const feed = parseSyndication(text, finalUrl || url)
     const items = feed.items ?? []
     return {
       url: finalUrl || url,
@@ -90,18 +92,21 @@ async function tryCandidate(url: string): Promise<ResolvedFeed | null> {
 }
 
 /** Absolute feed URLs advertised by a page's <link rel="alternate"> tags, rss before atom, document order otherwise. Exported for tests. */
-export function linkTagCandidates(html: string, baseUrl: string): Array<string> {
+export function linkTagCandidates(
+  html: string,
+  baseUrl: string
+): Array<string> {
   const $ = cheerio.load(html)
   const rss: Array<string> = []
   const atom: Array<string> = []
 
-  $('link[type], a[type]').each((_, el) => {
-    const type = ($(el).attr('type') ?? '').toLowerCase()
-    const rel = ($(el).attr('rel') ?? '').toLowerCase()
-    const href = $(el).attr('href')
+  $("link[type], a[type]").each((_, el) => {
+    const type = ($(el).attr("type") ?? "").toLowerCase()
+    const rel = ($(el).attr("rel") ?? "").toLowerCase()
+    const href = $(el).attr("href")
     if (!href) return
     // rel is usually "alternate" but plenty of sites omit it entirely.
-    if (rel && !rel.split(/\s+/).includes('alternate')) return
+    if (rel && !rel.split(/\s+/).includes("alternate")) return
 
     let absolute: string
     try {
@@ -113,9 +118,14 @@ export function linkTagCandidates(html: string, baseUrl: string): Array<string> 
     // Match the media type, not a substring of it. `image/svg+xml` contains
     // "xml", so a loose check made every site's favicon the first candidate we
     // probed, burning budget before any real feed was tried.
-    if (type.includes('rss') || type.includes('rdf')) rss.push(absolute)
-    else if (type.includes('atom')) atom.push(absolute)
-    else if (type === 'text/xml' || type === 'application/xml') rss.push(absolute)
+    if (type.includes("rss") || type.includes("rdf")) rss.push(absolute)
+    else if (type.includes("atom")) atom.push(absolute)
+    else if (
+      type === "text/xml" ||
+      type === "application/xml" ||
+      type === "application/feed+json"
+    )
+      rss.push(absolute)
   })
 
   return [...rss, ...atom]
@@ -131,11 +141,13 @@ export function linkTagCandidates(html: string, baseUrl: string): Array<string> 
  */
 export function commonPathCandidates(base: URL): Array<string> {
   const out: Array<string> = []
-  const dir = base.pathname.endsWith('/') ? base.pathname : `${base.pathname.replace(/[^/]*$/, '')}`
+  const dir = base.pathname.endsWith("/")
+    ? base.pathname
+    : `${base.pathname.replace(/[^/]*$/, "")}`
 
   for (const path of COMMON_PATHS) {
     out.push(new URL(`/${path}`, base.origin).href)
-    if (dir && dir !== '/') out.push(new URL(`${dir}${path}`, base.origin).href)
+    if (dir && dir !== "/") out.push(new URL(`${dir}${path}`, base.origin).href)
   }
   return out
 }
@@ -143,7 +155,7 @@ export function commonPathCandidates(base: URL): Array<string> {
 function dedupe(urls: Array<string>): Array<string> {
   const seen = new Set<string>()
   return urls.filter((u) => {
-    const key = u.replace(/\/$/, '')
+    const key = u.replace(/\/$/, "")
     if (seen.has(key)) return false
     seen.add(key)
     return true
@@ -166,29 +178,39 @@ export async function resolveFeed(input: string): Promise<ResolvedFeed | null> {
   // 1. The URL itself. This is the case that used to fall through to the
   //    scraper: pasting https://example.com/rss.xml found no <link> tag,
   //    probed /feed on the origin, and gave up.
-  const direct = await tryCandidate(normalized)
-  budget--
-  if (direct) return direct
-
-  // 2. Whatever the page advertises. Re-fetch as HTML; the direct attempt
-  //    above may have bailed on content-type before reading anything useful.
-  let html = ''
+  // Reuse the first download for both feed parsing and HTML discovery.
+  let html = ""
   let htmlBase = normalized
   try {
-    const page = await safeFetchText(normalized, { timeoutMs: CANDIDATE_TIMEOUT_MS })
+    const page = await safeFetchText(normalized, {
+      timeoutMs: CANDIDATE_TIMEOUT_MS,
+    })
     budget--
+    if (
+      page.res.status === 403 ||
+      page.res.status === 401 ||
+      page.res.status === 429
+    )
+      throw new Error(`Feed request returned ${page.res.status}`)
     if (page.res.ok) {
+      const direct = await tryCandidate(normalized, page)
+      if (direct) return direct
       html = page.text
       htmlBase = page.finalUrl || normalized
     }
   } catch (err) {
-    if (err instanceof BlockedUrlError) throw err
+    if (
+      err instanceof BlockedUrlError ||
+      (err instanceof Error &&
+        /Feed request returned|Timeout|fetch failed/.test(err.message))
+    )
+      throw err
   }
 
   // Body links matter as much as <link> tags: openai.com advertises no feed in
   // its head but links /news/rss.xml in the page, and without this the fast
   // pass returns nothing for a bare openai.com.
-  const { feedLinksInHtml } = await import('./discover')
+  const { feedLinksInHtml } = await import("./discover")
 
   const candidates = dedupe([
     ...(html ? linkTagCandidates(html, htmlBase) : []),
@@ -207,7 +229,9 @@ export async function resolveFeed(input: string): Promise<ResolvedFeed | null> {
 
     // A derived candidate that redirects somewhere blocked just loses its turn;
     // the URL the user actually typed was already checked above.
-    const settled = await Promise.all(batch.map((c) => tryCandidate(c).catch(() => null)))
+    const settled = await Promise.all(
+      batch.map((c) => tryCandidate(c).catch(() => null))
+    )
     const hit = settled.find((r) => r !== null)
     if (hit) return hit
   }

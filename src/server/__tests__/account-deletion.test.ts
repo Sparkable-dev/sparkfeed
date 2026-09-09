@@ -23,9 +23,9 @@ beforeEach(async () => {
     `CREATE TABLE member (id TEXT PRIMARY KEY, organization_id TEXT NOT NULL, user_id TEXT NOT NULL, role TEXT NOT NULL, created_at TEXT)`,
     `CREATE TABLE folders (id TEXT PRIMARY KEY, name TEXT NOT NULL, workspace_id TEXT, parent_id TEXT, position INTEGER, created_at TEXT)`,
     `CREATE TABLE folder_shares (folder_id TEXT PRIMARY KEY, is_shared INTEGER NOT NULL, password TEXT, created_at TEXT)`,
-    `CREATE TABLE feeds (id TEXT PRIMARY KEY, name TEXT NOT NULL, url TEXT NOT NULL, folder_id TEXT, workspace_id TEXT, kind TEXT NOT NULL, include_keywords TEXT, exclude_keywords TEXT, position INTEGER, created_at TEXT, last_fetched_at TEXT, last_error TEXT, last_error_at TEXT, entitlement_paused_at TEXT)`,
+    `CREATE TABLE feeds (http_etag TEXT, http_last_modified TEXT, id TEXT PRIMARY KEY, name TEXT NOT NULL, url TEXT NOT NULL, folder_id TEXT, workspace_id TEXT, kind TEXT NOT NULL, include_keywords TEXT, exclude_keywords TEXT, position INTEGER, created_at TEXT, last_fetched_at TEXT, last_error TEXT, last_error_at TEXT, entitlement_paused_at TEXT)`,
     `CREATE TABLE feed_shares (feed_id TEXT PRIMARY KEY, is_shared INTEGER NOT NULL, password TEXT, created_at TEXT)`,
-    `CREATE TABLE articles (id TEXT PRIMARY KEY, feed_id TEXT, title TEXT NOT NULL, description TEXT, content TEXT, content_fetched_at TEXT, link TEXT NOT NULL, image TEXT, published_at TEXT, is_used INTEGER, visit_count INTEGER, is_bookmarked INTEGER, is_read_later INTEGER, is_favorite INTEGER, created_at TEXT)`,
+    `CREATE TABLE articles (source_id TEXT, source_updated_at TEXT, content_source TEXT, content_error_at TEXT, id TEXT PRIMARY KEY, feed_id TEXT, title TEXT NOT NULL, description TEXT, content TEXT, content_fetched_at TEXT, link TEXT NOT NULL, image TEXT, published_at TEXT, is_used INTEGER, visit_count INTEGER, is_bookmarked INTEGER, is_read_later INTEGER, is_favorite INTEGER, created_at TEXT)`,
     `CREATE TABLE invites (id TEXT PRIMARY KEY, email TEXT NOT NULL, workspace_id TEXT, role TEXT NOT NULL, token TEXT NOT NULL, expires_at TEXT NOT NULL, used_at TEXT)`,
     `CREATE TABLE api_keys (id TEXT PRIMARY KEY, workspace_id TEXT NOT NULL, created_by_user_id TEXT, name TEXT NOT NULL, hash TEXT NOT NULL, prefix TEXT NOT NULL, scopes TEXT NOT NULL, last_used_at TEXT, expires_at TEXT, revoked_at TEXT, created_at TEXT)`,
     `CREATE TABLE scraped_feeds (id TEXT PRIMARY KEY, workspace_id TEXT, folder_id TEXT, site_url TEXT NOT NULL, title TEXT, last_hash TEXT, last_fetched_at TEXT, last_error TEXT, last_error_at TEXT, created_at TEXT)`,
@@ -85,7 +85,7 @@ describe("account deletion", () => {
       `INSERT INTO folder_shares VALUES ('folder-personal', 1, NULL, NULL), ('folder-team', 1, NULL, NULL)`
     )
     await raw.execute(
-      `INSERT INTO feeds VALUES ('feed-personal', 'Personal feed', 'https://personal.test', 'folder-personal', 'user-1', 'rss', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL), ('feed-team', 'Team feed', 'https://team.test', 'folder-team', 'org-1', 'rss', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL)`
+      `INSERT INTO feeds (id, name, url, folder_id, workspace_id, kind) VALUES ('feed-personal', 'Personal feed', 'https://personal.test', 'folder-personal', 'user-1', 'rss'), ('feed-team', 'Team feed', 'https://team.test', 'folder-team', 'org-1', 'rss')`
     )
     await raw.execute(
       `INSERT INTO feed_shares VALUES ('feed-personal', 1, NULL, NULL), ('feed-team', 1, NULL, NULL)`

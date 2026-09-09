@@ -85,7 +85,7 @@ export interface FeedSignals {
   codes: Array<FeedSignalCode>
 }
 
-/** The shape this module needs out of rss-parser, and no more. */
+/** The shape this module needs out of the shared feed adapter, and no more. */
 export interface ParsedFeedLike {
   title?: string | null
   items?: Array<Record<string, unknown>>
@@ -170,7 +170,7 @@ export function publishedDates(items: Array<Record<string, unknown>>): Array<str
 /**
  * Whether items carry whole articles or teasers.
  *
- * All three fields are already in rss-parser's output, so this costs a
+ * All three fields are already in the feed adapter's output, so this costs a
  * `.length` per item on data we parsed and discarded. It matters because it
  * decides what the reader actually gets: a summary-only feed means every
  * article is a click out to the site.

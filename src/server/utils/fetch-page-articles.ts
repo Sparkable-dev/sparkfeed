@@ -1,10 +1,14 @@
 import { randomUUID } from "node:crypto"
-import { and, eq, inArray } from "drizzle-orm"
+import { and, eq, inArray, isNull } from "drizzle-orm"
 import { safeFetchText } from "./fetch"
 import { extractPageLinks } from "./page-feed"
 import { extractReadable } from "./extract"
 import { mapWithConcurrency } from "./concurrency"
-import { recordFeedHealth, selectFreshItems } from "./fetch-articles"
+import {
+  recordFeedHealth,
+  safeParseDate,
+  selectFreshItems,
+} from "./fetch-articles"
 import type { IngestResult } from "./fetch-articles"
 import type { PageLink } from "./page-feed"
 import { db } from "@/db/index"
@@ -66,14 +70,14 @@ async function readArticle(item: PageLink): Promise<FetchedArticle> {
   }
 
   try {
-    const { res, text } = await safeFetchText(item.url, {
+    const { res, text, finalUrl } = await safeFetchText(item.url, {
       timeoutMs: ARTICLE_TIMEOUT_MS,
       maxBytes: ARTICLE_MAX_BYTES,
     })
     if (!res.ok) return fallback
 
-    const readable = extractReadable(text, item.url)
-    if (!readable) return fallback
+    const readable = extractReadable(text, finalUrl || item.url)
+    if (!readable || readable.length < 200) return fallback
 
     return {
       link: item.url,
@@ -103,48 +107,131 @@ async function readArticle(item: PageLink): Promise<FetchedArticle> {
  * silently succeeds with nothing. Reporting it as an error is what makes the
  * source show as broken on /sources instead of quietly going dead.
  */
-export async function fetchPageArticles(feedId: string, pageUrl: string): Promise<IngestResult> {
-  const { res, text } = await safeFetchText(pageUrl, { timeoutMs: LISTING_TIMEOUT_MS })
+export async function fetchPageArticles(
+  feedId: string,
+  pageUrl: string
+): Promise<IngestResult> {
+  const { res, text, finalUrl } = await safeFetchText(pageUrl, {
+    timeoutMs: LISTING_TIMEOUT_MS,
+  })
   if (!res.ok) throw new Error(`That page returned ${res.status}.`)
 
-  const found = extractPageLinks(text, pageUrl)
+  const found = extractPageLinks(text, finalUrl || pageUrl)
   if (found.length === 0) {
     throw new Error("No posts found on that page. Its layout may have changed.")
   }
 
   const links = [...new Set(found.map((item) => item.url))]
   const existingRows = await db
-    .select({ link: articles.link })
+    .select({
+      id: articles.id,
+      link: articles.link,
+      content: articles.content,
+      errorAt: articles.contentErrorAt,
+      publishedAt: articles.publishedAt,
+    })
     .from(articles)
     .where(and(eq(articles.feedId, feedId), inArray(articles.link, links)))
   const existing = new Set(existingRows.map((r) => r.link))
+  for (const row of existingRows) {
+    const publishedAt = safeParseDate(
+      found.find((item) => item.url === row.link)?.publishedAt
+    )
+    if (!row.publishedAt && publishedAt)
+      await db
+        .update(articles)
+        .set({ publishedAt })
+        .where(
+          and(
+            eq(articles.id, row.id),
+            eq(articles.feedId, feedId),
+            isNull(articles.publishedAt)
+          )
+        )
+  }
 
   const fresh = selectFreshItems(
     found.map((item) => ({ ...item, link: item.url })),
-    existing,
+    existing
   )
   const skipped = found.length - fresh.length
-  if (fresh.length === 0) return { inserted: 0, skipped, failed: 0 }
 
   const batch = fresh.slice(0, MAX_NEW_PER_RUN)
-  const fetched = await mapWithConcurrency(batch, ARTICLE_CONCURRENCY, readArticle)
+  const fetched = await mapWithConcurrency(
+    batch,
+    ARTICLE_CONCURRENCY,
+    readArticle
+  )
+  const attempted = new Set(batch.map((item) => item.link))
+  // Persist every discovered link now; a busy listing can rotate before the next refresh.
+  // Bodies beyond the per-run budget are fetched when opened, or on a later refresh.
+  fetched.push(
+    ...fresh.slice(MAX_NEW_PER_RUN).map((item) => ({
+      link: item.link,
+      title: item.title,
+      description: null,
+      content: null,
+      image: null,
+      publishedAt: item.publishedAt,
+    }))
+  )
+
+  // Title-only rows must not permanently suppress a later successful extraction.
+  const retry = existingRows
+    .filter(
+      (r) =>
+        !r.content &&
+        (!r.errorAt || Date.now() - Date.parse(r.errorAt) > 60 * 60_000)
+    )
+    .slice(0, Math.max(0, MAX_NEW_PER_RUN - batch.length))
+  await mapWithConcurrency(retry, ARTICLE_CONCURRENCY, async (row) => {
+    const item = found.find((i) => i.url === row.link)
+    if (!item) return
+    const article = await readArticle(item)
+    await db
+      .update(articles)
+      .set({
+        ...(article.content
+          ? {
+              content: article.content,
+              contentFetchedAt: new Date().toISOString(),
+              contentSource: "extracted",
+              image: article.image,
+              description: article.description,
+            }
+          : {}),
+        contentErrorAt: article.content ? null : new Date().toISOString(),
+      })
+      .where(and(eq(articles.id, row.id), eq(articles.feedId, feedId)))
+  })
 
   let inserted = 0
   let failed = 0
-  for (const article of fetched) {
+  // Insert oldest-listed first so undated items retain the publisher's order when sorted by arrival.
+  for (const article of [...fetched].reverse()) {
     try {
-      await db.insert(articles).values({
-        id: randomUUID(),
-        feedId,
-        title: article.title.slice(0, 500) || "Untitled",
-        description: article.description,
-        content: article.content,
-        contentFetchedAt: article.content ? new Date().toISOString() : null,
-        link: article.link,
-        image: article.image,
-        publishedAt: article.publishedAt,
-      })
-      inserted++
+      const saved = await db
+        .insert(articles)
+        .values({
+          id: randomUUID(),
+          feedId,
+          title: article.title.slice(0, 500) || "Untitled",
+          description: article.description,
+          content: article.content,
+          contentFetchedAt: article.content ? new Date().toISOString() : null,
+          contentSource: article.content ? "extracted" : null,
+          contentErrorAt:
+            article.content || !attempted.has(article.link)
+              ? null
+              : new Date().toISOString(),
+          sourceId: `url:${article.link}`,
+          link: article.link,
+          image: article.image,
+          publishedAt: safeParseDate(article.publishedAt),
+        })
+        .onConflictDoNothing()
+        .returning({ id: articles.id })
+      inserted += saved.length
     } catch (err) {
       // One bad row must not cost the rest of the page.
       failed++
@@ -152,9 +239,19 @@ export async function fetchPageArticles(feedId: string, pageUrl: string): Promis
     }
   }
 
-  // Anything past the cap is not lost, only deferred — it is still on the page
-  // next time, and will be fresh then too.
-  return { inserted, skipped: skipped + (fresh.length - batch.length), failed }
+  return { inserted, skipped, failed }
+}
+
+/** A small preview uses the same extraction path as an imported website. */
+export async function fetchPagePreview(url: string) {
+  const { res, text, finalUrl } = await safeFetchText(url, {
+    timeoutMs: LISTING_TIMEOUT_MS,
+  })
+  if (!res.ok) throw new Error(`That page returned ${res.status}.`)
+  const found = extractPageLinks(text, finalUrl || url)
+  if (!found.length)
+    throw new Error("No posts found on that page. Its layout may have changed.")
+  return mapWithConcurrency(found.slice(0, 4), 2, readArticle)
 }
 
 /**
@@ -167,7 +264,7 @@ export async function fetchPageArticles(feedId: string, pageUrl: string): Promis
 export async function ingestSource(
   feedId: string,
   url: string,
-  kind: string | null,
+  kind: string | null
 ): Promise<IngestResult> {
   if (kind !== "page") {
     const { fetchAndInsertArticles } = await import("./fetch-articles")
@@ -175,7 +272,8 @@ export async function ingestSource(
   }
 
   const { canIngestFeed } = await import("@/server/entitlements/ingestion")
-  if (!(await canIngestFeed(feedId))) return { inserted: 0, skipped: 1, failed: 0 }
+  if (!(await canIngestFeed(feedId)))
+    return { inserted: 0, skipped: 1, failed: 0 }
 
   try {
     const result = await fetchPageArticles(feedId, url)

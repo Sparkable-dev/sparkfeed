@@ -20,7 +20,7 @@ const cards = (slugs: Array<string>, section = "blog") =>
   slugs
     .map(
       (slug) =>
-        `<div class="card"><a href="/${section}/${slug}"><h3>${slug.replace(/-/g, " ")}</h3></a></div>`,
+        `<div class="card"><a href="/${section}/${slug}"><h3>${slug.replace(/-/g, " ")}</h3></a></div>`
     )
     .join("")
 
@@ -36,7 +36,7 @@ describe("finding the post list", () => {
   it("reads a page of cards", () => {
     const links = extractPageLinks(
       page(cards(["first-post-here", "second-post-here", "third-post-here"])),
-      "https://example.com/blog",
+      "https://example.com/blog"
     )
     expect(links.map((l) => l.title)).toEqual([
       "first post here",
@@ -62,8 +62,10 @@ describe("finding the post list", () => {
       .join("")}</nav></header>`
 
     const links = extractPageLinks(
-      page(nav + cards(["first-post-here", "second-post-here", "third-post-here"])),
-      "https://example.com/blog",
+      page(
+        nav + cards(["first-post-here", "second-post-here", "third-post-here"])
+      ),
+      "https://example.com/blog"
     )
     expect(links).toHaveLength(3)
     expect(links.every((l) => l.url.includes("/blog/"))).toBe(true)
@@ -71,13 +73,21 @@ describe("finding the post list", () => {
 
   it("prefers the section the page itself is in", () => {
     // A sidebar of promos can outnumber the posts, and does.
-    const promos = ["one-promo-here", "two-promo-here", "three-promo-here", "four-promo-here"]
+    const promos = [
+      "one-promo-here",
+      "two-promo-here",
+      "three-promo-here",
+      "four-promo-here",
+    ]
       .map((s) => `<div><a href="/solutions/${s}"><h4>${s}</h4></a></div>`)
       .join("")
 
     const links = extractPageLinks(
-      page(cards(["first-post-here", "second-post-here", "third-post-here"]) + promos),
-      "https://example.com/blog",
+      page(
+        cards(["first-post-here", "second-post-here", "third-post-here"]) +
+          promos
+      ),
+      "https://example.com/blog"
     )
     expect(links.every((l) => l.url.includes("/blog/"))).toBe(true)
   })
@@ -86,8 +96,13 @@ describe("finding the post list", () => {
     // openai.com lists its posts at /index/<slug> from a page at /news/, so
     // matching the page's path cannot be a requirement.
     const links = extractPageLinks(
-      page(cards(["first-post-here", "second-post-here", "third-post-here"], "index")),
-      "https://example.com/news/",
+      page(
+        cards(
+          ["first-post-here", "second-post-here", "third-post-here"],
+          "index"
+        )
+      ),
+      "https://example.com/news/"
     )
     expect(links).toHaveLength(3)
     expect(links[0].url).toContain("/index/")
@@ -97,12 +112,18 @@ describe("finding the post list", () => {
     const tags = ["machine-learning", "web-development", "cloud-computing"]
       .map((s) => `<div><a href="/tag/${s}"><h4>${s}</h4></a></div>`)
       .join("")
-    expect(extractPageLinks(page(tags), "https://example.com/blog")).toHaveLength(0)
+    expect(
+      extractPageLinks(page(tags), "https://example.com/blog")
+    ).toHaveLength(0)
   })
 
   it("does not mistake a pagination strip for posts", () => {
-    const pages = [2, 3, 4, 5].map((n) => `<a href="/blog/${n}">${n}</a>`).join("")
-    expect(extractPageLinks(page(pages), "https://example.com/blog")).toHaveLength(0)
+    const pages = [2, 3, 4, 5]
+      .map((n) => `<a href="/blog/${n}">${n}</a>`)
+      .join("")
+    expect(
+      extractPageLinks(page(pages), "https://example.com/blog")
+    ).toHaveLength(0)
   })
 })
 
@@ -119,13 +140,20 @@ describe("what a page is allowed to become", () => {
       .map((s) => `<div><a href="/services/${s}"><h3>${s}</h3></a></div>`)
       .join("")
 
-    expect(extractPageLinks(page(products), "https://example.com/")).toHaveLength(0)
+    expect(
+      extractPageLinks(page(products), "https://example.com/")
+    ).toHaveLength(0)
   })
 
   it("accepts a front page that lists actual writing", () => {
     const links = extractPageLinks(
-      page(cards(["first-post-here", "second-post-here", "third-post-here"], "news")),
-      "https://example.com/",
+      page(
+        cards(
+          ["first-post-here", "second-post-here", "third-post-here"],
+          "news"
+        )
+      ),
+      "https://example.com/"
     )
     expect(links).toHaveLength(3)
   })
@@ -134,14 +162,17 @@ describe("what a page is allowed to become", () => {
     expect(
       looksLikeListing(
         page("<article><h1>One post</h1><p>Some words.</p></article>"),
-        "https://example.com/blog/one-post",
-      ),
+        "https://example.com/blog/one-post"
+      )
     ).toBe(false)
   })
 
   it("needs three posts before it is a listing", () => {
     expect(
-      looksLikeListing(page(cards(["one-post-here", "two-post-here"])), "https://example.com/blog"),
+      looksLikeListing(
+        page(cards(["one-post-here", "two-post-here"])),
+        "https://example.com/blog"
+      )
     ).toBe(false)
   })
 })
@@ -154,7 +185,7 @@ describe("titles", () => {
       `<div><a href="/blog/top-10-payment-gateways">
          <span>Fintech</span><span>Emerline Team</span><span>4 hours ago</span>
          <h3>Top 10 Payment Gateways for Businesses</h3>
-       </a></div>` + cards(["second-post-here", "third-post-here"]),
+       </a></div>` + cards(["second-post-here", "third-post-here"])
     )
     const [first] = extractPageLinks(html, "https://example.com/blog")
     expect(first.title).toBe("Top 10 Payment Gateways for Businesses")
@@ -172,9 +203,11 @@ describe("titles", () => {
     const html = page(
       tile("testing-ads-in-chatgpt", "Testing ads in ChatGPT") +
         tile("premium-seats-coming", "Premium seats are coming to Business") +
-        tile("models-on-aws", "Daybreak models are now available on AWS"),
+        tile("models-on-aws", "Daybreak models are now available on AWS")
     )
-    expect(extractPageLinks(html, "https://example.com/blog").map((l) => l.title)).toEqual([
+    expect(
+      extractPageLinks(html, "https://example.com/blog").map((l) => l.title)
+    ).toEqual([
       "Testing ads in ChatGPT",
       "Premium seats are coming to Business",
       "Daybreak models are now available on AWS",
@@ -188,9 +221,9 @@ describe("titles", () => {
       ["first-post-here", "second-post-here", "third-post-here"]
         .map(
           (s) =>
-            `<div><a href="/blog/${s}"><img alt=""></a><a href="/blog/${s}">A real headline for ${s}</a></div>`,
+            `<div><a href="/blog/${s}"><img alt=""></a><a href="/blog/${s}">A real headline for ${s}</a></div>`
         )
-        .join(""),
+        .join("")
     )
     const links = extractPageLinks(html, "https://example.com/blog")
     expect(links).toHaveLength(3)
@@ -201,7 +234,7 @@ describe("titles", () => {
     const html = page(
       ["top-10-payment-gateways", "second-post-here", "third-post-here"]
         .map((s) => `<div><a href="/blog/${s}">Read more</a></div>`)
-        .join(""),
+        .join("")
     )
     const [first] = extractPageLinks(html, "https://example.com/blog")
     expect(first.title).toBe("Top 10 payment gateways")
@@ -213,10 +246,10 @@ describe("titles", () => {
       `<div><a href="/blog/first-post-here"><h3>
           A headline
           split over lines
-       </h3></a></div>` + cards(["second-post-here", "third-post-here"]),
+       </h3></a></div>` + cards(["second-post-here", "third-post-here"])
     )
     expect(extractPageLinks(html, "https://example.com/blog")[0].title).toBe(
-      "A headline split over lines",
+      "A headline split over lines"
     )
   })
 })
@@ -234,14 +267,25 @@ describe("what the site declares about itself", () => {
           datePublished: "2026-05-11T00:00:00Z",
         },
         { "@type": "BlogPosting", url: "/blog/two", headline: "Declared two" },
-        { "@type": "BlogPosting", url: "/blog/three", headline: "Declared three" },
+        {
+          "@type": "BlogPosting",
+          url: "/blog/three",
+          headline: "Declared three",
+        },
       ],
     })
     const links = extractPageLinks(
-      page(cards(["ignored-post-here"]), `<script type="application/ld+json">${ld}</script>`),
-      "https://example.com/blog",
+      page(
+        cards(["ignored-post-here"]),
+        `<script type="application/ld+json">${ld}</script>`
+      ),
+      "https://example.com/blog"
     )
-    expect(links.map((l) => l.title)).toEqual(["Declared one", "Declared two", "Declared three"])
+    expect(links.map((l) => l.title)).toEqual([
+      "Declared one",
+      "Declared two",
+      "Declared three",
+    ])
     expect(links[0].publishedAt).toBe("2026-05-11T00:00:00Z")
     // Relative URLs in JSON-LD resolve against the page.
     expect(links[1].url).toBe("https://example.com/blog/two")
@@ -251,14 +295,29 @@ describe("what the site declares about itself", () => {
     // stripe.com/blog lists a Person node per author. Accepting "anything with
     // a url and a name" put "Christian DiCarlo" in the feed beside the posts.
     const ld = JSON.stringify([
-      { "@type": "Person", url: "https://example.com/authors/ada", name: "Ada Lovelace" },
-      { "@type": "Person", url: "https://example.com/authors/alan", name: "Alan Turing" },
-      { "@type": "Organization", url: "https://example.com", name: "Example Inc" },
+      {
+        "@type": "Person",
+        url: "https://example.com/authors/ada",
+        name: "Ada Lovelace",
+      },
+      {
+        "@type": "Person",
+        url: "https://example.com/authors/alan",
+        name: "Alan Turing",
+      },
+      {
+        "@type": "Organization",
+        url: "https://example.com",
+        name: "Example Inc",
+      },
       { "@type": "BlogPosting", url: "/blog/one", headline: "A real post" },
     ])
     const links = extractPageLinks(
-      page(cards(["first-post-here", "second-post-here", "third-post-here"]), `<script type="application/ld+json">${ld}</script>`),
-      "https://example.com/blog",
+      page(
+        cards(["first-post-here", "second-post-here", "third-post-here"]),
+        `<script type="application/ld+json">${ld}</script>`
+      ),
+      "https://example.com/blog"
     )
     expect(links.map((l) => l.title)).not.toContain("Ada Lovelace")
   })
@@ -267,9 +326,9 @@ describe("what the site declares about itself", () => {
     const links = extractPageLinks(
       page(
         cards(["first-post-here", "second-post-here", "third-post-here"]),
-        `<script type="application/ld+json">{ not json </script>`,
+        `<script type="application/ld+json">{ not json </script>`
       ),
-      "https://example.com/blog",
+      "https://example.com/blog"
     )
     expect(links).toHaveLength(3)
   })
@@ -281,47 +340,139 @@ describe("dates on the listing", () => {
       ["first-post-here", "second-post-here", "third-post-here"]
         .map(
           (s) =>
-            `<div><time datetime="2026-08-11T09:00:00Z">3 days ago</time><a href="/blog/${s}"><h3>${s}</h3></a></div>`,
+            `<div><time datetime="2026-08-11T09:00:00Z">3 days ago</time><a href="/blog/${s}"><h3>${s}</h3></a></div>`
         )
-        .join(""),
+        .join("")
     )
-    expect(extractPageLinks(html, "https://example.com/blog")[0].publishedAt).toBe(
-      "2026-08-11T09:00:00Z",
-    )
+    expect(
+      extractPageLinks(html, "https://example.com/blog")[0].publishedAt
+    ).toBe("2026-08-11T09:00:00Z")
   })
 
   it("reports no date rather than guessing at '3 days ago'", () => {
     const html = page(
       ["first-post-here", "second-post-here", "third-post-here"]
-        .map((s) => `<div><span>3 days ago</span><a href="/blog/${s}"><h3>${s}</h3></a></div>`)
-        .join(""),
+        .map(
+          (s) =>
+            `<div><span>3 days ago</span><a href="/blog/${s}"><h3>${s}</h3></a></div>`
+        )
+        .join("")
     )
-    expect(extractPageLinks(html, "https://example.com/blog")[0].publishedAt).toBeNull()
+    expect(
+      extractPageLinks(html, "https://example.com/blog")[0].publishedAt
+    ).toBeNull()
   })
 })
 
 describe("addresses", () => {
+  it("reads explicit date text from a card without inventing relative dates", () => {
+    const html = page(
+      ["first-post-here", "second-post-here", "third-post-here"]
+        .map(
+          (slug) =>
+            `<a href="/blog/${slug}"><div>${slug}</div><span>September 9, 2026</span></a>`
+        )
+        .join("")
+    )
+    expect(
+      extractPageLinks(html, "https://example.com/blog").every(
+        (item) => item.publishedAt === "2026-09-09T00:00:00.000Z"
+      )
+    ).toBe(true)
+  })
+  it("keeps meaningful query parameters that identify different articles", () => {
+    const html = page(
+      cards(["first-post-here", "second-post-here", "third-post-here"]) +
+        '<a href="/blog/first-post-here?article=2">Another version</a>'
+    )
+    expect(
+      extractPageLinks(html, "https://example.com/blog").some((l) =>
+        l.url.endsWith("?article=2")
+      )
+    ).toBe(true)
+  })
   it("keeps same-origin links only", () => {
     const html = page(
       cards(["first-post-here", "second-post-here", "third-post-here"]) +
-        `<div><a href="https://other.example/blog/elsewhere-post"><h3>Elsewhere</h3></a></div>`,
+        `<div><a href="https://other.example/blog/elsewhere-post"><h3>Elsewhere</h3></a></div>`
     )
     const links = extractPageLinks(html, "https://example.com/blog")
-    expect(links.every((l) => l.url.startsWith("https://example.com/"))).toBe(true)
+    expect(links.every((l) => l.url.startsWith("https://example.com/"))).toBe(
+      true
+    )
   })
 
   it("collapses one post reached with different query strings", () => {
     const html = page(
       `<div><a href="/blog/first-post-here?ref=nav"><h3>First</h3></a></div>
        <div><a href="/blog/first-post-here"><h3>First</h3></a></div>` +
-        cards(["second-post-here", "third-post-here"]),
+        cards(["second-post-here", "third-post-here"])
     )
     const links = extractPageLinks(html, "https://example.com/blog")
-    expect(links.filter((l) => l.url.includes("first-post-here"))).toHaveLength(1)
+    expect(links.filter((l) => l.url.includes("first-post-here"))).toHaveLength(
+      1
+    )
   })
 
   it("survives markup and addresses it cannot parse", () => {
     expect(extractPageLinks("<html", "not a url")).toEqual([])
-    expect(extractPageLinks(page(`<a href="::::">x</a>`), "https://example.com/blog")).toEqual([])
+    expect(
+      extractPageLinks(page(`<a href="::::">x</a>`), "https://example.com/blog")
+    ).toEqual([])
+  })
+})
+
+describe("structured article lists", () => {
+  const structured = (value: unknown) =>
+    page(`<script type="application/ld+json">${JSON.stringify(value)}</script>`)
+  it("accepts array-typed articles and nested ItemList headline fields", () => {
+    const html = structured({
+      "@type": "ItemList",
+      itemListElement: [1, 2, 3].map((position) => ({
+        "@type": "ListItem",
+        position,
+        item: {
+          "@type": ["BlogPosting", "Article"],
+          "@id": `https://example.com/blog/article-${position}`,
+          headline: `Article ${position}`,
+          datePublished: "2026-09-01",
+        },
+      })),
+    })
+    expect(extractPageLinks(html, "https://example.com/blog")).toHaveLength(3)
+  })
+  it("accepts positioned bare list entries, but not breadcrumbs", () => {
+    const entries = [1, 2, 3].map((position) => ({
+      "@type": "ListItem",
+      position,
+      url: `https://example.com/blog/article-${position}`,
+      name: `Article ${position}`,
+    }))
+    expect(
+      extractPageLinks(
+        structured({ "@type": "ItemList", itemListElement: entries }),
+        "https://example.com/blog"
+      )
+    ).toHaveLength(3)
+    expect(
+      extractPageLinks(
+        structured({ "@type": "BreadcrumbList", itemListElement: entries }),
+        "https://example.com/blog"
+      )
+    ).toEqual([])
+  })
+  it("does not admit foreign or executable URLs from JSON-LD", () => {
+    const html = structured(
+      [
+        "javascript:alert(1)",
+        "https://elsewhere.test/story",
+        "https://example.com/tag/testing",
+      ].map((url) => ({
+        "@type": "Article",
+        url,
+        headline: "Not a valid article",
+      }))
+    )
+    expect(extractPageLinks(html, "https://example.com/blog")).toEqual([])
   })
 })

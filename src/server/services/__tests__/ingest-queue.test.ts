@@ -13,7 +13,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 
 /*
   `ingestSource` is the seam, not `ingestSource`. The queue dispatches
-  on the source's kind now — a feed is read with rss-parser, a watched page by
+  on the source's kind now — a feed is read with FeedSmith, a watched page by
   parsing its listing — and what is being tested here is the draining, which is
   the same either way.
 */

@@ -31,7 +31,17 @@ export function sanitizeArticleHtml(html: string, baseUrl?: string): string {
     allowedAttributes: {
       ...sanitizeHtml.defaults.allowedAttributes,
       a: ["href", "name", "target", "rel"],
-      img: ["src", "srcset", "sizes", "alt", "title", "width", "height", "loading"],
+      img: [
+        "src",
+        "srcset",
+        "sizes",
+        "alt",
+        "title",
+        "width",
+        "height",
+        "loading",
+        "referrerpolicy",
+      ],
       source: ["src", "srcset", "type", "media", "sizes"],
       "*": ["id"],
     },
@@ -40,7 +50,9 @@ export function sanitizeArticleHtml(html: string, baseUrl?: string): string {
       frame.tag === "script" || frame.tag === "style" || frame.tag === "iframe",
     transformTags: {
       a: (tagName, attribs) => {
-        const href = attribs.href ? resolveUrl(attribs.href, baseUrl) : undefined
+        const href = attribs.href
+          ? resolveUrl(attribs.href, baseUrl)
+          : undefined
         return {
           tagName,
           attribs: {
@@ -59,11 +71,43 @@ export function sanitizeArticleHtml(html: string, baseUrl?: string): string {
             ...attribs,
             ...(src ? { src } : {}),
             loading: "lazy",
+            ...(attribs.srcset
+              ? { srcset: resolveSrcset(attribs.srcset, baseUrl) }
+              : {}),
+            referrerpolicy: "no-referrer",
           },
         }
       },
+      source: (tagName, attribs) => ({
+        tagName,
+        attribs: {
+          ...attribs,
+          ...(attribs.src ? { src: resolveUrl(attribs.src, baseUrl) } : {}),
+          ...(attribs.srcset
+            ? { srcset: resolveSrcset(attribs.srcset, baseUrl) }
+            : {}),
+        },
+      }),
     },
   })
+}
+
+function resolveSrcset(value: string | undefined, base?: string): string {
+  return (value ?? "")
+    .split(",")
+    .flatMap((candidate) => {
+      const [url, descriptor, ...extra] = candidate.trim().split(/\s+/)
+      if (
+        !url ||
+        extra.length ||
+        (descriptor && !/^\d+(?:\.\d+)?[wx]$/.test(descriptor))
+      )
+        return []
+      const absolute = resolveUrl(url, base)
+      if (!/^https?:\/\//i.test(absolute)) return []
+      return [`${absolute}${descriptor ? ` ${descriptor}` : ""}`]
+    })
+    .join(", ")
 }
 
 export interface ReadableResult {
@@ -93,8 +137,15 @@ export interface ReadableResult {
 
 /** The minimal DOM surface these readers need, so tests can pass a stub. */
 interface QueryableDocument {
-  querySelector: (selector: string) => { getAttribute: (name: string) => string | null; textContent?: string | null } | null
-  querySelectorAll: (selector: string) => Iterable<{ textContent?: string | null }>
+  querySelector: (
+    selector: string
+  ) => {
+    getAttribute: (name: string) => string | null
+    textContent?: string | null
+  } | null
+  querySelectorAll: (
+    selector: string
+  ) => Iterable<{ textContent?: string | null }>
 }
 
 /** A date is only believable inside this window. Outside it, it is a parse artefact. */
@@ -102,7 +153,10 @@ const EARLIEST_PLAUSIBLE = Date.parse("1995-01-01T00:00:00Z")
 /** Tomorrow, roughly. Scheduled posts exist; posts from 2087 do not. */
 const FUTURE_SLACK_MS = 2 * 86_400_000
 
-function plausibleDate(raw: string | null | undefined, now = Date.now()): string | null {
+function plausibleDate(
+  raw: string | null | undefined,
+  now = Date.now()
+): string | null {
   if (!raw) return null
   const at = Date.parse(raw.trim())
   if (!Number.isFinite(at)) return null
@@ -121,7 +175,10 @@ function plausibleDate(raw: string | null | undefined, now = Date.now()): string
  * edited last week is not a post published last week, and sorting by it puts
  * old articles at the top of the feed.
  */
-export function extractPublishedAt(document: QueryableDocument, now = Date.now()): string | null {
+export function extractPublishedAt(
+  document: QueryableDocument,
+  now = Date.now()
+): string | null {
   const meta = [
     'meta[property="article:published_time"]',
     'meta[name="article:published_time"]',
@@ -132,14 +189,19 @@ export function extractPublishedAt(document: QueryableDocument, now = Date.now()
     'meta[itemprop="datePublished"]',
   ]
   for (const selector of meta) {
-    const found = plausibleDate(document.querySelector(selector)?.getAttribute("content"), now)
+    const found = plausibleDate(
+      document.querySelector(selector)?.getAttribute("content"),
+      now
+    )
     if (found) return found
   }
 
   // JSON-LD. Sites bury the article node at different depths — inside @graph,
   // inside an array, inside an ItemList — so the whole blob is walked rather
   // than any one shape being assumed.
-  for (const node of document.querySelectorAll('script[type="application/ld+json"]')) {
+  for (const node of document.querySelectorAll(
+    'script[type="application/ld+json"]'
+  )) {
     const found = firstDatePublished(node.textContent ?? "", now)
     if (found) return found
   }
@@ -181,7 +243,11 @@ function firstDatePublished(json: string, now: number): string | null {
 
 /** The first social image a page advertises, absolute. */
 function readSocialImage(
-  document: { querySelector: (selector: string) => { getAttribute: (name: string) => string | null } | null },
+  document: {
+    querySelector: (
+      selector: string
+    ) => { getAttribute: (name: string) => string | null } | null
+  },
   baseUrl: string
 ): string | null {
   const selectors = [
@@ -192,9 +258,24 @@ function readSocialImage(
   ]
   for (const selector of selectors) {
     const content = document.querySelector(selector)?.getAttribute("content")
-    if (content?.trim()) return resolveUrl(content.trim(), baseUrl)
+    if (content?.trim()) {
+      try {
+        const url = new URL(content.trim(), baseUrl)
+        if (/^https?:$/.test(url.protocol) && !url.username && !url.password)
+          return url.href
+      } catch {
+        /* Try the next metadata field. */
+      }
+    }
   }
   return null
+}
+
+export function extractSocialImage(
+  html: string,
+  baseUrl: string
+): string | null {
+  return readSocialImage(parseHTML(html).document, baseUrl)
 }
 
 /**
@@ -202,9 +283,19 @@ function readSocialImage(
  * Readability (the engine behind Firefox/Safari Reader View), then sanitize.
  * Returns null when extraction fails or yields no usable content.
  */
-export function extractReadable(html: string, baseUrl: string): ReadableResult | null {
+export function extractReadable(
+  html: string,
+  baseUrl: string
+): ReadableResult | null {
   try {
     const { document } = parseHTML(html)
+    const pageTitle = document.querySelector("title")?.textContent ?? ""
+    if (
+      /^(checking your browser|just a moment|access denied|attention required)/i.test(
+        pageTitle.trim()
+      )
+    )
+      return null
     // Read before Readability parses: `parse()` mutates the document it is
     // given, and the <head> it strips is where the social image and the
     // published date both live.

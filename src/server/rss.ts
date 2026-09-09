@@ -54,7 +54,7 @@ import { feedUrlKey, feedUrlSchema } from "@/lib/validation"
 import { MAX_BATCH_URLS, MAX_BULK_FEEDS } from "@/lib/bulk-urls"
 import { feedNeedsRefresh } from "@/lib/feed-freshness"
 import { DEMO_MODE } from "@/lib/demo"
-import { assertNoRssSourceCapacity } from "@/server/entitlements/enforce"
+import { withNoRssSourceCapacity } from "@/server/entitlements/enforce"
 
 function previewDomain(url: string): string {
   try {
@@ -317,7 +317,7 @@ function siteNameFor(origin: string, primaryTitle: string | null): string {
  * style choice. This module is part of the *client* build with its handler
  * bodies stripped, so any plain function it calls at module level keeps that
  * function's whole module alive in the browser bundle — and `utils/discover`
- * constructs an rss-parser at import time, which drags in `utils/fetch` and its
+ * loads the server-side feed parser at import time, which drags in `utils/fetch` and its
  * `node:net` import. The build fails with `"isIP" is not exported by
  * "__vite-browser-external"`. Same trap as the note in `sources-write.ts`.
  */
@@ -613,10 +613,8 @@ async function addPageFeed(opts: {
   if (existing.has(feedUrlKey(url)))
     return { status: "error", error: feedError("duplicate") }
 
-  if (workspaceId) await assertNoRssSourceCapacity(workspaceId, 1)
-
   const id = randomUUID()
-  await db.insert(feeds).values({
+  await withNoRssSourceCapacity(workspaceId, 1, async (tx) => { await tx.insert(feeds).values({
     id,
     name,
     url,
@@ -625,7 +623,7 @@ async function addPageFeed(opts: {
     workspaceId,
     includeKeywords: JSON.stringify([]),
     excludeKeywords: JSON.stringify([]),
-  })
+  }) })
 
   try {
     const result = await ingestSource(id, url, "page")
@@ -1048,6 +1046,8 @@ export const getArticlePreview = createServerFn({ method: "POST" })
         link: articles.link,
         content: articles.content,
         description: articles.description,
+        contentSource: articles.contentSource,
+        contentErrorAt: articles.contentErrorAt,
       })
       .from(articles)
       .where(
@@ -1067,24 +1067,20 @@ export const getArticlePreview = createServerFn({ method: "POST" })
     let readerHtml: string | null = article.content ?? null
     let canEmbed = false
 
-    if (readerHtml) {
-      // Content already cached — just probe headers to decide Live availability.
-      try {
-        const res = await safeFetch(link, { method: "HEAD", timeoutMs: 5000 })
-        canEmbed = checkCanEmbed(res.headers)
-      } catch {
-        canEmbed = false
-      }
-    } else {
+    let quality = readerHtml ? (article.contentSource ?? "saved") : "summary"
+    const retryAllowed = !article.contentErrorAt || Date.now() - Date.parse(article.contentErrorAt) > 15 * 60_000
+    if (!readerHtml && retryAllowed) {
       // No cached content: one fetch serves both extraction and the header check.
       try {
-        const { res, text: html } = await safeFetchText(link, {
+        const { res, text: html, finalUrl } = await safeFetchText(link, {
           timeoutMs: 8000,
         })
+        if (!res.ok) throw new Error(`Article returned ${res.status}`)
         canEmbed = checkCanEmbed(res.headers)
-        const extracted = extractReadable(html, link)
+        const extracted = extractReadable(html, finalUrl || link)
         if (extracted) {
           readerHtml = extracted.contentHtml
+          quality = "extracted"
           try {
             await db
               .update(articles)
@@ -1093,6 +1089,8 @@ export const getArticlePreview = createServerFn({ method: "POST" })
               .set({
                 content: readerHtml,
                 contentFetchedAt: new Date().toISOString(),
+                contentSource: "extracted",
+                contentErrorAt: null,
               })
               .where(
                 and(
@@ -1103,10 +1101,11 @@ export const getArticlePreview = createServerFn({ method: "POST" })
           } catch {
             // Caching is best-effort; ignore write failures.
           }
-        }
+        } else throw new Error("No readable article found")
       } catch {
         readerHtml = null
         canEmbed = false
+        await db.update(articles).set({ contentErrorAt: new Date().toISOString() }).where(and(eq(articles.id, article.id), articleInWorkspace(workspaceId))).catch(() => {})
       }
     }
 
@@ -1115,7 +1114,21 @@ export const getArticlePreview = createServerFn({ method: "POST" })
       readerHtml = sanitizeArticleHtml(article.description, link)
     }
 
-    return { readerHtml, canEmbed, link, domain }
+    return { readerHtml, canEmbed, link, domain, quality: readerHtml ? quality : "unavailable" }
+  })
+
+/** Live mode is optional and must never delay a saved reader article. */
+export const getArticleEmbedAvailability = createServerFn({ method: "POST" })
+  .validator(z.object({ id: z.string(), workspaceId: z.string(), userId: z.string() }))
+  .handler(async ({ data }) => {
+    const context = await resolveWorkspaceContext()
+    if (context.workspaceId !== data.workspaceId || context.userId !== data.userId) throw new Error("Workspace changed. Reload this page.")
+    const [article] = await db.select({ link: articles.link }).from(articles).where(and(eq(articles.id, articleRowId(data.id)), articleInWorkspace(context.workspaceId))).limit(1)
+    if (!article) throw new Error(NOT_FOUND_MSG)
+    try {
+      const res = await safeFetch(article.link, { method: "HEAD", timeoutMs: 5000 })
+      return { canEmbed: res.ok && checkCanEmbed(res.headers) }
+    } catch { return { canEmbed: false } }
   })
 
 export const deleteFeed = createServerFn({ method: "POST" }).middleware([workspaceWriteMiddleware])

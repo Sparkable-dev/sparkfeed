@@ -48,7 +48,7 @@ function useNearViewport<T extends HTMLElement>() {
         if (entry.isIntersecting) setNear(true)
       },
       // A screen of lead time, so a row is usually ready by the time it arrives.
-      { rootMargin: "600px 0px" },
+      { rootMargin: "600px 0px" }
     )
     observer.observe(ref.current)
     return () => observer.disconnect()
@@ -67,13 +67,16 @@ function SourceBlock({
   onImported: () => void
 }) {
   const { ref, near } = useNearViewport<HTMLDivElement>()
-  const { feeds, status } = useCataloguePreview({ kind: card.kind, slug: card.slug }, near)
+  const { feeds, status, retry } = useCataloguePreview(
+    { kind: card.kind, slug: card.slug },
+    near
+  )
 
   const isCollection = card.kind === "collection"
   const members: Array<CatalogueCardFeed> = isCollection ? card.feeds : [card]
 
   const missing = members.filter(
-    (f) => !ownedUrls.has(normalizeFeedUrl(f.feedUrl) ?? f.feedUrl),
+    (f) => !ownedUrls.has(normalizeFeedUrl(f.feedUrl) ?? f.feedUrl)
   )
   const allOwned = missing.length === 0
   const label = allOwned
@@ -131,6 +134,14 @@ function SourceBlock({
           </p>
         </div>
 
+        {!isCollection && card.sourceKind === "page" && (
+          <span
+            title="Articles collected from this website. No native feed used."
+            className="self-center rounded border border-white/10 px-2 py-1 text-[11px] text-zinc-400"
+          >
+            Website
+          </span>
+        )}
         <AddCatalogueButton
           kind={card.kind}
           slug={card.slug}
@@ -187,7 +198,7 @@ function SourceBlock({
                       slug={feed.slug}
                       label="Add"
                       alreadyAdded={ownedUrls.has(
-                        normalizeFeedUrl(feed.feedUrl) ?? feed.feedUrl,
+                        normalizeFeedUrl(feed.feedUrl) ?? feed.feedUrl
                       )}
                       onImported={onImported}
                       className="ml-auto shrink-0"
@@ -197,17 +208,43 @@ function SourceBlock({
                 )}
 
                 {preview && preview.articles.length > 0 ? (
-                  <CategoryRow variant="inset">
-                    {preview.articles.map((article) => (
-                      <CatalogueArticleCard key={article.link} article={article} />
-                    ))}
-                  </CategoryRow>
+                  <div>
+                    {preview.stale && (
+                      <p className="mb-2 text-xs text-zinc-500">
+                        Showing the last saved preview. This source could not be
+                        refreshed.
+                      </p>
+                    )}
+                    <CategoryRow variant="inset">
+                      {preview.articles.map((article) => (
+                        <CatalogueArticleCard
+                          key={article.link}
+                          article={article}
+                        />
+                      ))}
+                    </CategoryRow>
+                  </div>
                 ) : (
-                  <p className="text-xs text-zinc-500">
-                    {preview?.state === "unavailable"
-                      ? "We could not read this feed just now."
-                      : "This feed has no posts yet."}
-                  </p>
+                  <div className="flex items-center gap-3 text-xs text-zinc-500">
+                    <p>
+                      {status === "error"
+                        ? "Could not load this preview."
+                        : preview?.state === "unavailable"
+                          ? (preview.error ??
+                            "We could not read this source just now.")
+                          : "This source has no posts yet."}
+                    </p>
+                    {(status === "error" ||
+                      preview?.state === "unavailable") && (
+                      <button
+                        onClick={retry}
+                        className="text-zinc-300 underline underline-offset-4"
+                        title="Retry preview; publisher requests have a five-minute cooldown"
+                      >
+                        Retry
+                      </button>
+                    )}
+                  </div>
                 )}
               </div>
             )
@@ -229,7 +266,7 @@ export function CategoryDetail({
 }) {
   const sourceCount = category.cards.reduce(
     (n, card) => n + (card.kind === "collection" ? card.feeds.length : 1),
-    0,
+    0
   )
 
   return (

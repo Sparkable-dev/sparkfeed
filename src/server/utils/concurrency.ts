@@ -6,8 +6,7 @@
  * index rather than pushed, so a slow item does not move ahead of a fast one
  * and the caller can zip results against inputs.
  *
- * Note the worker takes only the item — `fetch-articles.ts` has a similar
- * helper whose worker takes `(item, index)`. They are not interchangeable.
+ * Shared by feed ingestion, discovery, image enrichment, and website extraction.
  */
 export async function mapWithConcurrency<TItem, TResult>(
   items: Array<TItem>,

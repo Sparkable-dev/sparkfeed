@@ -56,13 +56,13 @@ beforeAll(async () => {
   await raw.execute(`CREATE TABLE folders (
     id TEXT PRIMARY KEY, name TEXT NOT NULL,
     workspace_id TEXT, parent_id TEXT, position INTEGER, created_at TEXT)`)
-  await raw.execute(`CREATE TABLE feeds (
+  await raw.execute(`CREATE TABLE feeds (http_etag TEXT, http_last_modified TEXT,
     id TEXT PRIMARY KEY, name TEXT NOT NULL, url TEXT NOT NULL,
     folder_id TEXT, workspace_id TEXT, kind TEXT DEFAULT 'rss',
     include_keywords TEXT, exclude_keywords TEXT, position INTEGER,
     created_at TEXT, last_fetched_at TEXT, last_error TEXT, last_error_at TEXT,
     entitlement_paused_at TEXT)`)
-  await raw.execute(`CREATE TABLE articles (
+  await raw.execute(`CREATE TABLE articles (source_id TEXT, source_updated_at TEXT, content_source TEXT, content_error_at TEXT,
     id TEXT PRIMARY KEY, feed_id TEXT, title TEXT NOT NULL, description TEXT,
     content TEXT, content_fetched_at TEXT, link TEXT NOT NULL, image TEXT,
     published_at TEXT, is_used INTEGER DEFAULT 0, visit_count INTEGER DEFAULT 0,

@@ -23,7 +23,7 @@ describe('toFeedError', () => {
     expect(toFeedError(err).code).toBe('unreachable')
   })
 
-  it('classifies rss-parser rejections as not_a_feed', () => {
+  it('classifies legacy parser rejections as not_a_feed', () => {
     expect(toFeedError(new Error('Feed not recognized as RSS 1 or 2.')).code).toBe('not_a_feed')
     expect(toFeedError(new Error('Non-whitespace before first tag.')).code).toBe('not_a_feed')
   })

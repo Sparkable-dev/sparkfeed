@@ -46,7 +46,7 @@ async function freshDb(): Promise<Database> {
   await raw.execute(`CREATE TABLE folders (
     id TEXT PRIMARY KEY, name TEXT NOT NULL,
     workspace_id TEXT, parent_id TEXT, position INTEGER, created_at TEXT)`)
-  await raw.execute(`CREATE TABLE feeds (
+  await raw.execute(`CREATE TABLE feeds (http_etag TEXT, http_last_modified TEXT,
     id TEXT PRIMARY KEY, name TEXT NOT NULL, url TEXT NOT NULL,
     folder_id TEXT, workspace_id TEXT, kind TEXT DEFAULT 'rss',
     include_keywords TEXT, exclude_keywords TEXT, position INTEGER,

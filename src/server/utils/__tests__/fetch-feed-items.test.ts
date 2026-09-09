@@ -21,9 +21,7 @@ beforeEach(() => safeFetchText.mockReset())
  * The Discover preview windowed to 30 days and Y Combinator, which posts every
  * couple of months, rendered "Nothing published recently" — a healthy feed that
  * looked dead and could not be judged at all. Two of the first seventeen feeds
- * opened hit it. The preview now passes no window; ingest still passes 30 days,
- * because how much history to import is a different question from what to show
- * someone deciding.
+ * opened hit it. The preview now passes no window; ingest also keeps old items, bounded by count rather than publication age.
  */
 describe('fetchFeedItems windowing', () => {
   it('keeps items of any age when no window is given', async () => {
@@ -38,7 +36,7 @@ describe('fetchFeedItems windowing', () => {
     expect(items[0].title).toBe('Old but good')
   })
 
-  it('still drops items outside an explicit window, which ingest relies on', async () => {
+  it('honors an explicit caller-requested date window', async () => {
     safeFetchText.mockResolvedValue({
       res: { ok: true },
       text: feedXml('Tue, 16 Jun 2026 16:14:22 GMT'),

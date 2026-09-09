@@ -26,7 +26,7 @@ beforeEach(async () => {
   db = createDb(`file:${join(testDirectory, "test.db")}`, { sqlite: true })
   const raw = (db as unknown as { $client: ReturnType<typeof createClient> })
     .$client
-  await raw.execute(`CREATE TABLE feeds (
+  await raw.execute(`CREATE TABLE feeds (http_etag TEXT, http_last_modified TEXT,
     id TEXT PRIMARY KEY, name TEXT NOT NULL, url TEXT NOT NULL,
     folder_id TEXT, workspace_id TEXT, kind TEXT DEFAULT 'rss',
     include_keywords TEXT, exclude_keywords TEXT, position INTEGER,

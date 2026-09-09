@@ -22,6 +22,9 @@ import { readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { existsSync } from 'node:fs'
 import { resolveFeed } from '../src/server/utils/detectRSS'
+import { safeFetchText } from '../src/server/utils/fetch'
+import { extractPageLinks } from '../src/server/utils/page-feed'
+import { extractReadable } from '../src/server/utils/extract'
 
 const ROOT = process.cwd()
 const CATALOGUE_PATH = join(ROOT, 'src/config/catalogue.json')
@@ -34,9 +37,11 @@ const MAX_DESCRIPTION = 140
 const args = process.argv.slice(2)
 const FIX = args.includes('--fix')
 const STATS = args.includes('--stats')
+const WEBSITES = args.includes('--websites')
 const ONLY = args.find((a) => a.startsWith('--only='))?.slice('--only='.length)
 
 interface FeedEntry {
+  sourceKind?: 'rss' | 'page'
   slug: string
   name: string
   description: string
@@ -84,9 +89,7 @@ for (const category of catalogue.categories) {
   }
 }
 
-const selected = ONLY
-  ? targets.filter((t) => t.category === ONLY || t.slug === ONLY)
-  : targets
+const selected = targets.filter((t) => (!ONLY || t.category === ONLY || t.slug === ONLY) && (!WEBSITES || t.entry.sourceKind === 'page'))
 
 //─────────────────────────────────────────────
 // LOCAL CHECKS — cheap, run before touching the network
@@ -160,6 +163,17 @@ async function check(target: Target): Promise<Outcome> {
   const input = target.entry.url ?? target.entry.siteUrl!
   const startedAt = Date.now()
   try {
+    if (target.entry.sourceKind === 'page') {
+      const native = await resolveFeed(input)
+      if (native) throw new Error(`Native feed found at ${native.url}; use RSS instead of a website source`)
+      const page = await safeFetchText(input)
+      if (!page.res.ok) throw new Error(`Listing returned ${page.res.status}`)
+      const links = extractPageLinks(page.text, page.finalUrl)
+      if (links.length < 3) throw new Error('Fewer than three article links found')
+      const sample = await safeFetchText(links[0].url)
+      if (!sample.res.ok || (extractReadable(sample.text, sample.finalUrl)?.length ?? 0) < 200) throw new Error('Sample article cannot be read')
+      return { kind: 'ok', target, url: page.finalUrl, itemCount: links.length, title: target.name, ms: Date.now() - startedAt }
+    }
     const resolved = await resolveFeed(input)
     const ms = Date.now() - startedAt
     if (!resolved) {

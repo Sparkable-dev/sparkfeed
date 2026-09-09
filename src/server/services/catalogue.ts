@@ -20,6 +20,7 @@ import catalogueConfig from "@/config/catalogue.json"
 // ─────────────────────────────────────────────
 
 interface CatalogueFeedEntry {
+  sourceKind?: "rss" | "page"
   slug: string
   name: string
   description: string
@@ -35,6 +36,7 @@ interface CatalogueFeedEntry {
 }
 
 interface CatalogueItem {
+  sourceKind?: "rss" | "page"
   kind: "collection" | "feed"
   slug: string
   name: string
@@ -85,6 +87,7 @@ interface FlatCollection {
 }
 
 interface FlatFeed extends Omit<FlatCollection, "coverFile"> {
+  sourceKind: "rss" | "page"
   collectionSlug: string | null
   feedUrl: string
   iconFile: string | null
@@ -136,6 +139,7 @@ export function flattenCatalogue(): {
             name: member.name,
             description: member.description,
             feedUrl: member.url,
+            sourceKind: member.sourceKind ?? "rss",
             siteUrl: member.siteUrl ?? null,
             iconFile: member.icon ?? null,
             accent: member.accent ?? item.accent ?? null,
@@ -156,6 +160,7 @@ export function flattenCatalogue(): {
         name: item.name,
         description: item.description,
         feedUrl: item.url,
+        sourceKind: item.sourceKind ?? "rss",
         siteUrl: item.siteUrl ?? null,
         iconFile: item.icon ?? null,
         accent: item.accent ?? null,
@@ -219,6 +224,7 @@ export async function syncCatalogue(db: Database): Promise<void> {
           name: sql`excluded.name`,
           description: sql`excluded.description`,
           feedUrl: sql`excluded.feed_url`,
+          sourceKind: sql`excluded.source_kind`,
           siteUrl: sql`excluded.site_url`,
           iconFile: sql`excluded.icon_file`,
           accent: sql`excluded.accent`,
@@ -291,6 +297,7 @@ export function ensureCatalogueSynced(): Promise<void> {
 // ─────────────────────────────────────────────
 
 export interface CatalogueCardFeed {
+  sourceKind?: "rss" | "page"
   slug: string
   name: string
   description: string
@@ -358,6 +365,7 @@ export async function readCatalogue(
     name: f.name,
     description: f.description,
     feedUrl: f.feedUrl,
+    sourceKind: f.sourceKind === "page" ? "page" : "rss",
     siteUrl: f.siteUrl,
     iconFile: f.iconFile,
     accent: f.accent,

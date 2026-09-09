@@ -96,6 +96,24 @@
           "siteUrl": "https://bair.berkeley.edu/blog/",
           "url": "https://bair.berkeley.edu/blog/feed.xml",
           "icon": "ai-bair.png"
+        },
+        {
+          "kind": "feed",
+          "sourceKind": "page",
+          "slug": "anthropic-website",
+          "name": "Anthropic News",
+          "description": "Research, product announcements and policy from Anthropic.",
+          "siteUrl": "https://www.anthropic.com/news",
+          "url": "https://www.anthropic.com/news"
+        },
+        {
+          "kind": "feed",
+          "sourceKind": "page",
+          "slug": "meta-ai-website",
+          "name": "Meta AI Blog",
+          "description": "AI research, models and engineering from Meta.",
+          "siteUrl": "https://ai.meta.com/blog/",
+          "url": "https://ai.meta.com/blog/"
         }
       ]
     },
@@ -214,6 +232,24 @@
           "siteUrl": "https://www.wired.com",
           "url": "https://www.wired.com/feed/rss",
           "icon": "tech-wired.png"
+        },
+        {
+          "kind": "feed",
+          "sourceKind": "page",
+          "slug": "perplexity-website",
+          "name": "Perplexity Hub",
+          "description": "Search technology, product updates and engineering from Perplexity.",
+          "siteUrl": "https://www.perplexity.ai/hub/blog",
+          "url": "https://www.perplexity.ai/hub/blog"
+        },
+        {
+          "kind": "feed",
+          "sourceKind": "page",
+          "slug": "miro-website",
+          "name": "Miro Blog",
+          "description": "Product updates and perspectives on collaborative software and work.",
+          "siteUrl": "https://miro.com/blog/",
+          "url": "https://miro.com/blog/"
         }
       ]
     },
@@ -294,6 +330,24 @@
           "siteUrl": "https://tomtunguz.com",
           "url": "https://tomtunguz.com/index.xml",
           "icon": "startups-tomtunguz.png"
+        },
+        {
+          "kind": "feed",
+          "sourceKind": "page",
+          "slug": "index-website",
+          "name": "Index Ventures",
+          "description": "Perspectives on building companies and venture investing.",
+          "siteUrl": "https://www.indexventures.com/perspectives/",
+          "url": "https://www.indexventures.com/perspectives/"
+        },
+        {
+          "kind": "feed",
+          "sourceKind": "page",
+          "slug": "bessemer-website",
+          "name": "Bessemer Atlas",
+          "description": "Company-building lessons and research from Bessemer Venture Partners.",
+          "siteUrl": "https://www.bvp.com/atlas",
+          "url": "https://www.bvp.com/atlas"
         }
       ]
     },
@@ -354,6 +408,24 @@
           "siteUrl": "https://www.netinterest.co",
           "url": "https://www.netinterest.co/feed",
           "icon": "business-net-interest.png"
+        },
+        {
+          "kind": "feed",
+          "sourceKind": "page",
+          "slug": "bcg-website",
+          "name": "BCG Publications",
+          "description": "Research on business strategy, industries and the economy.",
+          "siteUrl": "https://www.bcg.com/publications",
+          "url": "https://www.bcg.com/publications"
+        },
+        {
+          "kind": "feed",
+          "sourceKind": "page",
+          "slug": "ey-website",
+          "name": "EY Insights",
+          "description": "Business, finance and industry insights from EY.",
+          "siteUrl": "https://www.ey.com/en_gl/insights",
+          "url": "https://www.ey.com/en_gl/insights"
         }
       ]
     },
@@ -459,6 +531,24 @@
           "siteUrl": "https://stripe.com/blog/engineering",
           "url": "https://stripe.dev/blog/feed",
           "icon": "eng-stripe.png"
+        },
+        {
+          "kind": "feed",
+          "sourceKind": "page",
+          "slug": "emerline-website",
+          "name": "Emerline Engineering",
+          "description": "Software architecture, engineering and development practice.",
+          "siteUrl": "https://emerline.com/blog",
+          "url": "https://emerline.com/blog"
+        },
+        {
+          "kind": "feed",
+          "sourceKind": "page",
+          "slug": "linkedin-engineering-website",
+          "name": "LinkedIn Engineering",
+          "description": "Infrastructure, machine learning and software engineering at LinkedIn.",
+          "siteUrl": "https://engineering.linkedin.com/blog",
+          "url": "https://engineering.linkedin.com/blog"
         }
       ]
     },
@@ -529,6 +619,24 @@
           "siteUrl": "https://news.risky.biz",
           "url": "https://news.risky.biz/rss/",
           "icon": "sec-risky-business.png"
+        },
+        {
+          "kind": "feed",
+          "sourceKind": "page",
+          "slug": "google-security-website",
+          "name": "Google Cloud Security",
+          "description": "Identity, infrastructure security and threat defense.",
+          "siteUrl": "https://cloud.google.com/blog/products/identity-security",
+          "url": "https://cloud.google.com/blog/products/identity-security"
+        },
+        {
+          "kind": "feed",
+          "sourceKind": "page",
+          "slug": "coalfire-website",
+          "name": "Coalfire Articles",
+          "description": "Security research, risk and compliance practice.",
+          "siteUrl": "https://coalfire.com/the-coalfire-blog",
+          "url": "https://coalfire.com/the-coalfire-blog"
         }
       ]
     },
@@ -622,6 +730,24 @@
           "description": "Evidence, and what the evidence actually supports.",
           "siteUrl": "https://sciencebasedmedicine.org/feed/",
           "url": "https://sciencebasedmedicine.org/feed/"
+        },
+        {
+          "kind": "feed",
+          "sourceKind": "page",
+          "slug": "aamc-website",
+          "name": "AAMC News",
+          "description": "Medical education, research and healthcare delivery.",
+          "siteUrl": "https://www.aamc.org/news",
+          "url": "https://www.aamc.org/news"
+        },
+        {
+          "kind": "feed",
+          "sourceKind": "page",
+          "slug": "gavi-website",
+          "name": "Gavi VaccinesWork",
+          "description": "Public health, vaccination and scientific explainers.",
+          "siteUrl": "https://www.gavi.org/vaccineswork",
+          "url": "https://www.gavi.org/vaccineswork"
         }
       ]
     },
@@ -709,6 +835,24 @@
           "siteUrl": "https://www.marketingbrew.com",
           "url": "https://www.marketingbrew.com/feed.xml",
           "icon": "marketing-marketing-brew.png"
+        },
+        {
+          "kind": "feed",
+          "sourceKind": "page",
+          "slug": "reforge-website",
+          "name": "Reforge Blog",
+          "description": "Growth, marketing and product strategy for practitioners.",
+          "siteUrl": "https://www.reforge.com/blog",
+          "url": "https://www.reforge.com/blog"
+        },
+        {
+          "kind": "feed",
+          "sourceKind": "page",
+          "slug": "growthmentor-website",
+          "name": "GrowthMentor Blog",
+          "description": "Practical growth and marketing lessons from operators.",
+          "siteUrl": "https://www.growthmentor.com/blog",
+          "url": "https://www.growthmentor.com/blog"
         }
       ]
     },
@@ -797,6 +941,24 @@
           "siteUrl": "https://kotaku.com/rss",
           "url": "https://kotaku.com/feed",
           "icon": "gaming-kotaku.png"
+        },
+        {
+          "kind": "feed",
+          "sourceKind": "page",
+          "slug": "nintendo-website",
+          "name": "Nintendo News",
+          "description": "Game announcements and updates from Nintendo.",
+          "siteUrl": "https://www.nintendo.com/us/whatsnew/",
+          "url": "https://www.nintendo.com/us/whatsnew/"
+        },
+        {
+          "kind": "feed",
+          "sourceKind": "page",
+          "slug": "remedy-website",
+          "name": "Remedy Games News",
+          "description": "Studio news and game updates from Remedy.",
+          "siteUrl": "https://www.remedygames.com/news/",
+          "url": "https://www.remedygames.com/news/"
         }
       ]
     },
@@ -884,6 +1046,24 @@
           "siteUrl": "https://cointelegraph.com/rss",
           "url": "https://cointelegraph.com/rss",
           "icon": "crypto-cointelegraph.png"
+        },
+        {
+          "kind": "feed",
+          "sourceKind": "page",
+          "slug": "a16z-crypto-website",
+          "name": "a16z Crypto",
+          "description": "Research and analysis on crypto technology and applications.",
+          "siteUrl": "https://a16zcrypto.com/posts/",
+          "url": "https://a16zcrypto.com/posts/"
+        },
+        {
+          "kind": "feed",
+          "sourceKind": "page",
+          "slug": "kraken-website",
+          "name": "Kraken Learn",
+          "description": "Educational explainers on crypto assets and technology.",
+          "siteUrl": "https://www.kraken.com/learn",
+          "url": "https://www.kraken.com/learn"
         }
       ]
     },
@@ -961,6 +1141,24 @@
           "siteUrl": "https://www.space.com/feeds/all",
           "url": "https://www.space.com/feeds.xml",
           "icon": "science-space-com.png"
+        },
+        {
+          "kind": "feed",
+          "sourceKind": "page",
+          "slug": "natgeo-science-website",
+          "name": "National Geographic Science",
+          "description": "Science reporting and discoveries from National Geographic.",
+          "siteUrl": "https://www.nationalgeographic.com/science/",
+          "url": "https://www.nationalgeographic.com/science/"
+        },
+        {
+          "kind": "feed",
+          "sourceKind": "page",
+          "slug": "sciencefocus-website",
+          "name": "BBC Science Focus",
+          "description": "Science news, discoveries and explainers.",
+          "siteUrl": "https://www.sciencefocus.com/science",
+          "url": "https://www.sciencefocus.com/science"
         }
       ]
     },
@@ -1031,6 +1229,24 @@
           "siteUrl": "https://css-tricks.com",
           "url": "https://css-tricks.com/feed/",
           "icon": "design-css-tricks.png"
+        },
+        {
+          "kind": "feed",
+          "sourceKind": "page",
+          "slug": "ideo-website",
+          "name": "IDEO Journal",
+          "description": "Design practice, product thinking and creative work.",
+          "siteUrl": "https://www.ideo.com/journal",
+          "url": "https://www.ideo.com/journal"
+        },
+        {
+          "kind": "feed",
+          "sourceKind": "page",
+          "slug": "frog-website",
+          "name": "Frog Design Mind",
+          "description": "Design, innovation and product perspectives from frog.",
+          "siteUrl": "https://www.frog.co/designmind",
+          "url": "https://www.frog.co/designmind"
         }
       ]
     },
@@ -1099,6 +1315,24 @@
           "description": "Energy transition business and technology.",
           "siteUrl": "https://www.latitudemedia.com/news/rss.xml",
           "url": "https://www.latitudemedia.com/feed/"
+        },
+        {
+          "kind": "feed",
+          "sourceKind": "page",
+          "slug": "iea-website",
+          "name": "IEA News",
+          "description": "Energy research, markets and policy from the IEA.",
+          "siteUrl": "https://www.iea.org/news",
+          "url": "https://www.iea.org/news"
+        },
+        {
+          "kind": "feed",
+          "sourceKind": "page",
+          "slug": "natgeo-environment-website",
+          "name": "National Geographic Environment",
+          "description": "Reporting on the environment, climate and conservation.",
+          "siteUrl": "https://www.nationalgeographic.com/environment/",
+          "url": "https://www.nationalgeographic.com/environment/"
         }
       ]
     },
@@ -1159,6 +1393,24 @@
           "siteUrl": "https://longreads.com",
           "url": "https://longreads.com/feed/",
           "icon": "ideas-longreads.png"
+        },
+        {
+          "kind": "feed",
+          "sourceKind": "page",
+          "slug": "longnow-website",
+          "name": "Long Now Ideas",
+          "description": "Essays on long-term thinking, culture and civilization.",
+          "siteUrl": "https://longnow.org/ideas/",
+          "url": "https://longnow.org/ideas/"
+        },
+        {
+          "kind": "feed",
+          "sourceKind": "page",
+          "slug": "berggruen-website",
+          "name": "Berggruen Institute",
+          "description": "Research, conversations and essays on philosophy, culture and society.",
+          "siteUrl": "https://berggruen.org/news",
+          "url": "https://berggruen.org/news"
         }
       ]
     },
@@ -1229,6 +1481,24 @@
           "siteUrl": "https://larrycuban.wordpress.com/feed/",
           "url": "https://larrycuban.wordpress.com/feed/",
           "icon": "education-larry-cuban.png"
+        },
+        {
+          "kind": "feed",
+          "sourceKind": "page",
+          "slug": "edutopia-website",
+          "name": "Edutopia",
+          "description": "Teaching practice and evidence-informed classroom ideas.",
+          "siteUrl": "https://www.edutopia.org/",
+          "url": "https://www.edutopia.org/"
+        },
+        {
+          "kind": "feed",
+          "sourceKind": "page",
+          "slug": "commonsense-website",
+          "name": "Common Sense Education",
+          "description": "Digital citizenship, educational technology and teaching resources.",
+          "siteUrl": "https://www.commonsense.org/education/articles",
+          "url": "https://www.commonsense.org/education/articles"
         }
       ]
     }

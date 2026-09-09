@@ -1,4 +1,5 @@
 import { parseHTML } from "linkedom"
+import { safeParseDate } from "./dates"
 
 /**
  * Reading a blog index page as if it were a feed.
@@ -57,9 +58,33 @@ const CARD_DEPTH = 4
  * before the slug has to be read.
  */
 const NAV_SEGMENTS = new Set([
-  "tag", "tags", "category", "categories", "topic", "topics", "author", "authors",
-  "page", "search", "archive", "archives", "feed", "rss", "login", "signup",
-  "account", "cart", "checkout", "privacy", "terms", "legal", "cookie", "cookies",
+  "tag",
+  "tags",
+  "category",
+  "categories",
+  "topic",
+  "topics",
+  "author",
+  "authors",
+  "page",
+  "search",
+  "archive",
+  "archives",
+  "feed",
+  "rss",
+  "login",
+  "signup",
+  "account",
+  "cart",
+  "checkout",
+  "privacy",
+  "terms",
+  "legal",
+  "cookie",
+  "cookies",
+  "product-launches",
+  "from-the-team",
+  "from-the-community",
 ])
 
 /**
@@ -74,13 +99,32 @@ const NAV_SEGMENTS = new Set([
  * the homepage work.
  */
 export const CONTENT_SEGMENTS = new Set([
-  "blog", "blogs", "news", "newsroom", "article", "articles", "post", "posts",
-  "insights", "stories", "updates", "journal", "writing", "essays", "notes",
-  "press", "resources", "research", "engineering", "changelog", "release-notes",
+  "blog",
+  "blogs",
+  "news",
+  "newsroom",
+  "article",
+  "articles",
+  "post",
+  "posts",
+  "insights",
+  "stories",
+  "updates",
+  "journal",
+  "writing",
+  "essays",
+  "notes",
+  "press",
+  "resources",
+  "research",
+  "engineering",
+  "changelog",
+  "release-notes",
 ])
 
 /** Anchor text that is a control, never a headline. */
-const CONTROL_TEXT = /^(read more|continue reading|learn more|more|next|previous|prev|older|newer|home|share|tweet|\d+|»|«|→|←|\.{3}|…)$/i
+const CONTROL_TEXT =
+  /^(read more|continue reading|learn more|more|next|previous|prev|older|newer|home|share|tweet|\d+|»|«|→|←|\.{3}|…)$/i
 
 function textOf(node: { textContent?: string | null } | null): string {
   return (node?.textContent ?? "").replace(/\s+/g, " ").trim()
@@ -98,7 +142,13 @@ export function urlShape(pathname: string): string {
   const parts = pathname.split("/").filter(Boolean)
   if (parts.length === 0) return "/"
   return `/${parts
-    .map((part, i) => (i === parts.length - 1 ? "*" : /^\d+$/.test(part) ? "#" : part.toLowerCase()))
+    .map((part, i) =>
+      i === parts.length - 1
+        ? "*"
+        : /^\d+$/.test(part)
+          ? "#"
+          : part.toLowerCase()
+    )
     .join("/")}`
 }
 
@@ -142,23 +192,43 @@ function fromJsonLd(document: Document, base: URL): Array<PageLink> {
   const found: Array<PageLink> = []
   const seen = new Set<string>()
 
-  const consider = (node: Record<string, unknown>) => {
+  const typesOf = (value: unknown): Array<string> =>
+    (Array.isArray(value) ? value : [value]).filter(
+      (v): v is string => typeof v === "string"
+    )
+  const isArticle = (types: Array<string>) =>
+    types.some((t) =>
+      /^(BlogPosting|NewsArticle|Article|TechArticle|ScholarlyArticle|Report)$/i.test(
+        t
+      )
+    )
+  const consider = (node: Record<string, unknown>, inItemList: boolean) => {
     /*
       An explicit article type, and nothing looser. The first version also
       accepted "anything with a url and a name", which on stripe.com/blog meant
       every author's `Person` node became an article — the feed listed
       "Christian DiCarlo" beside the posts he wrote.
     */
-    const type = String(node["@type"] ?? "")
-    if (!/^(BlogPosting|NewsArticle|Article|TechArticle|ScholarlyArticle|Report|ListItem)$/i.test(type)) {
-      return
-    }
-    const rawUrl = (node.url ?? (node.item as Record<string, unknown> | undefined)?.url) as
-      | string
-      | undefined
+    const types = typesOf(node["@type"])
+    const nested =
+      node.item && typeof node.item === "object"
+        ? (node.item as Record<string, unknown>)
+        : undefined
+    const listEntry =
+      types.includes("ListItem") &&
+      (isArticle(typesOf(nested?.["@type"])) ||
+        (inItemList &&
+          Number.isInteger(node.position) &&
+          Number(node.position) > 0))
+    if (!isArticle(types) && !listEntry) return
+    const rawUrl = (node.url ??
+      nested?.url ??
+      nested?.["@id"] ??
+      node["@id"]) as string | undefined
     const rawTitle = (node.headline ??
       node.name ??
-      (node.item as Record<string, unknown> | undefined)?.name) as string | undefined
+      nested?.headline ??
+      nested?.name) as string | undefined
     if (typeof rawUrl !== "string" || typeof rawTitle !== "string") return
 
     let absolute: string
@@ -167,12 +237,26 @@ function fromJsonLd(document: Document, base: URL): Array<PageLink> {
     } catch {
       return
     }
+    const resolved = new URL(absolute)
+    if (
+      !/^https?:$/.test(resolved.protocol) ||
+      resolved.origin !== base.origin ||
+      resolved.username ||
+      resolved.password
+    )
+      return
+    if (
+      resolved.pathname
+        .split("/")
+        .some((p) => NAV_SEGMENTS.has(p.toLowerCase()))
+    )
+      return
     if (seen.has(absolute) || absolute === base.href) return
     const title = rawTitle.replace(/\s+/g, " ").trim()
     if (title.length < 3) return
 
     seen.add(absolute)
-    const published = node.datePublished
+    const published = node.datePublished ?? nested?.datePublished
     found.push({
       url: absolute,
       title,
@@ -181,7 +265,9 @@ function fromJsonLd(document: Document, base: URL): Array<PageLink> {
     })
   }
 
-  for (const script of document.querySelectorAll('script[type="application/ld+json"]')) {
+  for (const script of document.querySelectorAll(
+    'script[type="application/ld+json"]'
+  )) {
     let parsed: unknown
     try {
       parsed = JSON.parse(script.textContent ?? "")
@@ -193,16 +279,25 @@ function fromJsonLd(document: Document, base: URL): Array<PageLink> {
       only date information many listings carry — they are newest-first, and
       popping reverses them so a blog would arrive oldest-first.
     */
-    const queue: Array<unknown> = [parsed]
+    const queue: Array<{ value: unknown; inItemList: boolean }> = [
+      { value: parsed, inItemList: false },
+    ]
     for (let i = 0; i < queue.length && i < 5_000; i++) {
-      const node = queue[i]
+      const { value: node, inItemList } = queue[i]
       if (Array.isArray(node)) {
-        queue.push(...node)
+        queue.push(...node.map((value) => ({ value, inItemList })))
         continue
       }
       if (!node || typeof node !== "object") continue
-      consider(node as Record<string, unknown>)
-      queue.push(...Object.values(node as Record<string, unknown>))
+      const record = node as Record<string, unknown>
+      consider(record, inItemList)
+      const list = typesOf(record["@type"]).includes("ItemList")
+      queue.push(
+        ...Object.entries(record).map(([key, value]) => ({
+          value,
+          inItemList: list && key === "itemListElement",
+        }))
+      )
     }
   }
 
@@ -238,7 +333,12 @@ function collectAnchors(document: Document, base: URL): Array<Anchor> {
 
   for (const element of document.querySelectorAll("a[href]")) {
     const href = element.getAttribute("href")
-    if (!href || href.startsWith("#") || /^(mailto|tel|javascript):/i.test(href)) continue
+    if (
+      !href ||
+      href.startsWith("#") ||
+      /^(mailto|tel|javascript):/i.test(href)
+    )
+      continue
     if (inChrome(element)) continue
 
     let url: URL
@@ -253,7 +353,9 @@ function collectAnchors(document: Document, base: URL): Array<Anchor> {
     // string usually is not either, and keeping it would make `?ref=nav`
     // versions of one post look like several.
     url.hash = ""
-    url.search = ""
+    for (const key of [...url.searchParams.keys()]) {
+      if (/^(utm_|fbclid$|gclid$|ref$)/i.test(key)) url.searchParams.delete(key)
+    }
     const pathname = url.pathname.replace(/\/+$/, "") || "/"
     url.pathname = pathname
     if (url.href === base.href || pathname === "/") continue
@@ -305,7 +407,10 @@ function longestLeafText(element: Element): string | null {
  * "Fintech·Emerline Team· 4 hours agoTop 10 Payment Gateways for Businesses".
  * The `<h3>` inside it is exactly the headline and nothing else.
  */
-function titleFor(element: Element, slug: string): { title: string; from: PageLink["from"] } {
+function titleFor(
+  element: Element,
+  slug: string
+): { title: string; from: PageLink["from"] } {
   const inner = textOf(element.querySelector("h1, h2, h3, h4"))
   if (inner.length >= 3) return { title: inner, from: "heading" }
 
@@ -317,7 +422,8 @@ function titleFor(element: Element, slug: string): { title: string; from: PageLi
     return { title: own, from: "link-text" }
   }
 
-  const direct = element.getAttribute("aria-label") ?? element.getAttribute("title")
+  const direct =
+    element.getAttribute("aria-label") ?? element.getAttribute("title")
   if (direct && direct.trim().length >= MIN_TITLE_CHARS) {
     return { title: direct.replace(/\s+/g, " ").trim(), from: "link-text" }
   }
@@ -325,7 +431,11 @@ function titleFor(element: Element, slug: string): { title: string; from: PageLi
   // Outward: just as often the heading is the anchor's sibling rather than its
   // child, with the link wrapping only the thumbnail.
   let node: Element | null = element.parentElement
-  for (let depth = 0; node && depth < CARD_DEPTH; depth++, node = node.parentElement) {
+  for (
+    let depth = 0;
+    node && depth < CARD_DEPTH;
+    depth++, node = node.parentElement
+  ) {
     const heading = textOf(node.querySelector("h1, h2, h3, h4"))
     if (heading.length >= 3) return { title: heading, from: "heading" }
   }
@@ -335,7 +445,8 @@ function titleFor(element: Element, slug: string): { title: string; from: PageLi
     return { title: alt.replace(/\s+/g, " ").trim(), from: "heading" }
   }
 
-  if (own.length >= 3 && !CONTROL_TEXT.test(own)) return { title: own, from: "link-text" }
+  if (own.length >= 3 && !CONTROL_TEXT.test(own))
+    return { title: own, from: "link-text" }
 
   // Last resort. A slug is a worse title than a headline but a far better one
   // than "Read more", and it is never empty.
@@ -346,11 +457,34 @@ function titleFor(element: Element, slug: string): { title: string; from: PageLi
 function dateNear(element: Element): string | null {
   const own = element.querySelector("time[datetime]")?.getAttribute("datetime")
   if (own) return own
+  const textDate = (container: Element): string | null => {
+    for (const leaf of container.querySelectorAll("*")) {
+      if (leaf.children.length) continue
+      const value = textOf(leaf)
+      if (
+        !/^(?:[A-Z][a-z]{2,8} \d{1,2},? \d{4}|\d{4}-\d{2}-\d{2})$/.test(value)
+      )
+        continue
+      const parsed = safeParseDate(value)
+      if (parsed) return parsed
+    }
+    return null
+  }
+  const direct = textDate(element)
+  if (direct) return direct
 
   let node: Element | null = element.parentElement
-  for (let depth = 0; node && depth < CARD_DEPTH; depth++, node = node.parentElement) {
+  for (
+    let depth = 0;
+    node && depth < CARD_DEPTH;
+    depth++, node = node.parentElement
+  ) {
     const found = node.querySelector("time[datetime]")?.getAttribute("datetime")
     if (found) return found
+    // Do not borrow another card's publication date from a whole listing container.
+    if (node.querySelectorAll("a[href]").length > 3) break
+    const nearby = textDate(node)
+    if (nearby) return nearby
   }
   return null
 }
@@ -365,11 +499,15 @@ function dateNear(element: Element): string | null {
  * survives redesigns.
  */
 function bestGroup(anchors: Array<Anchor>, base: URL): Array<Anchor> | null {
-  const here = base.pathname.split("/").filter(Boolean).map((s) => s.toLowerCase())
+  const here = base.pathname
+    .split("/")
+    .filter(Boolean)
+    .map((s) => s.toLowerCase())
 
   const groups = new Map<string, Array<Anchor>>()
   for (const anchor of anchors) {
-    if (!slugLike(anchor.slug)) continue
+    if (!slugLike(anchor.slug) || NAV_SEGMENTS.has(anchor.slug.toLowerCase()))
+      continue
 
     const segments = anchor.shape.split("/").filter(Boolean)
     // `/tag/*` and `/author/*` are listings of listings, not posts.
@@ -418,7 +556,10 @@ function bestGroup(anchors: Array<Anchor>, base: URL): Array<Anchor> | null {
  * Document order is kept deliberately: blog indexes are newest-first, and that
  * ordering is often the only date information a listing page carries.
  */
-export function extractPageLinks(html: string, pageUrl: string): Array<PageLink> {
+export function extractPageLinks(
+  html: string,
+  pageUrl: string
+): Array<PageLink> {
   let base: URL
   try {
     base = new URL(pageUrl)
@@ -434,10 +575,12 @@ export function extractPageLinks(html: string, pageUrl: string): Array<PageLink>
   }
 
   const declared = fromJsonLd(document, base)
-  if (declared.length >= MIN_PAGE_LINKS) return declared.slice(0, MAX_PAGE_LINKS)
+  if (declared.length >= MIN_PAGE_LINKS)
+    return declared.slice(0, MAX_PAGE_LINKS)
 
   const group = bestGroup(collectAnchors(document, base), base)
-  if (!group) return declared.length > 0 ? declared.slice(0, MAX_PAGE_LINKS) : []
+  if (!group)
+    return declared.length > 0 ? declared.slice(0, MAX_PAGE_LINKS) : []
 
   /*
     One entry per URL, keeping the anchor with the most text. A card links the
@@ -448,14 +591,20 @@ export function extractPageLinks(html: string, pageUrl: string): Array<PageLink>
   const byUrl = new Map<string, Anchor>()
   for (const anchor of group) {
     const existing = byUrl.get(anchor.url)
-    if (!existing || anchor.text.length > existing.text.length) byUrl.set(anchor.url, anchor)
+    if (!existing || anchor.text.length > existing.text.length)
+      byUrl.set(anchor.url, anchor)
   }
 
   const out: Array<PageLink> = []
   for (const anchor of byUrl.values()) {
     const { title, from } = titleFor(anchor.element, anchor.slug)
     if (title.length < 3) continue
-    out.push({ url: anchor.url, title, publishedAt: dateNear(anchor.element), from })
+    out.push({
+      url: anchor.url,
+      title,
+      publishedAt: dateNear(anchor.element),
+      from,
+    })
   }
 
   return out.slice(0, MAX_PAGE_LINKS)

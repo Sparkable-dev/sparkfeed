@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { decodeEntities } from '../entities'
 
 /**
- * The Verge ships `&amp;#8217;` in its XML. rss-parser decodes that once, to
+ * The Verge ships `&amp;#8217;` in its XML. The feed parser decodes that once, to
  * `&#8217;`, and stops — so every headline with an apostrophe rendered as
  * "Elon Musk&#8217;s attempt at an AI Wikipedia", in the app and in Discover.
  */

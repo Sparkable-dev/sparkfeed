@@ -8,7 +8,7 @@ import { createDb } from "@/db/client"
  * `verify_feed`, without the network.
  *
  * `resolveFeed` is stubbed because what is being tested is not whether
- * rss-parser works — it does, and `detectRSS` has its own tests — but the
+ * feed parsing works — it does, and `detectRSS` has its own tests — but the
  * judgements this service layers on top: that a URL which is not a feed is an
  * *answer* rather than a thrown error, that the posting rate is derived
  * sensibly from whatever dates the items happened to carry, and that a feed the
@@ -88,7 +88,7 @@ beforeEach(async () => {
   db = createDb(":memory:", { sqlite: true })
   const raw = (db as unknown as { $client: ReturnType<typeof createClient> })
     .$client
-  await raw.execute(`CREATE TABLE feeds (
+  await raw.execute(`CREATE TABLE feeds (http_etag TEXT, http_last_modified TEXT,
     id TEXT PRIMARY KEY, name TEXT NOT NULL, url TEXT NOT NULL,
     folder_id TEXT, workspace_id TEXT, kind TEXT DEFAULT 'rss', include_keywords TEXT,
     exclude_keywords TEXT, position INTEGER, created_at TEXT,

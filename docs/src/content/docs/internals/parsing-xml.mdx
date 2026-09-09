@@ -1,113 +1,32 @@
 ---
-title: Parsing XML
-description: How SparkFeed parses RSS 2.0 and Atom 1.0 XML into structured article objects.
+title: Feed parsing
+description: How Sparkfeed normalizes RSS, Atom, RDF, and JSON Feed.
 sidebar:
   order: 2
 ---
 
-## The Challenge of RSS Parsing
+## Parser boundary
 
-RSS parsing sounds easy. It's just XML. In practice, it's surprisingly tricky:
+`src/server/utils/parse-feed.ts` uses the pinned stable FeedSmith package.
+`parseSyndication` converts its format-specific output into Sparkfeed's shared `FeedItem` shape.
+Discovery, catalogue previews, and ingestion use this adapter.
 
-- **Multiple formats:** RSS 0.91, 1.0, 2.0 and Atom 1.0 are all in use
-- **Non-standard extensions:** Content namespaces, Dublin Core, Media RSS, etc.
-- **Malformed XML:** Many publishers have invalid HTML inside `<description>` tags
-- **Encoding issues:** Some feeds incorrectly declare their encoding
+The adapter preserves publisher IDs, article links, full bodies, summaries, authors, media images, and separate publication and update dates.
+Atom links prefer HTML alternatives over self and enclosure links.
+Executable URLs and URLs containing credentials are rejected.
 
-SparkFeed handles all of these cases.
+## Dates and content
 
-## The Parser
+`safeParseDate` normalizes supported date strings to UTC ISO timestamps.
+Invalid dates remain unknown. An update date is not silently treated as a publication date.
+Ingestion preserves an existing date if the publisher later omits it.
 
-SparkFeed uses a custom parser built on top of Node.js's `fast-xml-parser` library:
+Full feed bodies are sanitized with `sanitizeArticleHtml` in `src/server/utils/extract.ts`.
+The sanitizer removes scripts, event handlers, and iframes while retaining reader formatting.
+Readability extracts article bodies when the feed does not supply one.
 
-```typescript
-// src/server/lib/rss-parser.ts
-import { XMLParser } from 'fast-xml-parser';
+FeedSmith parses content; it does not make outbound requests or sanitize HTML.
+DTD and entity declarations are rejected before parsing.
+Card excerpts are bounded independently of the full stored body.
 
-const parser = new XMLParser({
-  ignoreAttributes: false,
-  attributeNamePrefix: '@_',
-  parseAttributeValue: false,
-  trimValues: true,
-  parseTagValue: false,
-});
-```
-
-## RSS 2.0 Parsing
-
-```typescript
-function parseRSS2(xml: unknown): ParsedFeed {
-  const channel = xml?.rss?.channel;
-
-  return {
-    title: extractText(channel?.title),
-    url: extractText(channel?.link),
-    items: (channel?.item ?? []).map((item: unknown) => ({
-      guid:        extractText(item?.guid) ?? extractText(item?.link),
-      title:       extractText(item?.title),
-      url:         extractText(item?.link),
-      content:     extractText(item?.['content:encoded']) ?? extractText(item?.description),
-      summary:     stripHtml(extractText(item?.description) ?? ''),
-      author:      extractText(item?.author) ?? extractText(item?.['dc:creator']),
-      publishedAt: parseDate(extractText(item?.pubDate)),
-    })),
-  };
-}
-```
-
-## Atom 1.0 Parsing
-
-```typescript
-function parseAtom(xml: unknown): ParsedFeed {
-  const feed = xml?.feed;
-
-  return {
-    title: extractText(feed?.title),
-    url:   extractText(feed?.link?.['@_href']) ?? extractText(feed?.id),
-    items: (feed?.entry ?? []).map((entry: unknown) => ({
-      guid:        extractText(entry?.id),
-      title:       extractText(entry?.title),
-      url:         extractLink(entry?.link),
-      content:     extractText(entry?.content) ?? extractText(entry?.summary),
-      summary:     stripHtml(extractText(entry?.summary) ?? ''),
-      author:      extractText(entry?.author?.name),
-      publishedAt: parseDate(extractText(entry?.published) ?? extractText(entry?.updated)),
-    })),
-  };
-}
-```
-
-## HTML Sanitization
-
-Feed content often contains HTML. SparkFeed sanitizes it before storing to prevent XSS:
-
-```typescript
-import DOMPurify from 'isomorphic-dompurify';
-
-const ALLOWED_TAGS = ['p', 'h1', 'h2', 'h3', 'h4', 'ul', 'ol', 'li',
-                      'blockquote', 'code', 'pre', 'a', 'strong', 'em',
-                      'img', 'figure', 'figcaption', 'hr', 'br'];
-
-export function sanitizeHtml(dirty: string): string {
-  return DOMPurify.sanitize(dirty, {
-    ALLOWED_TAGS,
-    ALLOWED_ATTR: ['href', 'src', 'alt', 'title', 'class'],
-    FORCE_BODY: true,
-  });
-}
-```
-
-This strips scripts, iframes, and other dangerous elements while preserving the article's visual structure.
-
-## Auto-Detecting Feed Type
-
-Before parsing, SparkFeed detects whether a feed is RSS or Atom:
-
-```typescript
-export function detectFeedType(xml: unknown): 'rss' | 'atom' | 'unknown' {
-  if (xml?.rss) return 'rss';
-  if (xml?.feed?.['@_xmlns'] === 'http://www.w3.org/2005/Atom') return 'atom';
-  if (xml?.feed) return 'atom';
-  return 'unknown';
-}
-```
+See [FeedSmith's parsing API](https://feedsmith.dev/parsing) and [date handling](https://feedsmith.dev/parsing/dates).

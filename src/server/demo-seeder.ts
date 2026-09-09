@@ -228,6 +228,13 @@ export async function ensureDemoSchema(): Promise<void> {
   const migrations = [
     `ALTER TABLE articles ADD COLUMN content text`,
     `ALTER TABLE articles ADD COLUMN content_fetched_at text`,
+    `ALTER TABLE articles ADD COLUMN source_id text`,
+    `ALTER TABLE articles ADD COLUMN source_updated_at text`,
+    `ALTER TABLE articles ADD COLUMN content_source text`,
+    `ALTER TABLE articles ADD COLUMN content_error_at text`,
+    `ALTER TABLE feeds ADD COLUMN http_etag text`,
+    `ALTER TABLE feeds ADD COLUMN http_last_modified text`,
+    `ALTER TABLE catalogue_feeds ADD COLUMN source_kind text NOT NULL DEFAULT 'rss'`,
     `ALTER TABLE feeds ADD COLUMN kind text NOT NULL DEFAULT 'rss'`,
     `ALTER TABLE feeds ADD COLUMN last_fetched_at text`,
     `ALTER TABLE feeds ADD COLUMN last_error text`,

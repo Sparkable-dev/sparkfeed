@@ -1,7 +1,7 @@
 /**
  * Decodes HTML entities left over in feed text.
  *
- * rss-parser already decodes the XML layer, so anything still showing as
+ * The feed parser already decodes the XML layer, so anything still showing as
  * `&#8217;` was **double**-encoded by the publisher: their XML literally
  * contained `&amp;#8217;`, which decodes once to `&#8217;` and stops. The Verge
  * does this on every apostrophe, so headlines rendered as

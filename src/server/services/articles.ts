@@ -180,6 +180,7 @@ export async function getArticle(principal: ApiPrincipal, args: GetArticleArgs) 
       title: articles.title,
       link: articles.link,
       content: articles.content,
+      contentErrorAt: articles.contentErrorAt,
       description: articles.description,
       publishedAt: articles.publishedAt,
       createdAt: articles.createdAt,
@@ -195,20 +196,22 @@ export async function getArticle(principal: ApiPrincipal, args: GetArticleArgs) 
   let html = row.content ?? null
   let quality: 'extracted' | 'rss_description' | 'failed' = 'extracted'
 
-  if (!html && !principal.demo) {
+  if (!html && !principal.demo && (!row.contentErrorAt || Date.now() - Date.parse(row.contentErrorAt) > 15 * 60_000)) {
     try {
-      const { text } = await safeFetchText(row.link, { timeoutMs: 8000 })
-      const extracted = extractReadable(text, row.link)
+      const { res, text, finalUrl } = await safeFetchText(row.link, { timeoutMs: 8000 })
+      if (!res.ok) throw new Error(`Article returned ${res.status}`)
+      const extracted = extractReadable(text, finalUrl || row.link)
       if (extracted) {
         html = extracted.contentHtml
         // Best-effort cache so the next reader (agent or human) is instant.
         await db
           .update(articles)
-          .set({ content: html, contentFetchedAt: new Date().toISOString() })
+          .set({ content: html, contentFetchedAt: new Date().toISOString(), contentSource: 'extracted', contentErrorAt: null })
           .where(and(eq(articles.id, raw), articleInWorkspace(principal.workspaceId)))
           .catch(() => {})
-      }
+      } else throw new Error('No readable article found')
     } catch {
+      await db.update(articles).set({ contentErrorAt: new Date().toISOString() }).where(and(eq(articles.id, raw), articleInWorkspace(principal.workspaceId))).catch(() => {})
       // Fall through to the description.
     }
   }

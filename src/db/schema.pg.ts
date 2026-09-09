@@ -92,6 +92,8 @@ export const feeds = pgTable(
     lastFetchedAt: text("last_fetched_at"),
     lastError: text("last_error"),
     lastErrorAt: text("last_error_at"),
+    httpEtag: text("http_etag"),
+    httpLastModified: text("http_last_modified"),
     /** Set only when a hosted downgrade pauses a no-RSS source. */
     entitlementPausedAt: text("entitlement_paused_at"),
   },
@@ -119,6 +121,10 @@ export const articles = pgTable(
     description: text("description"),
     content: text("content"),
     contentFetchedAt: text("content_fetched_at"),
+    sourceId: text("source_id"),
+    sourceUpdatedAt: text("source_updated_at"),
+    contentSource: text("content_source"),
+    contentErrorAt: text("content_error_at"),
     link: text("link").notNull(),
     image: text("image"),
     publishedAt: text("published_at"),
@@ -136,6 +142,7 @@ export const articles = pgTable(
     // workspace-scoped article query was therefore a full table scan, which the
     // stats tool turns from a background cost into a per-question one.
     index("articles_feed_idx").on(t.feedId),
+    uniqueIndex("articles_feed_source_id_idx").on(t.feedId, t.sourceId),
     // Unread counts group by feed and filter on is_used; the composite serves
     // both without a second lookup.
     index("articles_feed_unread_idx").on(t.feedId, t.isUsed),
@@ -323,6 +330,7 @@ export const catalogueFeeds = pgTable(
     description: text("description").notNull(),
     /** Resolved by scripts/catalogue-validate.ts, never hand-typed. */
     feedUrl: text("feed_url").notNull(),
+    sourceKind: text("source_kind").notNull().default("rss"),
     siteUrl: text("site_url"),
     iconFile: text("icon_file"),
     accent: text("accent"),

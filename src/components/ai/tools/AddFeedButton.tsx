@@ -1,3 +1,4 @@
+import { invalidateWorkspace } from "@/lib/workspace-query"
 import * as React from "react"
 import { useRouter } from "@tanstack/react-router"
 import { toast } from "sonner"
@@ -84,7 +85,7 @@ export function AddFeedButton({
       })
       // The sidebar's folder tree and every unread count are loader data, so
       // they are stale the moment this succeeds.
-      void router.invalidate()
+      void invalidateWorkspace(router)
     } catch (error) {
       console.error(error)
       toast.error("Could not add that feed")

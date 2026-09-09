@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button"
 import { ShareMenu } from "@/components/ShareMenu"
 import { ArticleThumb } from "@/components/ArticleThumb"
 import { useReaderStore } from "@/store/readerStore"
+import { useWorkspaceNavigation, useWorkspaceScope } from "@/components/WorkspaceDataProvider"
+import { DEMO_MODE } from "@/lib/demo"
 import { copyText } from "@/lib/clipboard"
 import { toPlainText } from "@/lib/plain-text"
 
@@ -62,7 +64,10 @@ export function ArticleDetailsPanel({ article, onClose, onRead }: ArticleDetails
   const domain = article ? (article.domain ?? getDomain(article.link)) : ""
   // A boolean rather than the array — see the note in ArticleCard.
   const isStarred = useReaderStore((s) => (article ? s.favorites.includes(article.id) : false))
-  const isFavorite = article ? isStarred || !!article.isFavorite : false
+  const scope = useWorkspaceScope()
+  const navigation = useWorkspaceNavigation()
+  const isFavorite = scope && !DEMO_MODE ? !!article && !!navigation.data?.favorites.personal.includes(article.id) : isStarred
+  const workspaceFavorite = !!article && !!scope && !!navigation.data?.favorites.workspace.includes(article.id)
 
   const copyLink = async () => {
     if (!article) return
@@ -70,7 +75,8 @@ export function ArticleDetailsPanel({ article, onClose, onRead }: ArticleDetails
   }
 
   const statuses = [
-    isFavorite && { label: "Favorite", icon: <Heart className="h-3 w-3" /> },
+    isFavorite && { label: "Personal favorite", icon: <Heart className="h-3 w-3" /> },
+    workspaceFavorite && { label: "Workspace favorite", icon: <Heart className="h-3 w-3" /> },
     article?.isBookmarked && { label: "Bookmarked", icon: <Bookmark className="h-3 w-3" /> },
     article?.isReadLater && { label: "Read later", icon: <Timer className="h-3 w-3" /> },
   ].filter(Boolean) as Array<{ label: string; icon: ReactNode }>

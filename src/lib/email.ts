@@ -8,7 +8,12 @@ const fromEmail = process.env.EMAIL_FROM ?? "SparkFeed <no-reply@sparkfeed.dev>"
 
 // Sends an email using Resend (priority 1) or SMTP (priority 2).
 // If neither is configured, logs a warning and skips silently.
-async function sendEmail(to: string, subject: string, html: string) {
+async function sendEmail(
+  to: string,
+  subject: string,
+  html: string,
+  required = false
+) {
   if (typeof window !== "undefined") return
 
   // 1. Resend
@@ -45,15 +50,36 @@ async function sendEmail(to: string, subject: string, html: string) {
     return
   }
 
+  if (required) throw new Error("Email delivery is not configured.")
   console.warn(
     "[email] No email provider configured. " +
       "Set RESEND_API_KEY, or set SMTP_HOST + SMTP_USER + SMTP_PASS."
   )
 }
 
-export async function sendInviteEmail(toEmail: string, inviteUrl: string) {
+export async function sendInviteEmail(
+  toEmail: string,
+  inviteUrl: string,
+  required = false
+) {
   const html = await render(React.createElement(InviteEmail, { inviteUrl }))
-  await sendEmail(toEmail, "You're invited to join SparkFeed", html)
+  await sendEmail(toEmail, "You're invited to join SparkFeed", html, required)
+}
+
+export async function sendCustomerInviteEmail(
+  to: string,
+  signupUrl: string,
+  beta: boolean
+) {
+  const subject = beta
+    ? "Try out early access to Sparkfeed"
+    : "You're invited to try Sparkfeed"
+  const html = `<h1>${subject}</h1><p>${
+    beta
+      ? "We'd love you to try the early access version of Sparkfeed and tell us what you think."
+      : "You're invited to explore Sparkfeed."
+  }</p><p>Follow your sources, organize your reading, and explore your content in one workspace.</p><p><a href="${escapeHtml(signupUrl)}">${beta ? "Try Sparkfeed early access" : "Get started with Sparkfeed"}</a></p><p>Create your account and verify your email to get started. This invitation does not change your plan or subscribe you to marketing emails.</p><p>The Sparkfeed team</p>`
+  await sendEmail(to, subject, html, true)
 }
 
 export async function sendPasswordResetEmail(

@@ -1,10 +1,12 @@
-import { useEffect, useRef, useState } from "react"
+import { useState } from "react"
+import { useQuery } from "@tanstack/react-query"
 import { BookOpen, ExternalLink, Globe, Loader2, X } from "lucide-react"
 import type { ArticleRow } from "@/components/ArticleGrid"
+import { previewQuery } from "@/lib/preview-query"
+import { useWorkspaceScope } from "@/components/WorkspaceDataProvider"
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet"
 import { Button } from "@/components/ui/button"
 import { ReaderControls } from "@/components/ReaderControls"
-import { getArticlePreview } from "@/server/rss"
 import { useReaderPrefs } from "@/store/readerPrefs"
 import { cn } from "@/lib/utils"
 import { useGuestShare } from "@/hooks/guest-share-context"
@@ -15,67 +17,18 @@ import { useGuestShare } from "@/hooks/guest-share-context"
 // in here without changing the surrounding UI.
 type PreviewMode = "reader" | "live"
 
-interface PreviewData {
-  readerHtml: string | null
-  canEmbed: boolean
-  link: string
-  domain: string
-}
-
 interface PreviewSheetProps {
   article: ArticleRow | null
   onClose: () => void
 }
 
 export function PreviewSheet({ article, onClose }: PreviewSheetProps) {
-  const [loading, setLoading] = useState(false)
-  const [data, setData] = useState<PreviewData | null>(null)
   const [mode, setMode] = useState<PreviewMode>("reader")
-  const reqId = useRef<string | null>(null)
   const guest = useGuestShare()
-
-  useEffect(() => {
-    if (!article) return
-    const id = article.id
-    reqId.current = id
-    setLoading(true)
-    setData(null)
-    setMode("reader")
-
-    // getArticlePreview is workspace-scoped by design — it is an outbound-fetch
-    // primitive and must not take an unscoped id. For a guest that resolves no
-    // workspace, so it throws and the reader pane opens completely blank. Show
-    // the feed's own summary and a prominent link out instead.
-    //
-    // A public preview endpoint would be better, but it has to verify the
-    // article's feed sits inside the shared subtree first: an unauthenticated
-    // endpoint that fetches arbitrary stored URLs is an SSRF primitive.
-    if (guest) {
-      setData({
-        readerHtml: null,
-        canEmbed: false,
-        link: article.link,
-        domain: article.domain ?? "",
-      })
-      setLoading(false)
-      return
-    }
-
-    getArticlePreview({ data: { id } })
-      .then((res) => {
-        if (reqId.current !== id) return // a newer article was opened
-        setData(res)
-        // Always open in Reader — Live is opt-in via the toggle when available.
-        setMode("reader")
-      })
-      .catch(() => {
-        if (reqId.current !== id) return
-        setData(null)
-      })
-      .finally(() => {
-        if (reqId.current === id) setLoading(false)
-      })
-  }, [article, guest])
+  const scope = useWorkspaceScope()
+  const preview = useQuery({ ...previewQuery(scope ?? { userId: "guest", workspaceId: "guest" }, article?.id ?? ""), enabled: !!article && !!scope && !guest })
+  const data = preview.data
+  const loading = !!scope && !guest && preview.isPending
 
   const domain = data?.domain ?? article?.domain ?? ""
   const link = data?.link ?? article?.link ?? "#"

@@ -1,11 +1,14 @@
-import { useCallback, useState } from "react"
-import { useNavigate } from "@tanstack/react-router"
-import { AlertTriangle, Check, ChevronDown } from "lucide-react"
+import { useCallback, useEffect, useMemo, useState } from "react"
+import { useInfiniteQuery } from "@tanstack/react-query"
+import { useNavigate, useRouter } from "@tanstack/react-router"
+import { AlertTriangle, Check, ChevronDown, Lock } from "lucide-react"
 import { toast } from "sonner"
 import type {ManageTarget} from "@/components/folder/ManageModal";
-import type { FeedRow, FolderRow } from "@/components/Sidebar"
+import type { FeedRow, FolderRow } from "@/lib/rss-types"
 import type { ArticleRow } from "@/components/ArticleGrid"
 import type {Crumb, HeaderAction} from "@/components/layout/header-actions";
+import type { FavoriteScope } from "@/lib/workspace-scope"
+import { invalidateWorkspace } from "@/lib/workspace-query"
 import { useGuestShare } from "@/hooks/guest-share-context"
 import { AppSidebar } from "@/components/app-sidebar"
 
@@ -41,10 +44,15 @@ import { ArticleGrid } from "@/components/ArticleGrid"
 import { EditFeedModal } from "@/components/EditFeedModal"
 import { FolderShareModal } from "@/components/FolderShareModal"
 import { ManageModal  } from "@/components/folder/ManageModal"
-import { deleteFeed, deleteFolder, getAllData, refreshAllFeeds, refreshFolder, renameFeed, renameFolder } from "@/server/rss"
+import { deleteFeed, deleteFolder, renameFeed, renameFolder } from "@/server/rss"
 import { DEMO_MODE } from "@/lib/demo"
 import { useReaderStore } from "@/store/readerStore"
-import { useAddFeed, useFeedsChanged } from "@/components/add-feed/add-feed-context"
+import { useAddFeed } from "@/components/add-feed/add-feed-context"
+import { useFeedRefresh } from "@/hooks/useFeedRefresh"
+import { useWorkspaceNavigation, useWorkspaceScope } from "@/components/WorkspaceDataProvider"
+import { articlePagesQuery } from "@/lib/article-query"
+import { RecoverFavorites } from "@/components/RecoverFavorites"
+import { ArticleReaderProvider } from "@/components/ArticleReaderProvider"
 import { AppTopBar } from "@/components/layout/AppTopBar"
 import { CrumbMenu } from "@/components/layout/CrumbMenu"
 import {
@@ -74,6 +82,8 @@ interface RSSShellProps {
     articles: Array<ArticleRow>
     /** Set when the server could load feeds but not articles. */
     degraded?: boolean
+    counts?: { feeds: Record<string, number>; folders: Record<string, number>; total: number; today: number }
+    favorites?: { personal: Array<string> }
   }
   /** Label for the current view (feed name, folder name, or "All Articles") */
   title: string
@@ -92,6 +102,10 @@ interface RSSShellProps {
    * Use on routes like Today and Favorites that have their own fixed filter.
    */
   skipDateFilter?: boolean
+  favoritesView?: boolean
+  favoriteScope?: FavoriteScope
+  onFavoriteScopeChange?: (scope: FavoriteScope) => void
+  articleDays?: number
   /**
    * Breadcrumb ancestors, outermost first. `title` is always the leaf, so this
    * holds only what comes before it — `[{ label: "Discover", href: "/discover" }]`
@@ -115,6 +129,8 @@ interface RSSShellProps {
    * over JSX would only ever get one of them right.
    */
   actions?: Array<HeaderAction>
+  /** Home shares the article pages' refresh status and action. */
+  showRefreshControls?: boolean
   /**
    * Rendered immediately after `title` in the breadcrumb. Intended for a
    * switcher — a leaf page often wants to offer its siblings without spending a
@@ -202,22 +218,45 @@ export function RSSShell({
   folderId,
   feedId,
   skipDateFilter = false,
+  favoritesView = false,
+  favoriteScope: selectedFavoriteScope,
+  onFavoriteScopeChange,
+  articleDays,
   crumbs,
   actions: pageActions,
+  showRefreshControls = false,
   titleMenu,
   emptyState,
   children,
 }: RSSShellProps) {
-  const [folders, setFolders] = useState<Array<FolderRow>>(initialData.folders)
-  const [feeds, setFeeds] = useState<Array<FeedRow>>(initialData.feeds)
-  const [rawArticles, setRawArticles] = useState<Array<ArticleRow>>(
-    initialData.articles
-  )
+  // The route loader owns server data. Copying it into state hid invalidations.
+  const scope = useWorkspaceScope()
+  const navigation = useWorkspaceNavigation()
+  const localFavorites = useReaderStore((state) => state.favorites)
+  const counts = navigation.data?.counts ?? initialData.counts
+  const { folders, feeds, degraded = false } = navigation.data ?? initialData
+  const router = useRouter()
   const [editFeedOpen, setEditFeedOpen] = useState(false)
   const [editingFeed, setEditingFeed] = useState<FeedRow | null>(null)
   const [search, setSearch] = useState("")
   const [dateFilter, setDateFilter] = useState<DateFilterOption>(15)
-  const [refreshing, setRefreshing] = useState(false)
+  const [localFavoriteScope, setLocalFavoriteScope] = useState<FavoriteScope>("personal")
+  const favoriteScope = selectedFavoriteScope ?? localFavoriteScope
+  const setFavoriteScope = onFavoriteScopeChange ?? setLocalFavoriteScope
+  const [debouncedSearch, setDebouncedSearch] = useState(search)
+  useEffect(() => {
+    const timeout = setTimeout(() => setDebouncedSearch(search), 250)
+    return () => clearTimeout(timeout)
+  }, [search])
+  const pages = useInfiniteQuery({
+    ...articlePagesQuery(scope ?? { userId: "guest", workspaceId: "guest" }, {
+      feedId, folderId, favorites: favoritesView ? favoriteScope : undefined,
+      days: favoritesView ? 0 : articleDays ?? (skipDateFilter ? 0 : dateFilter), query: debouncedSearch,
+      demoFavoriteIds: DEMO_MODE && favoritesView ? localFavorites.slice(0, 500) : undefined,
+    }),
+    enabled: !!scope && !children && (!favoritesView || favoriteScope !== "workspace" || !!navigation.data?.favorites.workspaceEnabled),
+  })
+  const rawArticles = useMemo(() => scope && !children ? pages.data?.pages.flatMap((page) => page.items) ?? [] : initialData.articles, [scope, children, pages.data, initialData.articles])
   const [shareModalFolder, setShareModalFolder] = useState<{ type?: 'folder' | 'feed'; id: string; name: string; isPublic: boolean } | null>(null)
   const [renameData, setRenameData] = useState<{ type: 'folder' | 'feed', id: string, name: string } | null>(null)
   const [newFolderName, setNewFolderName] = useState("")
@@ -228,47 +267,31 @@ export function RSSShell({
   const guest = useGuestShare()
   const { openAddFeed } = useAddFeed()
 
-  const [degraded, setDegraded] = useState(!!initialData.degraded)
-
   // Unguarded, a rejection here escapes into the router's error boundary and
   // takes the whole page down. Refreshing a list should never be able to do
   // that; surface it as a toast and keep the current data on screen.
   const reload = useCallback(async () => {
-    // Defence in depth. Every control that calls this is hidden for a guest,
-    // but getAllData resolves an empty workspace for them and would replace the
-    // shared payload with someone else's (empty) data.
+    // Guests keep the public-share payload and never trigger workspace reloads.
     if (guest) return
     try {
-      const data = await getAllData()
-      setFolders(data.folders)
-      setFeeds(data.feeds)
-      setRawArticles(data.articles as Array<ArticleRow>)
-      setDegraded(!!data.degraded)
+      await invalidateWorkspace(router)
     } catch (e) {
       console.error("[RSSShell] Failed to reload data:", e)
       toast.error("Could not refresh your feeds. Please try again.")
     }
-  }, [guest])
+  }, [guest, router])
+
+  const { refreshing, refresh: handleRefresh } = useFeedRefresh({
+    feeds,
+    enabled: !guest && !DEMO_MODE,
+    folderId,
+    feedId,
+    onRefreshed: reload,
+  })
 
   const handleEditFeed = (feed: FeedRow) => {
     setEditingFeed(feed)
     setEditFeedOpen(true)
-  }
-
-  const handleRefresh = async () => {
-    setRefreshing(true)
-    try {
-      if (folderId) {
-        await refreshFolder({ data: { folderId } })
-      } else {
-        await refreshAllFeeds()
-      }
-      reload()
-    } catch (e) {
-      console.error(e)
-    } finally {
-      setRefreshing(false)
-    }
   }
 
   const handleShare = (id: string, name: string) => {
@@ -350,7 +373,7 @@ export function RSSShell({
   }
 
   // Enrich all articles with domain + feedName
-  const allArticles = enrichArticles(rawArticles, feeds)
+  const allArticles = useMemo(() => enrichArticles(rawArticles, feeds), [rawArticles, feeds])
 
   // 1. Calculate the "base" list of articles that respect the CURRENT date filter.
   // This list is used for badges/counts so they match what the user sees in the views.
@@ -500,8 +523,22 @@ export function RSSShell({
     // Refreshing someone else's workspace, and adding to it, are not a guest's
     // to do. Search stays: it is client-side over data they already hold.
     if (!guest) {
-      headerActions.push(refreshAction(handleRefresh, refreshing))
-      headerActions.push(addFeedAction(() => openAddFeed()))
+      headerActions.push(refreshAction(handleRefresh, refreshing, feedId ? "Refresh feed" : folderId ? "Refresh folder" : "Refresh all feeds"))
+      if (!favoritesView) headerActions.push(addFeedAction(() => openAddFeed()))
+      else headerActions.push({ kind: "custom", id: "favorite-scope", alwaysVisible: true, node: (
+        <DropdownMenu>
+          <DropdownMenuTrigger className="inline-flex h-8 items-center gap-2 rounded-lg border px-3 text-xs">
+            <span>{favoriteScope === "personal" ? "Personal" : "Workspace"}<span className="hidden sm:inline"> favorites</span></span><ChevronDown className="size-3" />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => setFavoriteScope("personal")}>Personal favorites</DropdownMenuItem>
+            <DropdownMenuItem disabled={!navigation.data?.favorites.workspaceEnabled} onClick={() => setFavoriteScope("workspace")}>
+              Workspace favorites {!navigation.data?.favorites.workspaceEnabled && <Lock className="ml-2 size-3" />}
+            </DropdownMenuItem>
+            {!navigation.data?.favorites.workspaceEnabled && <p className="max-w-56 px-2 py-1 text-xs text-muted-foreground">Available in Pro and Enterprise team workspaces.</p>}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      ) })
     }
   } else if (pageActions && !guest) {
     // A guest is looking at someone else's workspace. Nothing a page puts in
@@ -547,25 +584,24 @@ export function RSSShell({
   */
   useCommandAction("refresh-all", guest ? null : () => void handleRefresh())
 
-  /*
-    The shell keeps its own copy of folders and feeds in state, seeded once from
-    `initialData`, so `router.invalidate()` alone leaves the sidebar showing the
-    list from before the add. This is the subscription that fixes that.
-  */
-  useFeedsChanged(reload)
+  if (showRefreshControls && !isArticlePage && !guest) {
+    headerActions.push(lastUpdatedNote(feeds) ?? { kind: "note", id: "last-updated", text: "Not updated yet" })
+    headerActions.push(refreshAction(handleRefresh, refreshing))
+  }
 
   return (
+    <ArticleReaderProvider>
     <SidebarProvider>
       {/* `useSidebar` only resolves inside the provider, hence a child. */}
       <SidebarToggleCommand />
       <AppSidebar
         folders={folders}
         feeds={feeds}
-        articleCounts={articleCounts}
-        folderArticleCounts={folderArticleCounts}
-        totalCount={totalCount}
-        todayCount={todayCount}
-        favoritesCount={favoritesCount}
+        articleCounts={counts?.feeds ?? articleCounts}
+        folderArticleCounts={counts?.folders ?? folderArticleCounts}
+        totalCount={counts?.total ?? totalCount}
+        todayCount={counts?.today ?? todayCount}
+        favoritesCount={DEMO_MODE ? localFavorites.length : navigation.data?.favorites.personal.length ?? initialData.favorites?.personal.length ?? favoritesCount}
         onFolderCreated={reload}
         onEditFeed={handleEditFeed}
       />
@@ -575,6 +611,12 @@ export function RSSShell({
           crumbMenu={headerMenu}
           actions={headerActions}
         />
+
+        {refreshing && (
+          <p role="status" className="mx-4 mb-2 text-xs text-muted-foreground">
+            Checking sources for new articles. You can keep reading.
+          </p>
+        )}
 
         {degraded && (
           <div className="mx-4 mb-2 flex items-center gap-2 rounded-md border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-xs text-amber-400">
@@ -599,6 +641,11 @@ export function RSSShell({
           `min-w-0` on SidebarInset, which is the correct tool for it.
         */}
         <div className="flex min-w-0 flex-1 flex-col">
+          {favoritesView && favoriteScope === "personal" && !DEMO_MODE && <RecoverFavorites />}
+          {!!scope && !children && pages.isError && <div role="alert" className="m-5 flex items-center gap-3 text-sm text-amber-400">
+            Articles could not be loaded. Your saved favorites are safe.
+            <Button variant="outline" onClick={() => void pages.refetch()}>Retry</Button>
+          </div>}
           {children || (
             <ArticleGrid
               articles={displayedArticles}
@@ -606,13 +653,34 @@ export function RSSShell({
               // rawArticles, not displayedArticles: the date filter defaults to
               // 15 days and there is a search box, so gating on the filtered
               // list would ambush an existing user whose search missed with a
-              // full catalogue. A filtered-empty view keeps ArticleGrid's own
-              // message, which is the right one for it.
-              emptyState={rawArticles.length === 0 ? emptyState : undefined}
+              // full catalogue. Explain active filters separately.
+              emptyState={
+                !!scope && pages.isPending ? <p role="status" className="p-8 text-center text-sm text-muted-foreground">Loading articles…</p> :
+                rawArticles.length === 0 && emptyState ? emptyState :
+                refreshing && displayedArticles.length === 0 ? (
+                  <div className="flex h-64 items-center justify-center text-sm text-muted-foreground">
+                    Checking your sources for new articles…
+                  </div>
+                ) : displayedArticles.length === 0 && (routeFiltered.length > 0 || (!!scope && !favoritesView && !skipDateFilter)) ? (
+                  <div className="flex h-64 flex-col items-center justify-center gap-3">
+                    <p className="text-sm text-muted-foreground">
+                      No articles match your {search ? "search" : "date range"}.
+                    </p>
+                    <Button variant="outline" onClick={() => { setSearch(""); setDateFilter(0) }}>
+                      Clear filters and show saved articles
+                    </Button>
+                  </div>
+                ) : undefined
+              }
               folderId={folderId}
               onRefreshed={reload}
             />
           )}
+          {!!scope && !children && pages.hasNextPage && <div className="flex justify-center p-6">
+            <Button variant="outline" disabled={pages.isFetchingNextPage} onClick={() => void pages.fetchNextPage()}>
+              {pages.isFetchingNextPage ? "Loading…" : "Load more articles"}
+            </Button>
+          </div>}
         </div>
       </SidebarInset>
 
@@ -728,5 +796,6 @@ export function RSSShell({
       )}
 
     </SidebarProvider>
+    </ArticleReaderProvider>
   )
 }

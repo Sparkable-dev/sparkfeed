@@ -290,6 +290,8 @@ export async function createHostedOrganization(
       seats: 1,
       billingSource: "manual",
     })
+    const { initializeWorkspace } = await import("@/server/services/initialize-workspace")
+    await initializeWorkspace(id, tx)
     return { ...org, members: [ownerMember] }
   })
 }

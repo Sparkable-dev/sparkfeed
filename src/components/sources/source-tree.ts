@@ -1,4 +1,4 @@
-import type { FeedRow, FolderRow } from "@/components/Sidebar"
+import type { FeedRow, FolderRow } from "@/lib/rss-types"
 import type { SourceHealthRow } from "@/server/sources-data"
 import { slugify } from "@/lib/slugify"
 import { UNFILED_LABEL } from "@/lib/unfiled"

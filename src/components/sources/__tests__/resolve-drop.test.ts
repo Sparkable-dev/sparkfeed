@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest"
 import { resolveDrop } from "../resolve-drop"
 import { UNGROUPED_ID, buildTree, signature } from "../source-tree"
-import type { FeedRow, FolderRow } from "@/components/Sidebar"
+import type { FeedRow, FolderRow } from "@/lib/rss-types"
 
 /**
  * What a drop means.

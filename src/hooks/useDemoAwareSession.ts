@@ -1,4 +1,5 @@
 import { useGuestShare } from "./guest-share-context"
+import { useHydrated } from "./useHydrated"
 import { useSession } from "@/lib/auth-client"
 import { DEMO_MODE, DEMO_SESSION } from "@/lib/demo"
 import { GUEST_SESSION } from "@/lib/guest"
@@ -20,8 +21,9 @@ import { GUEST_SESSION } from "@/lib/guest"
 export function useDemoAwareSession() {
   const real = useSession()
   const guest = useGuestShare()
+  const hydrated = useHydrated()
 
   if (guest) return { data: GUEST_SESSION, isPending: false, error: null }
   if (DEMO_MODE) return { data: DEMO_SESSION, isPending: false, error: null }
-  return real
+  return { ...real, data: hydrated ? real.data : null, isPending: !hydrated || real.isPending }
 }

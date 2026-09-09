@@ -142,6 +142,13 @@ export const articles = pgTable(
   ]
 )
 
+/** Personal saves are independent of the workspace-wide articles.isFavorite flag. */
+export const personalFavorites = pgTable("personal_favorites", {
+  userId: text("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+  articleId: text("article_id").notNull().references(() => articles.id, { onDelete: "cascade" }),
+  createdAt: text("created_at").notNull().$defaultFn(() => new Date().toISOString()),
+}, (t) => [primaryKey({ columns: [t.userId, t.articleId] }), index("personal_favorites_article_idx").on(t.articleId)])
+
 export const invites = pgTable("invites", {
   id: text("id").primaryKey(),
   email: text("email").notNull(),

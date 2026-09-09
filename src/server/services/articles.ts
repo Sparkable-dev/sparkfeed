@@ -5,6 +5,7 @@ import { htmlToMarkdown, htmlToPlainText } from './markdown'
 import { decodeArticleId, decodeId, encodeId } from './ids'
 import { articleInWorkspace } from './tenancy'
 import { SEARCH_MODE, articleTextMatch } from './dialect'
+import { apiFavoriteCondition } from './favorites'
 import {
   ARTICLE_SORT_KEY,
 
@@ -49,9 +50,10 @@ export interface SearchArgs {
 export async function searchArticles(principal: ApiPrincipal, args: SearchArgs) {
   const limit = clampLimit(args.limit)
   const conditions = [articleInWorkspace(principal.workspaceId)]
+  const favorite = await apiFavoriteCondition(principal)
 
   if (args.query?.trim()) conditions.push(articleTextMatch(args.query.trim()))
-  if (args.favoritesOnly) conditions.push(eq(articles.isFavorite, true))
+  if (args.favoritesOnly) conditions.push(favorite)
   if (args.unreadOnly) conditions.push(eq(articles.isUsed, false))
   if (args.since) conditions.push(gte(ARTICLE_SORT_KEY, isoDate(args.since, 'since')))
   if (args.until) conditions.push(lte(ARTICLE_SORT_KEY, isoDate(args.until, 'until')))
@@ -81,7 +83,7 @@ export async function searchArticles(principal: ApiPrincipal, args: SearchArgs) 
       description: articles.description,
       publishedAt: articles.publishedAt,
       createdAt: articles.createdAt,
-      isFavorite: articles.isFavorite,
+      isFavorite: sql<boolean>`case when ${favorite} then true else false end`,
       isUsed: articles.isUsed,
       hasContent: sql<number>`case when ${articles.content} is null then 0 else 1 end`,
       feedId: feeds.id,

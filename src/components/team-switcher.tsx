@@ -23,6 +23,7 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
 import { Button } from "@/components/ui/button"
+import { useHydrated } from "@/hooks/useHydrated"
 
 export function TeamSwitcher() {
   return DEMO_MODE ? <DemoTeamSwitcher /> : <AuthenticatedTeamSwitcher />
@@ -52,9 +53,11 @@ function AuthenticatedTeamSwitcher() {
   const [showCreateModal, setShowCreateModal] = React.useState(false)
   const navigate = useNavigate()
   const { data: orgs } = authClient.useListOrganizations()
-  const { data: activeOrg } = authClient.useActiveOrganization()
+  const { data: clientActiveOrg } = authClient.useActiveOrganization()
   const session = authClient.useSession()
-  const user = session.data?.user
+  const hydrated = useHydrated()
+  const activeOrg = hydrated ? clientActiveOrg : null
+  const user = hydrated ? session.data?.user : undefined
   const workspaceCreation = useWorkspaceCreationPermission()
   const [personalPlan, setPersonalPlan] =
     React.useState<EntitlementPlan | null>(null)

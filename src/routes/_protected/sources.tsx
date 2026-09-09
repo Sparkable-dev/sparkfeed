@@ -3,17 +3,17 @@ import { createFileRoute, useRouter } from "@tanstack/react-router"
 import { toast } from "sonner"
 import { ChevronsDownUp, ChevronsUpDown, FolderPlus, Plus } from "lucide-react"
 import type { HeaderAction } from "@/components/layout/header-actions"
-import type { FeedRow, FolderRow } from "@/components/Sidebar"
-import type { ArticleRow } from "@/components/ArticleGrid"
+import type { FeedRow, FolderRow } from "@/lib/rss-types"
 import type { TreeFolder } from "@/components/sources/source-tree"
 import type {ManageTarget} from "@/components/folder/ManageModal";
+import { invalidateWorkspace, loadWorkspaceData  } from "@/lib/workspace-query"
 import { RSSShell } from "@/components/RSSShell"
 import { SourcesPage } from "@/components/sources/SourcesPage"
 import { buildTree } from "@/components/sources/source-tree"
 import { SourcesDnd } from "@/components/sources/SourcesDnd"
 import { useSourceOrder } from "@/components/sources/useSourceOrder"
 import { AddFolderModal } from "@/components/AddFolderModal"
-import { useAddFeed, useFeedsChanged } from "@/components/add-feed/add-feed-context"
+import { useAddFeed } from "@/components/add-feed/add-feed-context"
 import { EditFeedModal } from "@/components/EditFeedModal"
 import { FolderShareModal } from "@/components/FolderShareModal"
 import { ManageModal  } from "@/components/folder/ManageModal"
@@ -40,7 +40,6 @@ import { DEMO_MODE } from "@/lib/demo"
 import {
   deleteFeed,
   deleteFolder,
-  getAllData,
   refreshFolder,
   renameFeed,
   renameFolder,
@@ -57,10 +56,10 @@ import { getSourceHealth } from "@/server/sources-data"
  * not the tree itself.
  */
 export const Route = createFileRoute("/_protected/sources")({
-  loader: async () => {
+  loader: async ({ context }) => {
     // getAllData is for the shell's sidebar, which every route renders, and it
     // already carries the folders and feeds in the order this page wants.
-    const [data, health] = await Promise.all([getAllData(), getSourceHealth()])
+    const [data, health] = await Promise.all([loadWorkspaceData(context), getSourceHealth()])
     return { data, health }
   },
   component: SourcesRoute,
@@ -88,7 +87,7 @@ function SourcesRoute() {
   */
   const { tree, apply } = useSourceOrder({
     loaded: loadedTree,
-    onSaved: () => void router.invalidate(),
+    onSaved: () => void invalidateWorkspace(router),
   })
 
   /*
@@ -117,11 +116,8 @@ function SourcesRoute() {
   const [manageTarget, setManageTarget] = useState<ManageTarget | null>(null)
   const [editingFeed, setEditingFeed] = useState<FeedRow | null>(null)
 
-  const reload = useCallback(() => void router.invalidate(), [router])
+  const reload = useCallback(() => void invalidateWorkspace(router), [router])
   const { openAddFeed } = useAddFeed()
-  // The tree here comes from the loader, so a feed added from anywhere — the
-  // top bar, the palette, a folder's own menu — has to re-run it.
-  useFeedsChanged(reload)
 
   const guardDemo = () => {
     if (DEMO_MODE) {
@@ -289,7 +285,7 @@ function SourcesRoute() {
       initialData={{
         folders: data.folders,
         feeds: data.feeds,
-        articles: data.articles as Array<ArticleRow>,
+        articles: data.articles,
       }}
       title="Sources"
       actions={headerActions}

@@ -14,7 +14,7 @@ import {
   Zap,
 } from "lucide-react"
 import { GuestUpsellCard } from "./GuestUpsellCard"
-import type { FeedRow, FolderRow } from "@/components/Sidebar"
+import type { FeedRow, FolderRow } from "@/lib/rss-types"
 import type {NavPageKey} from "@/config/nav-pages";
 import { authClient } from "@/lib/auth-client"
 import { useDemoAwareSession } from "@/hooks/useDemoAwareSession"

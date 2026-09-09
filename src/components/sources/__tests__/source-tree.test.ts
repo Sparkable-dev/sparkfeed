@@ -7,7 +7,7 @@ import {
   signature,
   toOrderPayload,
 } from "../source-tree"
-import type { FeedRow, FolderRow } from "@/components/Sidebar"
+import type { FeedRow, FolderRow } from "@/lib/rss-types"
 
 /**
  * The reorder maths, tested without rendering anything.

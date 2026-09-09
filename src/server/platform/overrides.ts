@@ -202,7 +202,7 @@ export async function changeWorkspaceOverride(
       targetId: `${input.workspaceType}:${input.workspaceId}`,
       reason: input.reason,
       beforeState: JSON.stringify(redactAuditValue(before ?? null)),
-      afterState: JSON.stringify(redactAuditValue(after)),
+      afterState: JSON.stringify(redactAuditValue({ ...after, actorEmail: actor.email })),
       createdAt: now.toISOString(),
     })
     return after

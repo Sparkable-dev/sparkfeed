@@ -1,16 +1,13 @@
 import { useEffect, useRef, useState } from "react"
-import { ExternalLink, Heart, PanelRightOpen, Share2 } from "lucide-react"
+import { ExternalLink, PanelRightOpen, Share2 } from "lucide-react"
 import type { ArticleRow } from "@/components/ArticleGrid"
-import { ArticleDetailsPanel } from "@/components/ArticleDetailsPanel"
+import { useArticleReader } from "@/components/ArticleReaderProvider"
+import { FavoriteButton } from "@/components/FavoriteButton"
 import { ArticleThumb } from "@/components/ArticleThumb"
-import { PreviewSheet } from "@/components/PreviewSheet"
-import { useGuestShare } from "@/hooks/guest-share-context"
 import { copyText } from "@/lib/clipboard"
 import { toPlainText } from "@/lib/plain-text"
 import { domainOf } from "@/lib/source-mark"
 import { timeAgo } from "@/lib/time-ago"
-import { toggleFavorite } from "@/server/rss"
-import { useReaderStore } from "@/store/readerStore"
 
 /**
  * One tall story card, cycling through the newest few.
@@ -110,17 +107,11 @@ const ACTION =
 export function LatestCard({ articles }: { articles: Array<ArticleRow> }) {
   const [index, setIndex] = useState(0)
   const [paused, setPaused] = useState(false)
-  const [previewOpen, setPreviewOpen] = useState(false)
-  const [detailsOpen, setDetailsOpen] = useState(false)
+  const { openReader, openDetails } = useArticleReader()
 
   const boxRef = useRef<HTMLDivElement>(null)
   const textRef = useRef<HTMLParagraphElement>(null)
   const lines = useFittedLines(boxRef, textRef)
-
-  const guest = useGuestShare()
-  // A boolean rather than the array — see the note in ArticleCard.
-  const isStarred = useReaderStore((s) => s.favorites.includes(articles[Math.min(index, articles.length - 1)]?.id ?? ""))
-  const toggleLocalFavorite = useReaderStore((s) => s.toggleFavorite)
 
   useEffect(() => {
     if (paused || articles.length < 2) return
@@ -142,20 +133,7 @@ export function LatestCard({ articles }: { articles: Array<ArticleRow> }) {
   // The list can shrink under a stale index when the loader revalidates.
   const active = Math.min(index, articles.length - 1)
   const article = articles[active]
-  const isFavorite = isStarred || !!article.isFavorite
   const description = toPlainText(article.description)
-
-  const handleFavorite = async () => {
-    toggleLocalFavorite(article.id)
-    // A guest has no workspace, so the server call resolves nothing and
-    // throws. Their favourites still work, they just stay on this device.
-    if (guest) return
-    try {
-      await toggleFavorite({ data: { id: article.id, state: !isFavorite } })
-    } catch {
-      toggleLocalFavorite(article.id)
-    }
-  }
 
   return (
     <>
@@ -168,7 +146,7 @@ export function LatestCard({ articles }: { articles: Array<ArticleRow> }) {
       >
         <button
           type="button"
-          onClick={() => setPreviewOpen(true)}
+          onClick={() => openReader(article)}
           aria-label={article.title}
           className="group relative aspect-[16/10] w-full shrink-0 overflow-hidden bg-zinc-900"
         >
@@ -207,25 +185,12 @@ export function LatestCard({ articles }: { articles: Array<ArticleRow> }) {
               scrim to stay visible at all; here it sits on a flat surface and
               simply reads.
             */}
-            <button
-              type="button"
-              onClick={() => void handleFavorite()}
-              aria-label={isFavorite ? "Remove from favorites" : "Add to favorites"}
-              className="-mt-0.5 shrink-0 transition-transform hover:scale-110 active:scale-95"
-            >
-              <Heart
-                className="size-4"
-                style={{
-                  fill: isFavorite ? "#ef4444" : "transparent",
-                  color: isFavorite ? "#ef4444" : "#71717a",
-                }}
-              />
-            </button>
+            <FavoriteButton articleId={article.id} />
           </div>
 
           <button
             type="button"
-            onClick={() => setPreviewOpen(true)}
+            onClick={() => openReader(article)}
             className="line-clamp-3 text-left text-[15px] leading-snug font-bold text-white
               transition-colors hover:text-zinc-300"
           >
@@ -264,9 +229,10 @@ export function LatestCard({ articles }: { articles: Array<ArticleRow> }) {
           </div>
 
           <div className="flex items-center justify-end gap-1">
+            <FavoriteButton articleId={article.id} scope="workspace" />
             <button
               type="button"
-              onClick={() => setDetailsOpen(true)}
+              onClick={() => openDetails(article)}
               className={ACTION}
               title="Article details"
               aria-label="Show article details"
@@ -315,18 +281,6 @@ export function LatestCard({ articles }: { articles: Array<ArticleRow> }) {
         </div>
       </div>
 
-      <PreviewSheet
-        article={previewOpen ? article : null}
-        onClose={() => setPreviewOpen(false)}
-      />
-      <ArticleDetailsPanel
-        article={detailsOpen ? article : null}
-        onClose={() => setDetailsOpen(false)}
-        onRead={() => {
-          setDetailsOpen(false)
-          setPreviewOpen(true)
-        }}
-      />
     </>
   )
 }

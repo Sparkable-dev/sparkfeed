@@ -1,3 +1,4 @@
+import { invalidateWorkspace } from "@/lib/workspace-query"
 import {
   createContext,
   useCallback,
@@ -62,11 +63,8 @@ export function useAddFeed(): AddFeedValue {
 /**
  * Registers a callback for "feeds were just added".
  *
- * `router.invalidate()` alone is not enough. `RSSShell` seeds its folder and
- * feed state from `initialData` once and never re-reads it, so re-running
- * loaders leaves the sidebar showing the old list. Pages that hold their own
- * copy subscribe here and refresh it themselves — that is what makes "the same
- * everywhere" true rather than aspirational.
+ * For components with independent state, such as Discover's import progress.
+ * Route-owned data updates through router.invalidate().
  */
 const ChangeContext = createContext<{
   subscribe: (fn: () => void) => () => void
@@ -121,7 +119,7 @@ export function AddFeedProvider({ children }: { children: React.ReactNode }) {
 
   const notifyChanged = useCallback(() => {
     for (const fn of listeners.current) fn()
-    void router.invalidate()
+    void invalidateWorkspace(router)
     // A newly created folder has to appear in the picker the next time the
     // dialog opens.
     void loadFolders()

@@ -43,7 +43,9 @@ export interface WorkspaceContext {
  * demo branch must come first.
  */
 export const resolveWorkspaceContext = createServerOnlyFn(
-  async (): Promise<WorkspaceContext> => {
+  async (
+    options: { allowSuspended?: boolean } = {}
+  ): Promise<WorkspaceContext> => {
     if (DEMO_MODE) {
       return {
         workspaceId: DEMO_WORKSPACE_ID,
@@ -55,7 +57,7 @@ export const resolveWorkspaceContext = createServerOnlyFn(
     }
 
     const { getRequestHeaders } = await import("@tanstack/react-start/server")
-    return resolveWorkspaceContextFromHeaders(getRequestHeaders())
+    return resolveWorkspaceContextFromHeaders(getRequestHeaders(), options)
   }
 )
 
@@ -71,7 +73,10 @@ export const resolveWorkspaceContext = createServerOnlyFn(
  * before any use of `auth` — see the note above.
  */
 export const resolveWorkspaceContextFromHeaders = createServerOnlyFn(
-  async (headers: Headers): Promise<WorkspaceContext> => {
+  async (
+    headers: Headers,
+    options: { allowSuspended?: boolean } = {}
+  ): Promise<WorkspaceContext> => {
     if (DEMO_MODE) {
       return {
         workspaceId: DEMO_WORKSPACE_ID,
@@ -96,10 +101,23 @@ export const resolveWorkspaceContextFromHeaders = createServerOnlyFn(
       ? workspaceRefForSession(userId, organizationId)
       : null
 
-    const supportSession = session?.session && "impersonatedBy" in session.session && session.session.impersonatedBy
+    if (workspace && userId && !options.allowSuspended) {
+      const { workspaceIsSuspended } =
+        await import("@/server/entitlements/suspension")
+      if (await workspaceIsSuspended(workspace.id))
+        throw new Error(
+          "This workspace is suspended. Switch to another workspace or contact support."
+        )
+    }
+
+    const supportSession =
+      session?.session &&
+      "impersonatedBy" in session.session &&
+      session.session.impersonatedBy
     if (userId && workspace && !supportSession) {
-      const { recordPlatformActivity } = await import("@/server/platform/activity")
-      await recordPlatformActivity(userId,workspace)
+      const { recordPlatformActivity } =
+        await import("@/server/platform/activity")
+      await recordPlatformActivity(userId, workspace)
     }
 
     return {

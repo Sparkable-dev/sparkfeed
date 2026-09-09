@@ -1,6 +1,7 @@
 import { createFileRoute, redirect } from "@tanstack/react-router"
 import { Lock } from "lucide-react"
 import type { SettingsSection } from "@/components/settings/SettingsNavigation"
+import { loadWorkspaceData } from "@/lib/workspace-query"
 import { RSSShell } from "@/components/RSSShell"
 import { AccountSettings } from "@/components/settings/AccountSettings"
 import { SecuritySettings } from "@/components/settings/SecuritySettings"
@@ -8,10 +9,8 @@ import { SettingsNavigation } from "@/components/settings/SettingsNavigation"
 import { WorkspaceHub } from "@/components/settings/WorkspaceHub"
 import { useDemoAwareSession } from "@/hooks/useDemoAwareSession"
 import { DEMO_MODE } from "@/lib/demo"
-import { getAllData } from "@/server/rss"
 
 export const Route = createFileRoute("/_protected/settings")({
-  loader: () => getAllData(),
   validateSearch: (search: Record<string, unknown>) => {
     const requested = String(search.tab || "profile")
     const tab: SettingsSection | "billing" = [
@@ -30,9 +29,11 @@ export const Route = createFileRoute("/_protected/settings")({
         to: "/settings/workspaces/$slug",
         params: { slug: "personal" },
         search: { section: "billing" },
-      } as never)
+      })
     }
+    return {}
   },
+  loader: ({ context }) => loadWorkspaceData(context),
   component: SettingsPage,
 })
 
@@ -47,7 +48,7 @@ function SettingsPage() {
       initialData={{
         folders: data.folders,
         feeds: data.feeds,
-        articles: data.articles as never,
+        articles: data.articles,
         degraded: data.degraded,
       }}
       title="Settings"

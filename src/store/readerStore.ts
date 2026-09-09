@@ -22,7 +22,8 @@ export const useReaderStore = create<ReaderStore>()(
       isFavorite: (id) => get().favorites.includes(id),
     }),
     {
-      name: "rss-reader-favorites",
+      // Guest-only storage. Leave the old unscoped key available for explicit recovery.
+      name: "rss-guest-favorites",
     }
   )
 )

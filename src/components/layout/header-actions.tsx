@@ -52,18 +52,18 @@ export type HeaderAction =
    * avatar. It is opaque to the collapsing logic, so it renders as-is at both
    * sizes and belongs to things that are small at both sizes.
    */
-  | { kind: "custom"; id: string; node: React.ReactNode }
+  | { kind: "custom"; id: string; node: React.ReactNode; alwaysVisible?: boolean }
 
 // ─────────────────────────────────────────────
 // Builders for the actions that repeat across pages
 // ─────────────────────────────────────────────
 
-export function refreshAction(onClick: () => void, busy: boolean): HeaderAction {
+export function refreshAction(onClick: () => void, busy: boolean, label = "Refresh all feeds"): HeaderAction {
   return {
     kind: "button",
     id: "refresh-btn",
     icon: RefreshCw,
-    label: "Refresh all feeds",
+    label,
     onClick,
     variant: "ghost",
     busy,

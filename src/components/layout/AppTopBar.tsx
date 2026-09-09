@@ -55,7 +55,8 @@ export function AppTopBar({
   const search = actions.find((a) => a.kind === "search")
   const buttons = actions.filter((a) => a.kind === "button")
   /* Everything that cannot usefully shrink to a 32px icon. */
-  const overflow = actions.filter((a) => a.kind === "note" || a.kind === "custom")
+  const inline = actions.filter((a) => a.kind === "note" || a.kind === "custom")
+  const overflow = inline.filter((a) => a.kind !== "custom" || !a.alwaysVisible)
 
   const leaf = crumbs.at(-1)
 
@@ -215,8 +216,8 @@ export function AppTopBar({
               bar than a phone does — status text and dropdowns move into the
               overflow menu rather than pushing the page into a sideways scroll.
             */}
-            {overflow.map((action) => (
-              <div key={action.id} className="hidden shrink-0 items-center lg:flex">
+            {inline.map((action) => (
+              <div key={action.id} className={action.kind === "custom" && action.alwaysVisible ? "flex shrink-0 items-center" : "hidden shrink-0 items-center lg:flex"}>
                 {action.kind === "note" ? (
                   <span className="text-[11px] whitespace-nowrap text-zinc-500 tabular-nums">
                     {action.text}
@@ -294,6 +295,7 @@ export function AppTopBar({
                     ) : (
                       <DropdownMenuItem
                         key={action.id}
+                        closeOnClick={false}
                         className="rounded-lg px-1 py-1 focus:bg-transparent"
                       >
                         {action.node}

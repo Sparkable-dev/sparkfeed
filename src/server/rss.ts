@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto"
-import { and, count, desc, eq, inArray, isNull } from "drizzle-orm"
+import { and, count, eq, inArray, isNull } from "drizzle-orm"
 import { z } from "zod"
 import { createServerFn } from "@tanstack/react-start"
 import { fetchAndInsertArticles } from "./utils/fetch-articles"
@@ -14,7 +14,6 @@ import { resolveFeed } from "./utils/detectRSS"
 import { discoverMoreFeeds } from "./utils/discover"
 import { feedError, toFeedError } from "./utils/feed-errors"
 import { resolveWorkspaceContext, resolveWorkspaceId } from "./services/context"
-import { ARTICLE_LIST_COLUMNS } from "./services/projections"
 import {
   NOT_FOUND_MSG,
   assertOwnsFeed,
@@ -40,15 +39,20 @@ import {
 } from "./services/tenancy"
 import { FEED_ORDER, FOLDER_ORDER } from "./services/ordering"
 import { emptySignals } from "./utils/feed-signals"
+import { ingestFeeds } from "./services/ingest-queue"
+import { readFavoriteIds, writeFavorites } from "./services/favorites"
+import { readNavigationCounts } from "./services/navigation"
 import type { FeedError } from "./utils/feed-errors"
 import type { DiscoveredFeed } from "./utils/discover"
 import type { ResolvedFeed } from "./utils/detectRSS"
 import type { FeedSignals } from "./utils/feed-signals"
+import type { ArticleRow } from "@/components/ArticleGrid"
 import { workspaceWriteMiddleware } from "@/server/entitlements/browser-write"
 import { articles, feedShares, feeds, folderShares, folders } from "@/db/schema"
 import { db } from "@/db/index"
 import { feedUrlKey, feedUrlSchema } from "@/lib/validation"
 import { MAX_BATCH_URLS, MAX_BULK_FEEDS } from "@/lib/bulk-urls"
+import { feedNeedsRefresh } from "@/lib/feed-freshness"
 import { DEMO_MODE } from "@/lib/demo"
 import { assertNoRssSourceCapacity } from "@/server/entitlements/enforce"
 
@@ -66,9 +70,12 @@ const DEMO_LOCKED_MSG = "This feature is locked in demo mode"
 // FETCH ALL DATA
 // ─────────────────────────────────────────────
 
-export const getAllData = createServerFn({ method: "GET" }).handler(
-  async () => {
-    const { workspaceId, demo } = await resolveWorkspaceContext()
+export const getAllData = createServerFn({ method: "GET" })
+  .validator(z.object({ workspaceId: z.string(), userId: z.string() }).optional())
+  .handler(async ({ data: requestedScope }) => {
+    const context = await resolveWorkspaceContext()
+    const { workspaceId, demo } = context
+    if (requestedScope && (requestedScope.workspaceId !== workspaceId || requestedScope.userId !== context.userId)) throw new Error("Workspace changed. Reload this page.")
 
     if (demo) {
       // Ensure schema exists before any query — handles fresh/wiped demo db.
@@ -114,6 +121,8 @@ export const getAllData = createServerFn({ method: "GET" }).handler(
             // Drives the top bar's "Updated 4m ago". Cheap here — one more column on
             // a query already running — versus a second round trip on every page.
             lastFetchedAt: feeds.lastFetchedAt,
+            lastErrorAt: feeds.lastErrorAt,
+            entitlementPausedAt: feeds.entitlementPausedAt,
             isShared: feedShares.isShared,
             password: feedShares.password,
           })
@@ -152,20 +161,6 @@ export const getAllData = createServerFn({ method: "GET" }).handler(
           hasPassword: !!f.password,
         }))
         allFeeds = reseedFeeds
-      } else {
-        // Create default General folder for real users
-        const id = randomUUID()
-        const name = "General"
-        await db.insert(folders).values({ id, name, workspaceId })
-        allFolders = [
-          {
-            id,
-            name,
-            workspaceId,
-            createdAt: new Date().toISOString(),
-            isShared: false,
-          } as any,
-        ]
       }
     }
 
@@ -177,40 +172,17 @@ export const getAllData = createServerFn({ method: "GET" }).handler(
       return { ...rest, isShared: !!f.isShared, hasPassword: !!password }
     })
 
-    // Article reads are the most fragile part of this loader (they are the widest
-    // queries and the first thing to break on schema drift). A failure here
-    // degrades the page to "no articles yet" instead of taking down every
-    // authenticated route through the router's error boundary.
-    let degraded = false
-
-    // Fetch RSS articles
-    const feedIds = allFeeds.map((f) => f.id)
-    let rssArticles: Array<any> = []
-    if (feedIds.length > 0) {
-      try {
-        rssArticles = await db
-          .select(ARTICLE_LIST_COLUMNS)
-          .from(articles)
-          .where(inArray(articles.feedId, feedIds))
-          .orderBy(desc(articles.publishedAt))
-          .limit(200)
-      } catch (err) {
-        console.error("[getAllData] Failed to load articles:", err)
-        degraded = true
-      }
-    }
-
-    /*
-    One list, one query. Watched pages used to be read from `scraped_articles`
-    here and merged in with `feedId: null` and `type: 'scraped'`, which is why
-    they could never be filtered, opened or counted like anything else. They are
-    `articles` rows now, so they arrive above with everything else.
-  */
+    // Navigation needs aggregates and IDs, never an arbitrary article sample.
+    const [counts, favorites] = await Promise.all([
+      readNavigationCounts(workspaceId), readFavoriteIds(context),
+    ])
     return {
       folders: allFolders,
       feeds: allFeedsWithShare,
-      articles: rssArticles,
-      degraded,
+      articles: [] as Array<ArticleRow>,
+      degraded: false,
+      counts,
+      favorites,
     }
   }
 )
@@ -897,20 +869,27 @@ export const refreshAllFeeds = createServerFn({ method: "POST" }).middleware([wo
       .where(
         and(feedInWorkspace(workspaceId), isNull(feeds.entitlementPausedAt))
       )
-    const results = await Promise.allSettled(
-      allFeeds.map((f: { id: string; url: string; kind: string }) =>
-        ingestSource(f.id, f.url, f.kind)
-      )
-    )
-    const inserted = results.reduce(
-      (acc: number, r) =>
-        acc + (r.status === "fulfilled" ? r.value.inserted : 0),
-      0
-    )
-    const failed = results.filter((r) => r.status === "rejected").length
-    return { inserted, failed }
+    return ingestFeeds(allFeeds.map((f) => ({ feedId: f.id, url: f.url, kind: f.kind })))
   }
 )
+
+/** Refresh is POST work, triggered after mount rather than by a loader or preload. */
+export const refreshStaleFeeds = createServerFn({ method: "POST" })
+  .middleware([workspaceWriteMiddleware])
+  .validator(z.object({ workspaceId: z.string().min(1) }))
+  .handler(async ({ data }) => {
+    const { workspaceId, demo } = await resolveWorkspaceContext()
+    // A tab opened before a workspace switch must not refresh the new workspace.
+    if (demo || !workspaceId || workspaceId !== data.workspaceId) {
+      return { inserted: 0, failed: 0, refreshed: 0 }
+    }
+    const candidates = await db.select().from(feeds).where(
+      and(feedInWorkspace(workspaceId), isNull(feeds.entitlementPausedAt))
+    )
+    const now = Date.now()
+    return ingestFeeds(candidates.filter((feed) => feedNeedsRefresh(feed, now))
+      .map((feed) => ({ feedId: feed.id, url: feed.url, kind: feed.kind })))
+  })
 
 // ─────────────────────────────────────────────
 // REFRESH SINGLE FEED
@@ -950,8 +929,8 @@ export const refreshFeed = createServerFn({ method: "POST" }).middleware([worksp
     }
 
     try {
-      const { inserted } = await ingestSource(feed.id, feed.url, feed.kind)
-      return { ok: true as const, inserted }
+      const { inserted, failed } = await ingestFeeds([{ feedId: feed.id, url: feed.url, kind: feed.kind }])
+      return { ok: failed === 0, inserted }
     } catch {
       // The failure is already recorded on the feed row. Reporting it as a
       // thrown error here would only turn a handled state into a toast.
@@ -980,18 +959,7 @@ export const refreshFolder = createServerFn({ method: "POST" }).middleware([work
         )
       )
 
-    const results = await Promise.allSettled(
-      folderFeeds.map((f: { id: string; url: string; kind: string }) =>
-        ingestSource(f.id, f.url, f.kind)
-      )
-    )
-    const inserted = results.reduce(
-      (acc: number, r) =>
-        acc + (r.status === "fulfilled" ? r.value.inserted : 0),
-      0
-    )
-    const failed = results.filter((r) => r.status === "rejected").length
-    return { inserted, failed }
+    return ingestFeeds(folderFeeds.map((f) => ({ feedId: f.id, url: f.url, kind: f.kind })))
   })
 
 // ─────────────────────────────────────────────
@@ -1037,11 +1005,7 @@ export const toggleReadLater = createServerFn({ method: "POST" }).middleware([wo
 export const toggleFavorite = createServerFn({ method: "POST" }).middleware([workspaceWriteMiddleware])
   .validator(z.object({ id: z.string(), state: z.boolean() }))
   .handler(async ({ data }) => {
-    const workspaceId = await resolveWorkspaceId()
-    await db
-      .update(articles)
-      .set({ isFavorite: data.state })
-      .where(and(eq(articles.id, data.id), articleInWorkspace(workspaceId)))
+    await writeFavorites(await resolveWorkspaceContext(), [data.id], "personal", data.state)
   })
 
 // ─────────────────────────────────────────────
@@ -1070,12 +1034,14 @@ function articleRowId(id: string): string {
 // be embedded in an <iframe> (Live mode). Reader HTML comes from cache first,
 // otherwise the page is fetched once, extracted with Readability, and cached.
 export const getArticlePreview = createServerFn({ method: "POST" })
-  .validator(z.object({ id: z.string() }))
+  .validator(z.object({ id: z.string(), workspaceId: z.string().optional(), userId: z.string().optional() }))
   .handler(async ({ data }) => {
     // Workspace-scoped because this is an outbound-fetch primitive: an
     // unscoped id would let a caller make the server fetch any URL stored in
     // any workspace's articles table.
-    const workspaceId = await resolveWorkspaceId()
+    const context = await resolveWorkspaceContext()
+    const { workspaceId } = context
+    if ((data.workspaceId && data.workspaceId !== workspaceId) || (data.userId && data.userId !== context.userId)) throw new Error("Workspace changed. Reload this page.")
     const rows = await db
       .select({
         id: articles.id,

@@ -11,7 +11,7 @@ import {
 } from "lucide-react"
 import { toast } from "sonner"
 
-import type { FeedRow, FolderRow } from "@/components/Sidebar"
+import type { FeedRow, FolderRow } from "@/lib/rss-types"
 import type { ArticleRow } from "@/components/ArticleGrid"
 import type {GuestShare} from "@/hooks/guest-share-context";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"

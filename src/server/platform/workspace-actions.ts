@@ -39,7 +39,7 @@ export async function changeWorkspaceAccess(
       expiresAt: previous?.expiresAt ?? null,
     },
     actor,
-    { auditAction: "change_workspace_access" }
+    { auditAction: "change_workspace_access", initializeMissing: true }
   )
 }
 const memberInput = z.discriminatedUnion("operation", [

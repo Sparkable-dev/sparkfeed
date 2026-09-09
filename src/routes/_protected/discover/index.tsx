@@ -1,5 +1,5 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router"
-import { getAllData } from "@/server/rss"
+import { invalidateWorkspace, loadWorkspaceData  } from "@/lib/workspace-query"
 import { getCatalogue } from "@/server/catalogue"
 import { RSSShell } from "@/components/RSSShell"
 import { CategoryNav } from "@/components/discover/CategoryNav"
@@ -10,9 +10,9 @@ import {
 } from "@/components/discover/DiscoverCatalogue"
 
 export const Route = createFileRoute("/_protected/discover/")({
-  loader: async () => {
+  loader: async ({ context }) => {
     // getAllData is for the sidebar, which RSSShell renders on every route.
-    const [data, catalogue] = await Promise.all([getAllData(), getCatalogue()])
+    const [data, catalogue] = await Promise.all([loadWorkspaceData(context), getCatalogue()])
     return { data, catalogue }
   },
   component: DiscoverPage,
@@ -28,7 +28,7 @@ function DiscoverPage() {
       initialData={{
         folders: data.folders,
         feeds: data.feeds,
-        articles: data.articles as any,
+        articles: data.articles,
       }}
       title="Discover"
     >
@@ -41,7 +41,7 @@ function DiscoverPage() {
         <div className="mx-auto w-full min-w-0 max-w-6xl px-6 pt-8">
           {/* The hero carries the page heading, so there is no second title. */}
           {/* No `folders` prop: the Add dialog fetches its own picker list. */}
-          <DiscoverHero onFeedAdded={() => void router.invalidate()} />
+          <DiscoverHero onFeedAdded={() => void invalidateWorkspace(router)} />
         </div>
 
         {/*
@@ -57,7 +57,7 @@ function DiscoverPage() {
           <DiscoverCatalogue
             catalogue={catalogue}
             ownedUrls={ownedUrls}
-            onImported={() => void router.invalidate()}
+            onImported={() => void invalidateWorkspace(router)}
           />
         </div>
       </div>

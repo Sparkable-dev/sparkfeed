@@ -129,6 +129,7 @@ export async function getPlatformUser(userId: string) {
       name: user.name,
       email: user.email,
       emailVerified: user.emailVerified,
+      image: user.image,
       role: user.role,
       banned: user.banned,
       banReason: user.banReason,
@@ -151,6 +152,7 @@ export async function getPlatformUser(userId: string) {
       ipAddress: session.ipAddress,
       userAgent: session.userAgent,
       activeOrganizationId: session.activeOrganizationId,
+      impersonatedBy: session.impersonatedBy,
     })
     .from(session)
     .where(eq(session.userId, userId))

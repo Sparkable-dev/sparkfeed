@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react"
 import { useNavigate } from "@tanstack/react-router"
 import { toast } from "sonner"
 import { ExternalLink, Loader2, Pencil, Trash2, TriangleAlert } from "lucide-react"
-import type { FeedRow, FolderRow } from "@/components/Sidebar"
+import type { FeedRow, FolderRow } from "@/lib/rss-types"
 import type {ManagedSource} from "@/server/rss";
 import { timeAgo } from "@/lib/time-ago"
 

@@ -4,7 +4,7 @@ import { useState } from "react"
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router"
 import { ChevronRight, Edit2, FolderIcon, Globe, Link2, Lock, PlusIcon, Settings2, Share2, Trash2 } from "lucide-react"
 import { toast } from "sonner"
-import type { FeedRow, FolderRow } from "@/components/Sidebar"
+import type { FeedRow, FolderRow } from "@/lib/rss-types"
 import type { ReactNode } from "react"
 import type {ManageTarget} from "@/components/folder/ManageModal";
 import { slugify } from "@/lib/slugify"
@@ -372,7 +372,7 @@ export function NavFolders({
                     {folderFeeds.length > 0 && (
                       <CollapsibleTrigger
                         render={
-                          <span className="ml-1 flex size-4 shrink-0 items-center justify-center rounded text-sidebar-foreground/30 hover:text-sidebar-foreground/70 transition-colors" />
+                          <button type="button" aria-label={`Toggle ${folder.name}`} className="ml-1 flex size-4 shrink-0 items-center justify-center rounded text-sidebar-foreground/30 hover:text-sidebar-foreground/70 transition-colors" />
                         }
                         onClick={(e) => {
                           e.stopPropagation()

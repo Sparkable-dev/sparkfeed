@@ -124,6 +124,7 @@ export async function verifyApiKey(raw: string): Promise<ApiPrincipal | null> {
     await workspaceRefFromId(row.workspaceId),
     entitlementPrincipal
   )
+  if (entitlements.accessState === "suspended") return null
 
   return {
     keyId: row.id,

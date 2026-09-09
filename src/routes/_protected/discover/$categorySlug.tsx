@@ -1,5 +1,5 @@
 import { createFileRoute, redirect, useRouter } from "@tanstack/react-router"
-import { getAllData } from "@/server/rss"
+import { invalidateWorkspace, loadWorkspaceData  } from "@/lib/workspace-query"
 import { getCatalogue } from "@/server/catalogue"
 import { RSSShell } from "@/components/RSSShell"
 import { CategoryDetail } from "@/components/discover/CategoryDetail"
@@ -7,8 +7,8 @@ import { CategorySwitcher } from "@/components/discover/CategorySwitcher"
 import { useOwnedFeedUrls } from "@/components/discover/DiscoverCatalogue"
 
 export const Route = createFileRoute("/_protected/discover/$categorySlug")({
-  loader: async ({ params }) => {
-    const [data, catalogue] = await Promise.all([getAllData(), getCatalogue()])
+  loader: async ({ params, context }) => {
+    const [data, catalogue] = await Promise.all([loadWorkspaceData(context), getCatalogue()])
     const category = catalogue.find((c) => c.slug === params.categorySlug)
     // A stale bookmark or a retired category would otherwise render a blank page.
     if (!category) throw redirect({ to: "/discover" })
@@ -27,7 +27,7 @@ function CategoryPage() {
       initialData={{
         folders: data.folders,
         feeds: data.feeds,
-        articles: data.articles as any,
+        articles: data.articles,
       }}
       /* Renders as "Discover › Gaming", with Discover linking back. */
       crumbs={[{ label: "Discover", href: "/discover" }]}
@@ -49,7 +49,7 @@ function CategoryPage() {
           <CategoryDetail
             category={category}
             ownedUrls={ownedUrls}
-            onImported={() => void router.invalidate()}
+            onImported={() => void invalidateWorkspace(router)}
           />
         </div>
       </div>

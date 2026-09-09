@@ -1,3 +1,4 @@
+import { invalidateWorkspace } from "@/lib/workspace-query"
 import { useRouter } from "@tanstack/react-router"
 import { AlertTriangle, RefreshCw } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -17,7 +18,7 @@ export function RouteError({ error, reset }: { error: unknown; reset?: () => voi
 
   const retry = () => {
     reset?.()
-    router.invalidate()
+    invalidateWorkspace(router)
   }
 
   return (

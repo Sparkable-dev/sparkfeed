@@ -1,10 +1,7 @@
 /**
  * A small in-process queue for "fetch these feeds, but don't make the user wait".
  *
- * There is no job infrastructure in this app. `src/server/plugins/cron.ts`
- * exists but has never run — `vite.config.ts` registers only `demo-boot.ts`, and
- * the comment there records that anything unlisted silently does nothing. There
- * is no queue, no waitUntil and no job table.
+ * This queue is process-local. It is shared by imports and browser refreshes.
  *
  * What there is: Railway runs `node .output/server/index.mjs` as a long-lived
  * process, so a promise the request handler does not await keeps running after
@@ -24,6 +21,9 @@
  * outside this database.
  */
 import { ingestSource } from "@/server/utils/fetch-page-articles"
+
+type Outcome = Awaited<ReturnType<typeof ingestSource>> | null
+type QueuedTask = IngestTask & { complete: (outcome: Outcome) => void }
 
 /**
  * Feeds are fetched at most this many at a time.
@@ -45,8 +45,8 @@ export interface IngestTask {
 }
 
 /** Feed ids currently queued or running, so the same feed is never fetched twice at once. */
-const inFlight = new Set<string>()
-const pending: Array<IngestTask> = []
+const inFlight = new Map<string, Promise<Outcome>>()
+const pending: Array<QueuedTask> = []
 let running = 0
 
 /**
@@ -56,12 +56,34 @@ let running = 0
  * accidentally await this and turn a fast request back into a slow one.
  */
 export function enqueueIngest(tasks: Array<IngestTask>): void {
-  for (const task of tasks) {
-    if (inFlight.has(task.feedId)) continue
-    inFlight.add(task.feedId)
-    pending.push(task)
-  }
+  for (const task of tasks) void queueTask(task)
+}
+
+function queueTask(task: IngestTask): Promise<Outcome> {
+  const existing = inFlight.get(task.feedId)
+  if (existing) return existing
+  let complete!: (outcome: Outcome) => void
+  const result = new Promise<Outcome>((resolve) => {
+    complete = resolve
+  })
+  inFlight.set(task.feedId, result)
+  pending.push({ ...task, complete })
   drain()
+  return result
+}
+
+/** Awaitable refresh, sharing the import queue's concurrency and in-flight work. */
+export async function ingestFeeds(tasks: Array<IngestTask>) {
+  const unique = [...new Map(tasks.map((task) => [task.feedId, task])).values()]
+  const results = await Promise.all(unique.map(queueTask))
+  return {
+    inserted: results.reduce(
+      (total, result) => total + (result?.inserted ?? 0),
+      0
+    ),
+    failed: results.filter((result) => !result || result.failed > 0).length,
+    refreshed: results.length,
+  }
 }
 
 function drain(): void {
@@ -82,9 +104,10 @@ function drain(): void {
  * concurrency limit for the life of the process and every later import silently
  * stops working.
  */
-async function runTask(task: IngestTask): Promise<void> {
+async function runTask(task: QueuedTask): Promise<void> {
+  let outcome: Outcome = null
   try {
-    await ingestSource(task.feedId, task.url, task.kind ?? null)
+    outcome = await ingestSource(task.feedId, task.url, task.kind ?? null)
   } catch (err) {
     // `ingestSource` already records the failure on the feed row via
     // recordFeedHealth, so this is only about not crashing.
@@ -92,12 +115,17 @@ async function runTask(task: IngestTask): Promise<void> {
   } finally {
     running--
     inFlight.delete(task.feedId)
+    task.complete(outcome)
     drain()
   }
 }
 
 /** Exposed for tests and diagnostics only. */
-export function ingestQueueState(): { running: number; pending: number; inFlight: number } {
+export function ingestQueueState(): {
+  running: number
+  pending: number
+  inFlight: number
+} {
   return { running, pending: pending.length, inFlight: inFlight.size }
 }
 
@@ -105,7 +133,8 @@ export function ingestQueueState(): { running: number; pending: number; inFlight
 export async function waitForIngestIdle(timeoutMs = 5_000): Promise<void> {
   const startedAt = Date.now()
   while (running > 0 || pending.length > 0) {
-    if (Date.now() - startedAt > timeoutMs) throw new Error("ingest queue did not drain")
+    if (Date.now() - startedAt > timeoutMs)
+      throw new Error("ingest queue did not drain")
     await new Promise((r) => setTimeout(r, 10))
   }
 }

@@ -1,11 +1,12 @@
 import { createFileRoute, redirect } from "@tanstack/react-router"
-import { getAllData } from "@/server/rss"
+import { loadWorkspaceData } from "@/lib/workspace-query"
+import { articlePagesQuery } from "@/lib/article-query"
 import { RSSShell } from "@/components/RSSShell"
 import { slugify } from "@/lib/slugify"
 
 export const Route = createFileRoute("/_protected/$folderSlug/$feedSlug/")({
-  loader: async ({ params }) => {
-    const data = await getAllData()
+  loader: async ({ params, context }) => {
+    const data = await loadWorkspaceData(context)
     const folder = data.folders.find((f) => slugify(f.name) === params.folderSlug)
     const feed = data.feeds.find(
       (f) => slugify(f.name) === params.feedSlug && f.folderId === folder?.id
@@ -13,6 +14,7 @@ export const Route = createFileRoute("/_protected/$folderSlug/$feedSlug/")({
     if (!feed) {
       throw redirect({ to: "/" })
     }
+    await context.queryClient.fetchInfiniteQuery(articlePagesQuery(context.workspaceScope, { feedId: feed.id, folderId: folder?.id }))
     return {
       ...data,
       folderSlug: params.folderSlug,
@@ -41,7 +43,7 @@ function FeedPage() {
 
   return (
     <RSSShell
-      initialData={{ folders: data.folders, feeds: data.feeds, articles: data.articles as any }}
+      initialData={{ folders: data.folders, feeds: data.feeds, articles: data.articles }}
       title={feedName || "Feed"}
       folderName={folder?.name}
       folderSlug={data.folderSlug}

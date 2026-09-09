@@ -13,17 +13,10 @@ import { UNFILED_LABEL } from "@/lib/unfiled"
 /**
  * Everything the home page shows, in the shape it shows it.
  *
- * Deliberately not `getAllData`. That loader takes the newest 200 articles
- * across the whole workspace, which is the right answer for one flat list and
- * the wrong one for a page built out of per-folder rows: two busy feeds can
- * consume the entire 200, so a quiet folder's row renders empty and its
- * publishing cadence reads as dead. Home asks per folder instead, and asks the
- * database for the aggregates rather than deriving them from a truncated
- * sample.
+ * Home asks per folder so busy feeds cannot crowd out quiet sources.
+ * Its aggregate counts come from the database, not the displayed sample.
  *
- * RSS feeds only. Scraped sources are a separate table with a separate id
- * space, and folding them in doubles every query here for a feature that
- * rarely fires. They still appear on /all, which reads the unified loader.
+ * RSS feeds and watched pages both use the same feeds/articles tables.
  */
 
 /** Rows per folder. Fetched deeper than shown so link-dedupe has slack. */

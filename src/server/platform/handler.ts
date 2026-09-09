@@ -15,6 +15,7 @@ import {
   workspacePeople,
 } from "./queries"
 import { changePlan } from "./plan-actions"
+import { customerOperation } from "./customer-actions"
 import { setCreditBalance } from "./credit-accounts"
 import { changeWorkspaceOverride } from "./overrides"
 import {
@@ -122,6 +123,8 @@ export async function handlePlatformRequest(request: Request) {
         throw new PlatformRequestError(400, "Invalid operator command")
       if (input.action === "change_workspace_access")
         return json({ result: await changeWorkspaceAccess(input, actor) })
+      if (["invite_customer", "invite_team_member", "cancel_team_invitation", "revoke_customer_session"].includes(input.action ?? ""))
+        return json({ result: await customerOperation(input, actor) })
       if (input.action === "manage_workspace_member")
         return json({ result: await manageWorkspaceMember(input, actor) })
       if (input.action === "change_plan")

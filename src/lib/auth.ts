@@ -108,6 +108,8 @@ export const auth = betterAuth({
           return { data: newUser }
         },
         after: async (newUser) => {
+          const { initializeWorkspace } = await import("@/server/services/initialize-workspace")
+          await initializeWorkspace(newUser.id)
           if (sparkfeedEdition() !== "cloud") return
           await ensureCloudFreeAccount(
             personalWorkspaceRef(newUser.id),
@@ -223,6 +225,10 @@ export const auth = betterAuth({
       allowUserToCreateOrganization: async (user) =>
         canUserCreateWorkspace(user.id),
       organizationHooks: {
+        afterCreateOrganization: async ({ organization: org }) => {
+          const { initializeWorkspace } = await import("@/server/services/initialize-workspace")
+          await initializeWorkspace(org.id)
+        },
         beforeUpdateOrganization: async ({ organization: org, user }) => {
           await assertOrganizationManagementAllowed(org.id, user)
         },

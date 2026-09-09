@@ -21,7 +21,7 @@ export const Route = createFileRoute("/api/workspace-data")({
 
           return new Response(JSON.stringify(data), {
             status: 200,
-            headers: { "Content-Type": "application/json" },
+            headers: { "Content-Type": "application/json", "Cache-Control": "private, no-store" },
           })
         } catch (err) {
           console.error("Workspace data API error:", err)

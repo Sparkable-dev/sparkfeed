@@ -1,13 +1,9 @@
-import { useState } from "react"
-import { ExternalLink, Heart, PanelRightOpen, Share2 } from "lucide-react"
+import { ExternalLink, PanelRightOpen, Share2 } from "lucide-react"
 import type { ArticleRow } from "@/components/ArticleGrid"
+import { FavoriteButton } from "@/components/FavoriteButton"
+import { useArticleReader } from "@/components/ArticleReaderProvider"
 import { Card, CardContent } from "@/components/ui/card"
-import { PreviewSheet } from "@/components/PreviewSheet"
-import { ArticleDetailsPanel } from "@/components/ArticleDetailsPanel"
-import { toggleFavorite } from "@/server/rss"
-import { useReaderStore } from "@/store/readerStore"
 import { copyText } from "@/lib/clipboard"
-import { useGuestShare } from "@/hooks/guest-share-context"
 import { ArticleThumb } from "@/components/ArticleThumb"
 
 function getDomain(url: string) {
@@ -30,39 +26,8 @@ interface ArticleCardProps {
 }
 
 export function ArticleCard({ article }: ArticleCardProps) {
-  /*
-    A boolean, not the array. Selecting `favorites` subscribed every card to
-    the whole list, so favouriting one article re-rendered all sixty on the
-    page (and their detail panels with them) because the array identity
-    changed. Zustand compares the selected value, so a primitive only re-runs
-    the card whose own membership moved.
-  */
-  const isStarred = useReaderStore((s) => s.favorites.includes(article.id))
-  const toggleZustandFavorite = useReaderStore((s) => s.toggleFavorite)
-  const isFavorite = isStarred || article.isFavorite
-  const [sheetOpen, setSheetOpen] = useState(false)
-  const [detailsOpen, setDetailsOpen] = useState(false)
+  const { openReader, openDetails } = useArticleReader()
   const domain = article.domain ?? getDomain(article.link)
-  const guest = useGuestShare()
-
-  const handleFavorite = async (e: React.MouseEvent) => {
-    e.stopPropagation()
-    // Toggle in Zustand store (localStorage-persisted)
-    toggleZustandFavorite(article.id)
-
-    // A guest has no workspace, so toggleFavorite resolves nothing and throws —
-    // the heart would light up and immediately flick back. The zustand store is
-    // local, so their favourites still work, they just stay on this device.
-    if (guest) return
-
-    // Also sync to DB for legacy compatibility
-    try {
-      await toggleFavorite({ data: { id: article.id, state: !isFavorite } })
-    } catch {
-      // Revert Zustand if DB fails
-      toggleZustandFavorite(article.id)
-    }
-  }
 
   const handleShare = async (e: React.MouseEvent) => {
     e.stopPropagation()
@@ -73,7 +38,7 @@ export function ArticleCard({ article }: ArticleCardProps) {
     <>
       <Card
         id={`article-card-${article.id}`}
-        onClick={() => setSheetOpen(true)}
+        onClick={() => openReader(article)}
         className="group relative flex flex-col gap-0 overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl border-white/5 hover:border-white/10 p-0 rounded-xl cursor-pointer bg-[#161616]"
       >
         {/* Top: Image area — strict 4:3 ratio so it behaves consistently */}
@@ -93,22 +58,7 @@ export function ArticleCard({ article }: ArticleCardProps) {
             className="transition-transform duration-500 group-hover:scale-105"
           />
 
-          {/* Heart icon */}
-          <button
-            onClick={handleFavorite}
-            className="absolute top-2.5 right-2.5 z-10 transition-all duration-300 hover:scale-110 active:scale-95"
-            aria-label="Toggle favorite"
-          >
-            <div className={`flex h-7 w-7 items-center justify-center rounded-full backdrop-blur-md border transition-colors ${isFavorite ? "bg-red-500/10 border-red-500/20" : "bg-black/20 border-white/10"}`}>
-              <Heart
-                className="h-3.5 w-3.5 transition-all"
-                style={{
-                  fill: isFavorite ? "#ef4444" : "transparent",
-                  color: isFavorite ? "#ef4444" : "white",
-                }}
-              />
-            </div>
-          </button>
+          <div className="absolute top-2.5 right-2.5 z-10 rounded-full bg-black/50"><FavoriteButton articleId={article.id} /></div>
 
           {/* Source domain badge */}
           <span className="absolute bottom-3 left-3 z-10 rounded-full bg-black/60 px-2.5 py-1 text-[9px] font-bold uppercase tracking-wider text-white/90 backdrop-blur-md border border-white/10 shadow-xl">
@@ -135,9 +85,10 @@ export function ArticleCard({ article }: ArticleCardProps) {
             {/* Action buttons */}
             <div className="flex items-center gap-0.5">
 
+              <FavoriteButton articleId={article.id} scope="workspace" />
               {/* Details panel */}
               <button
-                onClick={(e) => { e.stopPropagation(); setDetailsOpen(true) }}
+                onClick={(e) => { e.stopPropagation(); openDetails(article) }}
                 className="flex items-center justify-center rounded px-2 py-0.5 text-zinc-400 border border-white/5 bg-white/5 hover:bg-white/10 hover:text-white transition-colors ml-1 h-7 w-7"
                 title="Article details"
                 aria-label="Show article details"
@@ -170,18 +121,6 @@ export function ArticleCard({ article }: ArticleCardProps) {
         </CardContent>
       </Card>
 
-      {/* Bottom preview sheet — full-blog reader + best-effort live page */}
-      <PreviewSheet
-        article={sheetOpen ? article : null}
-        onClose={() => setSheetOpen(false)}
-      />
-
-      {/* Right-side metadata / details panel */}
-      <ArticleDetailsPanel
-        article={detailsOpen ? article : null}
-        onClose={() => setDetailsOpen(false)}
-        onRead={() => { setDetailsOpen(false); setSheetOpen(true) }}
-      />
     </>
   )
 }

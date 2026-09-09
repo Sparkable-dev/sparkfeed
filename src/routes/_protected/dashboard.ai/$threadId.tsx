@@ -1,20 +1,20 @@
 import { ClientOnly, createFileRoute, notFound } from "@tanstack/react-router"
+import { loadWorkspaceData } from "@/lib/workspace-query"
 import { RSSShell } from "@/components/RSSShell"
 import { SparkChat } from "@/components/ai/SparkChat"
 import { Skeleton } from "@/components/ui/skeleton"
-import { getAllData } from "@/server/rss"
 import { loadChat } from "@/server/chats"
 import { isChatId } from "@/lib/chat-id"
 
 export const Route = createFileRoute("/_protected/dashboard/ai/$threadId")({
-  loader: async ({ params }) => {
+  loader: async ({ params, context }) => {
     // Checked before the id reaches a query. `loadChat` treats an unknown id as
     // an empty chat, so without this a typo in the URL would silently open a
     // blank conversation that then saved itself under that name.
     if (!isChatId(params.threadId)) throw notFound()
 
     const [data, chat] = await Promise.all([
-      getAllData(),
+      loadWorkspaceData(context),
       loadChat({ data: { threadId: params.threadId } }),
     ])
     return { data, chat }
@@ -30,7 +30,7 @@ function AIPage() {
       initialData={{
         folders: data.folders,
         feeds: data.feeds,
-        articles: data.articles as never,
+        articles: data.articles,
       }}
       title="Spark AI"
     >

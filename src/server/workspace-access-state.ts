@@ -10,7 +10,7 @@ import { resolveWorkspaceContext } from "@/server/services/context"
 export const getActiveWorkspaceAccessState = createServerFn({
   method: "GET",
 }).handler(async (): Promise<WorkspaceAccessSnapshot | null> => {
-  const context = await resolveWorkspaceContext()
+  const context = await resolveWorkspaceContext({ allowSuspended: true })
   if (!context.workspace || !context.userId) return null
 
   const principal = context.demo

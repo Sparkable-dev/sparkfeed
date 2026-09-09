@@ -1,6 +1,7 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router"
+import { invalidateWorkspace } from "@/lib/workspace-query"
+import { loadWorkspaceWithArticles } from "@/lib/article-query"
 import { RSSShell } from "@/components/RSSShell"
-import { getAllData } from "@/server/rss"
 import { getCatalogue } from "@/server/catalogue"
 import {
   DiscoverCatalogue,
@@ -16,11 +17,10 @@ import {
  * the whole workspace here in a way no folder row can.
  */
 export const Route = createFileRoute("/_protected/all")({
-  loader: async () => {
-    const data = await getAllData()
-    // Only pay for the catalogue when there is nothing else to show. A user
-    // with articles never makes this call.
-    const catalogue = data.articles.length === 0 ? await getCatalogue() : null
+  loader: async ({ context }) => {
+    const data = await loadWorkspaceWithArticles(context)
+    // Recommend sources only to a workspace with no subscriptions.
+    const catalogue = data.feeds.length === 0 ? await getCatalogue() : null
     return { ...data, catalogue }
   },
   component: AllArticlesPage,
@@ -33,7 +33,7 @@ function AllArticlesPage() {
 
   return (
     <RSSShell
-      initialData={{ folders: data.folders, feeds: data.feeds, articles: data.articles as any }}
+      initialData={{ folders: data.folders, feeds: data.feeds, articles: data.articles, degraded: data.degraded }}
       title="All articles"
       filterArticles={(articles) => articles}
       emptyState={
@@ -51,7 +51,7 @@ function AllArticlesPage() {
             <DiscoverCatalogue
               catalogue={data.catalogue}
               ownedUrls={ownedUrls}
-              onImported={() => void router.invalidate()}
+              onImported={() => void invalidateWorkspace(router)}
               variant="empty"
             />
           </div>

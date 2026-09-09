@@ -4,6 +4,7 @@ import {
   feedInWorkspace,
   folderInWorkspace,
 } from "./tenancy"
+import { apiFavoriteCondition } from "./favorites"
 import type { ApiPrincipal } from "../api/principal"
 import { articles, feeds, folders } from "@/db/schema"
 import { db } from "@/db/index"
@@ -75,6 +76,7 @@ export async function workspaceCounts(
 ): Promise<WorkspaceCounts> {
   const { workspaceId } = principal
   const cutoff = daysAgo(30)
+  const favorite = await apiFavoriteCondition(principal)
 
   // Four independent counts in parallel, rather than one row of scalar
   // subqueries: the subquery form needs a dummy FROM, and the portable spelling
@@ -95,7 +97,7 @@ export async function workspaceCounts(
       .select({
         total: sql<number>`count(*)`,
         unread: countWhere(eq(articles.isUsed, false)),
-        favorites: countWhere(eq(articles.isFavorite, true)),
+        favorites: countWhere(favorite),
         recent: sql<number>`sum(case when coalesce(${articles.publishedAt}, ${articles.createdAt}) >= ${cutoff} then 1 else 0 end)`,
       })
       .from(articles)

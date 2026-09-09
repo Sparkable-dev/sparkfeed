@@ -69,6 +69,10 @@ export async function ensureDemoSchema(): Promise<void> {
       is_favorite integer DEFAULT 0,
       created_at text
     )`,
+    `CREATE TABLE IF NOT EXISTS personal_favorites (
+      user_id text NOT NULL, article_id text NOT NULL REFERENCES articles(id) ON DELETE CASCADE,
+      created_at text NOT NULL, PRIMARY KEY(user_id, article_id)
+    )`,
     `CREATE TABLE IF NOT EXISTS invites (
       id text PRIMARY KEY NOT NULL,
       email text NOT NULL,

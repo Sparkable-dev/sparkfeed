@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router"
+import { loadWorkspaceData } from "@/lib/workspace-query"
 import { RSSShell } from "@/components/RSSShell"
 import { McpPanel } from "@/components/developer/McpPanel"
-import { getAllData } from "@/server/rss"
 
 /**
  * Uses the same loader as every other page even though this one only renders a
@@ -11,7 +11,7 @@ import { getAllData } from "@/server/rss"
  * navigated in from.
  */
 export const Route = createFileRoute("/_protected/developer/mcp")({
-  loader: () => getAllData(),
+  loader: ({ context }) => loadWorkspaceData(context),
   component: McpRoute,
 })
 
@@ -20,7 +20,7 @@ function McpRoute() {
 
   return (
     <RSSShell
-      initialData={{ folders: data.folders, feeds: data.feeds, articles: data.articles as any }}
+      initialData={{ folders: data.folders, feeds: data.feeds, articles: data.articles }}
       title="MCP"
       crumbs={[{ label: "Developer" }]}
     >

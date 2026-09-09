@@ -3,6 +3,7 @@ import { useState } from "react"
 import { ArrowLeft, Loader2, Lock } from "lucide-react"
 import { toast } from "sonner"
 import type { WorkspaceDetail } from "@/server/workspace-management"
+import { loadWorkspaceData } from "@/lib/workspace-query"
 import { RSSShell } from "@/components/RSSShell"
 import { PersonalBillingTab } from "@/components/settings/PersonalBillingTab"
 import { SettingsNavigation } from "@/components/settings/SettingsNavigation"
@@ -14,7 +15,6 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { DEMO_MODE } from "@/lib/demo"
 import { personalWorkspaceName } from "@/lib/workspaces"
-import { getAllData } from "@/server/rss"
 import { getWorkspaceDetail } from "@/server/workspace-management"
 
 type WorkspaceSection = "general" | "people" | "billing"
@@ -94,8 +94,8 @@ export const Route = createFileRoute("/_protected/settings_/workspaces/$slug")({
       : "general"
     return { section }
   },
-  loader: async ({ params }) => {
-    const data = await getAllData()
+  loader: async ({ params, context }) => {
+    const data = await loadWorkspaceData(context)
     const detail =
       params.slug === "personal"
         ? null
@@ -158,7 +158,7 @@ function WorkspaceSettingsPage() {
       initialData={{
         folders: loader.data.folders,
         feeds: loader.data.feeds,
-        articles: loader.data.articles as never,
+        articles: loader.data.articles,
         degraded: loader.data.degraded,
       }}
       title="Settings"

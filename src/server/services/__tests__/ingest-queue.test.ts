@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from "vitest"
 
 /**
  * The queue holds a detached promise, which is the single most dangerous thing
@@ -18,19 +18,52 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
   the same either way.
 */
 const ingestSource = vi.hoisted(() => vi.fn())
-vi.mock('@/server/utils/fetch-page-articles', () => ({ ingestSource }))
+vi.mock("@/server/utils/fetch-page-articles", () => ({ ingestSource }))
 
-const { enqueueIngest, ingestQueueState, waitForIngestIdle } = await import('../ingest-queue')
+const { enqueueIngest, ingestFeeds, ingestQueueState, waitForIngestIdle } =
+  await import("../ingest-queue")
 
-const task = (n: number) => ({ feedId: `feed-${n}`, url: `https://example.com/${n}/rss` })
+const task = (n: number) => ({
+  feedId: `feed-${n}`,
+  url: `https://example.com/${n}/rss`,
+})
 
 beforeEach(async () => {
   await waitForIngestIdle().catch(() => {})
   ingestSource.mockReset()
 })
 
-describe('ingest queue', () => {
-  it('runs every queued task', async () => {
+describe("ingest queue", () => {
+  it("shares in-flight imports with manual and automatic refresh requests", async () => {
+    ingestSource.mockImplementation(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 20))
+      return { inserted: 3, skipped: 0, failed: 0 }
+    })
+    enqueueIngest([task(1)])
+    const results = await Promise.all([
+      ingestFeeds([task(1)]),
+      ingestFeeds([task(1), task(1)]),
+    ])
+    expect(ingestSource).toHaveBeenCalledOnce()
+    expect(results).toEqual([
+      { inserted: 3, failed: 0, refreshed: 1 },
+      { inserted: 3, failed: 0, refreshed: 1 },
+    ])
+  })
+
+  it("returns failed-source counts including partial ingestion failures", async () => {
+    ingestSource
+      .mockRejectedValueOnce(new Error("unreachable"))
+      .mockResolvedValueOnce({ inserted: 2, skipped: 0, failed: 1 })
+      .mockResolvedValueOnce({ inserted: 4, skipped: 0, failed: 0 })
+    expect(await ingestFeeds([task(1), task(2), task(3)])).toEqual({
+      inserted: 6,
+      failed: 2,
+      refreshed: 3,
+    })
+    expect(ingestQueueState().inFlight).toBe(0)
+  })
+  it("runs every queued task", async () => {
     ingestSource.mockResolvedValue({ inserted: 1, skipped: 0, failed: 0 })
 
     enqueueIngest([task(1), task(2), task(3)])
@@ -39,7 +72,7 @@ describe('ingest queue', () => {
     expect(ingestSource).toHaveBeenCalledTimes(3)
   })
 
-  it('never exceeds its concurrency limit', async () => {
+  it("never exceeds its concurrency limit", async () => {
     let active = 0
     let peak = 0
     ingestSource.mockImplementation(async () => {
@@ -57,9 +90,9 @@ describe('ingest queue', () => {
     expect(ingestSource).toHaveBeenCalledTimes(12)
   })
 
-  it('survives a task that rejects, and keeps draining', async () => {
+  it("survives a task that rejects, and keeps draining", async () => {
     ingestSource
-      .mockRejectedValueOnce(new Error('feed is down'))
+      .mockRejectedValueOnce(new Error("feed is down"))
       .mockResolvedValue({ inserted: 1, skipped: 0, failed: 0 })
 
     enqueueIngest([task(1), task(2), task(3)])
@@ -70,9 +103,9 @@ describe('ingest queue', () => {
     expect(ingestQueueState()).toEqual({ running: 0, pending: 0, inFlight: 0 })
   })
 
-  it('survives a task that throws synchronously', async () => {
+  it("survives a task that throws synchronously", async () => {
     ingestSource.mockImplementation(() => {
-      throw new Error('thrown before any await')
+      throw new Error("thrown before any await")
     })
 
     enqueueIngest([task(1), task(2)])
@@ -81,7 +114,7 @@ describe('ingest queue', () => {
     expect(ingestQueueState().running).toBe(0)
   })
 
-  it('does not queue the same feed twice at once', async () => {
+  it("does not queue the same feed twice at once", async () => {
     ingestSource.mockImplementation(async () => {
       await new Promise((r) => setTimeout(r, 30))
       return { inserted: 0, skipped: 0, failed: 0 }
@@ -94,7 +127,7 @@ describe('ingest queue', () => {
     expect(ingestSource).toHaveBeenCalledTimes(1)
   })
 
-  it('allows the same feed again once it has finished', async () => {
+  it("allows the same feed again once it has finished", async () => {
     ingestSource.mockResolvedValue({ inserted: 0, skipped: 0, failed: 0 })
 
     enqueueIngest([task(1)])

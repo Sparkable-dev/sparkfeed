@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto"
 import { createFileRoute } from "@tanstack/react-router"
+import { workspaceIsSuspended } from "@/server/entitlements/suspension"
 import { and, eq } from "drizzle-orm"
 import { assertWorkspaceWritable } from "@/server/entitlements/browser-write"
 import { db } from "@/db/index"
@@ -70,6 +71,8 @@ export const Route = createFileRoute("/api/folders/add-to-workspace")({
           }
 
           const sharedFolder = sharedFolderResult[0]
+          if (await workspaceIsSuspended(sharedFolder.workspaceId))
+            return Response.json({ error: "Folder not available" }, { status: 404 })
 
           // 4b. Confirm the caller is actually allowed to copy this folder.
           //

@@ -1,11 +1,9 @@
-import { useState } from "react"
 import { Link, createFileRoute, useRouter } from "@tanstack/react-router"
 import { ArrowRight } from "lucide-react"
-import { toast } from "sonner"
 import type { ArticleRow } from "@/components/ArticleGrid"
-import type { FeedRow } from "@/components/Sidebar"
+import type { FeedRow } from "@/lib/rss-types"
+import { invalidateWorkspace, loadWorkspaceData  } from "@/lib/workspace-query"
 import { RSSShell } from "@/components/RSSShell"
-import { getAllData, refreshAllFeeds } from "@/server/rss"
 import { getHomeData } from "@/server/home"
 import { getCatalogue } from "@/server/catalogue"
 import {
@@ -15,7 +13,7 @@ import {
 import { HomeHero } from "@/components/home/HomeHero"
 import { HomeRow } from "@/components/home/HomeRow"
 import { DestinationTiles } from "@/components/home/DestinationTiles"
-import { useReaderStore } from "@/store/readerStore"
+import { useWorkspaceNavigation } from "@/components/WorkspaceDataProvider"
 
 /**
  * The landing page.
@@ -27,23 +25,10 @@ import { useReaderStore } from "@/store/readerStore"
  * briefing.
  */
 export const Route = createFileRoute("/_protected/")({
-  loader: async () => {
-    /*
-      Parallel, with the race detected rather than prevented.
-
-      These used to run one after the other, and for a real reason: `getAllData`
-      seeds the demo workspace and creates a first folder for a genuinely new
-      account, `getHomeData` reads those rows, and run together Home could
-      render its empty state against a workspace that was still being created.
-
-      But that race can only happen once in the life of a workspace, and paying
-      for it serially charged a second full round trip to every load of the
-      busiest page in the app, forever. So they go together, and the one case
-      that could go wrong is checked for afterwards: a workspace that turned out
-      to have feeds while Home counted none is a Home that read too early, and
-      is simply asked again.
-    */
-    const [data, firstLook] = await Promise.all([getAllData(), getHomeData()])
+  loader: async ({ context }) => {
+    // Load the briefing alongside cached navigation. A fresh demo may still
+    // seed its sample feeds during navigation loading, so retry that one race.
+    const [data, firstLook] = await Promise.all([loadWorkspaceData(context), getHomeData()])
     const home =
       firstLook.totalSourceCount === 0 && data.feeds.length > 0
         ? await getHomeData()
@@ -110,11 +95,11 @@ const HERO_SLIDES = 3
 const LEAD_ROW_CARDS = 12
 
 function HomePage() {
+  const { user } = Route.useRouteContext()
   const { data, home, catalogue } = Route.useLoaderData()
   const router = useRouter()
   const ownedUrls = useOwnedFeedUrls(data.feeds)
-  const favorites = useReaderStore((s) => s.favorites)
-  const [refreshing, setRefreshing] = useState(false)
+  const navigation = useWorkspaceNavigation()
 
   const feeds = data.feeds as Array<FeedRow>
   const latest = dedupeByLink(enrich(home.latest, feeds))
@@ -136,33 +121,17 @@ function HomePage() {
   const heroIds = new Set(heroSlides.map((a) => a.id))
   const leadRow = latest.filter((a) => !heroIds.has(a.id)).slice(0, LEAD_ROW_CARDS)
 
-  const lastFetchedAt = home.sources.reduce<string | null>((newest, source) => {
-    if (!source.lastFetchedAt) return newest
-    return !newest || source.lastFetchedAt > newest ? source.lastFetchedAt : newest
-  }, null)
-
-  const handleRefresh = async () => {
-    setRefreshing(true)
-    try {
-      await refreshAllFeeds()
-      await router.invalidate()
-    } catch (err) {
-      console.error(err)
-      toast.error("Could not refresh your feeds. Please try again.")
-    } finally {
-      setRefreshing(false)
-    }
-  }
-
   return (
     <RSSShell
       initialData={{
         folders: data.folders,
         feeds: data.feeds,
         // The loader types this `any[]`; the shell needs the enriched shape.
-        articles: data.articles as Array<ArticleRow>,
+        articles: data.articles,
+        degraded: data.degraded,
       }}
       title="Home"
+      showRefreshControls
     >
       {/*
         No scroll container of its own — the document scrolls. See the same
@@ -188,22 +157,20 @@ function HomePage() {
             <DiscoverCatalogue
               catalogue={catalogue}
               ownedUrls={ownedUrls}
-              onImported={() => void router.invalidate()}
+              onImported={() => void invalidateWorkspace(router)}
               variant="empty"
             />
           </div>
         ) : (
           <>
             <HomeHero
+              userName={user.name}
               featured={heroSlides}
               sources={home.sources}
               newCount={home.newCount}
               activeSourceCount={home.activeSourceCount}
               totalSourceCount={home.totalSourceCount}
-              lastFetchedAt={lastFetchedAt}
-              refreshing={refreshing}
-              onRefresh={() => void handleRefresh()}
-              onSourcesChanged={() => void router.invalidate()}
+              onSourcesChanged={() => void invalidateWorkspace(router)}
             />
 
             <HomeRow
@@ -215,7 +182,7 @@ function HomePage() {
 
             <DestinationTiles
               newCount={home.newCount}
-              favoritesCount={favorites.length}
+              favoritesCount={navigation.data?.favorites.personal.length ?? 0}
             />
 
             {home.sections.map((section) => (

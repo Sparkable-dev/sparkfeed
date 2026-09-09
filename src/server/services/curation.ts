@@ -2,6 +2,7 @@ import { and, inArray } from 'drizzle-orm'
 import { decodeId } from './ids'
 import { articleInWorkspace } from './tenancy'
 import { ServiceError } from './errors'
+import { apiFavoriteOwner, writeFavorites } from './favorites'
 import type { ApiPrincipal } from '../api/principal'
 import { articles } from '@/db/schema'
 import { db } from '@/db/index'
@@ -33,6 +34,13 @@ export async function setArticleFlag(
   }
 
   const rawIds = ids.map((id) => decodeId('article', id))
+  if (flag === 'isFavorite') {
+    const owner = await apiFavoriteOwner(principal)
+    if (owner) {
+      const result = await writeFavorites({ userId: owner, workspaceId: owner, workspace: { id: owner, type: 'personal' }, demo: false, emailVerified: true }, rawIds, 'personal', state)
+      return { updated: result.ids.length, requested: ids.length }
+    }
+  }
 
   const scoped = and(
     inArray(articles.id, rawIds),

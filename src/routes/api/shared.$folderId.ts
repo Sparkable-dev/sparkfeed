@@ -4,6 +4,7 @@ import type {ShareKind} from "@/server/services/shares";
 import { db } from "@/db/index"
 import { articles, feeds, folders } from "@/db/schema"
 import { resolveWorkspaceContextFromHeaders } from "@/server/services/context"
+import { workspaceIsSuspended } from "@/server/entitlements/suspension"
 import {
 
   resolveInheritedShare,
@@ -92,6 +93,9 @@ export const Route = createFileRoute("/api/shared/$folderId")({
           } else {
             entity = folderResult[0]
           }
+
+          if (await workspaceIsSuspended(entity.workspaceId))
+            return json({ status: "not_found" }, 404)
 
           // ── Payload builders ────────────────────────────────
           const feedIdsForEntity = async (): Promise<Array<string>> => {
@@ -195,7 +199,7 @@ export const Route = createFileRoute("/api/shared/$folderId")({
           // better-auth tables are never created, so touching them throws and
           // the whole share route 500s. resolveWorkspaceContextFromHeaders puts
           // the demo branch first.
-          const rawCaller = await resolveWorkspaceContextFromHeaders(request.headers)
+          const rawCaller = await resolveWorkspaceContextFromHeaders(request.headers, { allowSuspended: true })
 
           // A demo deployment has no accounts — `resolveWorkspaceContext`
           // hands every request the same synthetic user so the app has a

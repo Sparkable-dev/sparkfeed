@@ -1,12 +1,9 @@
 import { Link } from "@tanstack/react-router"
-import { RefreshCw } from "lucide-react"
 import { QuickActions } from "./QuickActions"
 import { LatestCard } from "./LatestCard"
 import { SourceTable } from "./SourceTable"
 import type { ArticleRow } from "@/components/ArticleGrid"
 import type { HomeSource } from "@/server/home"
-import { useDemoAwareSession } from "@/hooks/useDemoAwareSession"
-import { timeAgo } from "@/lib/time-ago"
 
 /**
  * The bento block that opens the page.
@@ -20,9 +17,7 @@ import { timeAgo } from "@/lib/time-ago"
  * The right absorbs the slack internally, growing the space its description
  * can use rather than pushing the row taller.
  *
- * "Updated 4m ago" lives here rather than in the top bar. The bar carries no
- * actions on pages that bring their own body, and printing the same sentence
- * in both places on one screen reads as a bug.
+ * Refresh controls live in the shared top bar.
  */
 
 function greeting(hour: number): string {
@@ -32,36 +27,24 @@ function greeting(hour: number): string {
 }
 
 export function HomeHero({
+  userName,
   featured,
   sources,
   newCount,
   activeSourceCount,
   totalSourceCount,
-  lastFetchedAt,
-  refreshing,
-  onRefresh,
   onSourcesChanged,
 }: {
+  userName?: string
   /** Cycled in the card, one per source so three publishers show, not three posts. */
   featured: Array<ArticleRow>
   sources: Array<HomeSource>
   newCount: number
   activeSourceCount: number
   totalSourceCount: number
-  /** Newest successful fetch across the workspace, or null if none ever ran. */
-  lastFetchedAt: string | null
-  refreshing: boolean
-  onRefresh: () => void
   onSourcesChanged: () => void
 }) {
-  const { data: session } = useDemoAwareSession()
-  /*
-    First name only. "Good evening, Sudharsan Ananth" reads like an address
-    label rather than a greeting. Falls back to no name at all rather than to
-    an email or a placeholder, because "Good evening, there" is worse than
-    "Good evening."
-  */
-  const firstName = session?.user.name.trim().split(/\s+/)[0]
+  const fullName = userName?.trim()
 
   return (
     <div className="grid min-w-0 grid-cols-1 gap-4 lg:grid-cols-12">
@@ -75,11 +58,11 @@ export function HomeHero({
         <div className="min-w-0">
           <h1 className="text-2xl leading-tight font-bold tracking-tight text-zinc-50 sm:text-3xl">
             {greeting(new Date().getHours())}
-            {firstName ? "," : "."}
-            {firstName && (
+            {fullName ? "," : "."}
+            {fullName && (
               <>
                 <br />
-                <span className="text-zinc-400">{firstName}</span>
+                <span className="break-words text-zinc-400">{fullName}</span>
               </>
             )}
           </h1>
@@ -109,22 +92,6 @@ export function HomeHero({
               )}
             </p>
 
-            <button
-              type="button"
-              onClick={onRefresh}
-              disabled={refreshing}
-              className="inline-flex shrink-0 items-center gap-1.5 text-xs text-zinc-500
-                transition-colors hover:text-zinc-200 disabled:cursor-default"
-            >
-              <RefreshCw
-                className={`size-3 ${refreshing ? "animate-spin" : ""}`}
-              />
-              {refreshing
-                ? "Refreshing"
-                : lastFetchedAt
-                  ? `Updated ${timeAgo(lastFetchedAt).toLowerCase()}`
-                  : "Refresh"}
-            </button>
           </div>
         </div>
 

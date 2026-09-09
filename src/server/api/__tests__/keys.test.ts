@@ -24,7 +24,7 @@ vi.mock("@/db/index", () => ({
 
 // Demo mode is a build-time constant, so each block re-imports the module with
 // the flag set the way that block needs.
-async function loadKeys(demo: boolean) {
+async function loadKeys(demo: boolean, accessState = "active") {
   vi.resetModules()
   vi.doMock("@/lib/demo", () => ({
     DEMO_MODE: demo,
@@ -39,7 +39,7 @@ async function loadKeys(demo: boolean) {
       Promise.resolve({
         plan: demo ? "community" : "free",
         billingStatus: demo ? "not_applicable" : "free",
-        accessState: "active",
+        accessState,
         seatCapacity: 1,
         sourceUnitCapacity: demo ? null : 5,
         monthlySparkAiCredits: demo ? null : 0,
@@ -122,6 +122,19 @@ describe("verifyApiKey — production", () => {
       },
     ])
     expect(await verifyApiKey("sfk_live_expired")).toBeNull()
+  })
+
+  it("rejects a valid key when its workspace is suspended", async () => {
+    const { verifyApiKey } = await loadKeys(false, "suspended")
+    selectMock.mockResolvedValue([
+      {
+        id: "key_abc",
+        workspaceId: "ws_real",
+        scopes: '["mcp","articles:read"]',
+        expiresAt: null,
+      },
+    ])
+    expect(await verifyApiKey("sfk_live_good")).toBeNull()
   })
 
   it("resolves a live key to its workspace and scopes", async () => {

@@ -71,7 +71,7 @@
     "motion": "13.1.1",
     "next-themes": "^0.4.6",
     "nitro": "3.0.260610-beta",
-    "nodemailer": "^9.0.5",
+    "nodemailer": "^9.1.1",
     "postgres": "^3.4.9",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
@@ -119,12 +119,15 @@
     "@hono/node-server": "1.19.15",
     "brace-expansion": "5.0.9",
     "esbuild": "0.28.1",
-    "fast-uri": "3.1.5",
-    "hono": "4.12.34",
+    "fast-uri": "3.1.6",
+    "hono": "4.13.8",
     "ip-address": "10.5.0",
-    "js-yaml": "4.3.1",
+    "js-yaml": "4.3.2",
     "kysely": "^0.28.17",
     "postcss": "8.5.26",
-    "undici": "7.29.0"
+    "undici": "7.29.0",
+    "browserslist": "4.29.0",
+    "baseline-browser-mapping": "2.11.23",
+    "qs": "6.16.0"
   }
 }

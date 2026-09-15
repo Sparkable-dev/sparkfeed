@@ -1,4 +1,3 @@
-import { invalidateWorkspace } from "@/lib/workspace-query"
 import {
   createContext,
   useCallback,
@@ -10,6 +9,7 @@ import {
 } from "react"
 import { useRouter } from "@tanstack/react-router"
 import { AddFeedDialog } from "./AddFeedDialog"
+import { invalidateWorkspace } from "@/lib/workspace-query"
 import { useCommandAction } from "@/components/command/command-palette-context"
 import { listFolderOptions } from "@/server/sources"
 

@@ -1,4 +1,3 @@
-import { invalidateWorkspace } from "@/lib/workspace-query"
 import * as React from "react"
 import { useRouter } from "@tanstack/react-router"
 import { toast } from "sonner"
@@ -8,6 +7,7 @@ import {
   Loader2Icon,
   PlusIcon,
 } from "lucide-react"
+import { invalidateWorkspace } from "@/lib/workspace-query"
 import { createFeed } from "@/server/rss"
 import { DEMO_MODE } from "@/lib/demo"
 import { cn } from "@/lib/utils"

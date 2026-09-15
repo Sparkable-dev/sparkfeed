@@ -28,16 +28,16 @@ export function CategorySwitcher({
     <DropdownMenu>
       <DropdownMenuTrigger
         aria-label="Switch category"
-        className="inline-flex size-5 shrink-0 items-center justify-center rounded text-zinc-500
-          transition-colors hover:bg-white/5 hover:text-zinc-200"
+        className="inline-flex size-5 shrink-0 items-center justify-center rounded text-muted-foreground dark:text-zinc-500
+          transition-colors hover:bg-accent dark:hover:bg-white/5 hover:text-foreground dark:hover:text-zinc-200"
       >
         <ChevronDown className="size-3.5" />
       </DropdownMenuTrigger>
       <DropdownMenuContent
         align="start"
         /* Fifteen items overflow a short viewport; scroll rather than clip. */
-        className="max-h-[70vh] min-w-[220px] overflow-y-auto rounded-xl border border-zinc-700/60
-          bg-[#0a0a0a] p-1 text-zinc-200 shadow-2xl"
+        className="max-h-[70vh] min-w-[220px] overflow-y-auto rounded-xl border border-border dark:border-zinc-700/60
+          bg-card dark:bg-[#0a0a0a] p-1 text-foreground dark:text-zinc-200 shadow-2xl"
       >
         {categories.map((c) => {
           const active = c.slug === activeSlug
@@ -53,12 +53,12 @@ export function CategorySwitcher({
               className={[
                 "flex cursor-pointer items-center justify-between rounded-lg px-3 py-1.5 text-xs transition-colors",
                 active
-                  ? "font-medium text-blue-400 focus:bg-blue-500/10 focus:text-blue-400"
-                  : "text-zinc-400 hover:text-white focus:bg-zinc-800",
+                  ? "font-medium text-blue-700 dark:text-blue-400 focus:bg-blue-500/10 focus:text-blue-700 dark:focus:text-blue-400"
+                  : "text-muted-foreground dark:text-zinc-400 hover:text-foreground dark:hover:text-white focus:bg-accent dark:focus:bg-zinc-800",
               ].join(" ")}
             >
               {c.name}
-              {active && <Check className="size-3.5 text-blue-400" />}
+              {active && <Check className="size-3.5 text-blue-700 dark:text-blue-400" />}
             </DropdownMenuItem>
           )
         })}

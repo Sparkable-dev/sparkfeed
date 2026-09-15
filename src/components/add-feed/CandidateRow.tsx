@@ -52,7 +52,7 @@ export function CandidateRow({
       title={candidate.url}
       className={cn(
         "flex cursor-pointer items-start gap-3 rounded-lg px-2 py-2 transition-colors",
-        disabled ? "cursor-default opacity-60" : "hover:bg-white/[0.04]",
+        disabled ? "cursor-default opacity-60" : "hover:bg-accent dark:hover:bg-white/[0.04]",
       )}
     >
       <Checkbox
@@ -64,7 +64,7 @@ export function CandidateRow({
 
       <span className="min-w-0 flex-1">
         <span className="flex min-w-0 items-center gap-2">
-          <span className="min-w-0 truncate text-sm text-zinc-100">{name}</span>
+          <span className="min-w-0 truncate text-sm text-foreground dark:text-zinc-100">{name}</span>
           {/*
             The only marks that survived. Neither is decoration: on a site with
             six section feeds, "Main" says which one is the site's own, and
@@ -72,14 +72,14 @@ export function CandidateRow({
             else's HTML, which is worth knowing before you subscribe.
           */}
           {candidate.kind === "primary" && (
-            <span className="shrink-0 text-[10px] font-medium tracking-wide text-zinc-600 uppercase">
+            <span className="shrink-0 text-[10px] font-medium tracking-wide text-muted-foreground dark:text-zinc-600 uppercase">
               Main
             </span>
           )}
           {candidate.kind === "page" && (
             <span
               title="This site has no feed. We would read its page and watch for new posts."
-              className="shrink-0 rounded bg-amber-400/10 px-1 py-px text-[10px] font-medium tracking-wide text-amber-400/90 uppercase"
+              className="shrink-0 rounded bg-amber-400/10 px-1 py-px text-[10px] font-medium tracking-wide text-amber-700 dark:text-amber-400/90 uppercase"
             >
               Page
             </span>
@@ -87,15 +87,15 @@ export function CandidateRow({
         </span>
 
         <span
-          className="mt-0.5 flex min-w-0 flex-wrap items-center gap-x-1.5 text-xs text-zinc-500"
+          className="mt-0.5 flex min-w-0 flex-wrap items-center gap-x-1.5 text-xs text-muted-foreground dark:text-zinc-500"
           title={hidden.length > 0 ? hidden.map((h) => h.text).join(" · ") : undefined}
         >
           {parts.map((part, i) => (
             <span key={part.key} className="flex items-center gap-1.5">
-              {i > 0 && <span aria-hidden="true" className="text-zinc-700">·</span>}
+              {i > 0 && <span aria-hidden="true" className="text-muted-foreground dark:text-zinc-700">·</span>}
               <span
                 title={part.title}
-                className={part.tone === "warn" ? "text-amber-400/90" : undefined}
+                className={part.tone === "warn" ? "text-amber-700 dark:text-amber-400/90" : undefined}
               >
                 {part.text}
               </span>
@@ -104,8 +104,8 @@ export function CandidateRow({
 
           {path && (
             <span className="hidden min-w-0 items-center gap-1.5 sm:flex">
-              {parts.length > 0 && <span aria-hidden="true" className="text-zinc-700">·</span>}
-              <span className="min-w-0 truncate text-zinc-600">{path}</span>
+              {parts.length > 0 && <span aria-hidden="true" className="text-muted-foreground dark:text-zinc-700">·</span>}
+              <span className="min-w-0 truncate text-muted-foreground dark:text-zinc-600">{path}</span>
             </span>
           )}
         </span>

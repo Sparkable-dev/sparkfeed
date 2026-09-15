@@ -24,7 +24,7 @@ function FolderPage() {
 
   if (!folder) {
     return (
-      <div className="flex h-screen items-center justify-center text-zinc-500 text-sm">
+      <div className="flex h-screen items-center justify-center text-muted-foreground dark:text-zinc-500 text-sm">
         Folder "{folderSlug}" not found.
       </div>
     )

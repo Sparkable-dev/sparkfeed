@@ -23,9 +23,9 @@ export const Route = createFileRoute("/_protected")({
     if (!session || !session.user) {
       context.queryClient.clear()
       throw redirect({
-        to: "/login",
+        to: "/sign-in",
         search: {
-          redirect: location.href !== "/login" ? location.href : undefined,
+          redirect: location.href !== "/sign-in" ? location.href : undefined,
         },
       })
     }

@@ -54,7 +54,7 @@ export function SiteTab({
     <div className="flex min-w-0 flex-col gap-3">
       <div className="flex min-w-0 items-center gap-2">
         <div className="relative min-w-0 flex-1">
-          <Search className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-zinc-600" />
+          <Search className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground dark:text-zinc-600" />
           <Input
             id="add-feed-url"
             autoFocus
@@ -65,7 +65,7 @@ export function SiteTab({
             onKeyDown={(e) => {
               if (e.key === "Enter" && url.trim()) onCheck(url)
             }}
-            className="h-9 w-full rounded-lg border-zinc-700/60 bg-zinc-900/40 pl-8 text-sm"
+            className="h-9 w-full rounded-lg border-input dark:border-zinc-700/60 bg-card dark:bg-zinc-900/40 pl-8 text-sm"
           />
         </div>
         <Button
@@ -74,20 +74,20 @@ export function SiteTab({
           variant="outline"
           disabled={busy || !url.trim()}
           onClick={() => onCheck(url)}
-          className="h-9 shrink-0 border-white/10 bg-transparent text-xs text-zinc-200 hover:bg-white/10"
+          className="h-9 shrink-0 border-border dark:border-white/10 bg-transparent text-xs text-foreground dark:text-zinc-200 hover:bg-accent dark:hover:bg-white/10"
         >
           {phase === "checking" ? <Spinner className="size-3.5" /> : "Find"}
         </Button>
       </div>
 
       {phase === "idle" && !error && (
-        <p className="text-xs text-zinc-600">
+        <p className="text-xs text-muted-foreground dark:text-zinc-600">
           A site, a blog, or a feed address — we will find the rest.
         </p>
       )}
 
       {error && (
-        <p className="text-xs text-amber-400/90">{error.message}</p>
+        <p className="text-xs text-amber-700 dark:text-amber-400/90">{error.message}</p>
       )}
 
       {phase === "done" && candidates.length === 0 && !error && (
@@ -101,7 +101,7 @@ export function SiteTab({
             strip on "5 found · All · None" beside a count; this is the same
             three controls in one.
           */}
-          <label className="flex cursor-pointer items-center gap-3 border-b border-white/[0.06] px-2 pb-2">
+          <label className="flex cursor-pointer items-center gap-3 border-b border-border dark:border-white/[0.06] px-2 pb-2">
             <Checkbox
               checked={allSelected}
               indeterminate={selectedCount > 0 && !allSelected}
@@ -109,7 +109,7 @@ export function SiteTab({
               onCheckedChange={onToggleAll}
               aria-label="Select every feed"
             />
-            <span className="min-w-0 truncate text-xs text-zinc-400">
+            <span className="min-w-0 truncate text-xs text-muted-foreground dark:text-zinc-400">
               {/*
                 Pages and feeds are counted with different words because they
                 are different offers: one is a feed the site publishes, the
@@ -117,18 +117,18 @@ export function SiteTab({
               */}
               {candidates.every((c) => c.kind === "page") ? (
                 <>
-                  No feed on <span className="text-zinc-300">{siteName || "that site"}</span>, but
+                  No feed on <span className="text-foreground dark:text-zinc-300">{siteName || "that site"}</span>, but
                   we can read {candidates.length === 1 ? "this page" : "these pages"}
                 </>
               ) : (
                 <>
                   {candidates.length} {candidates.length === 1 ? "feed" : "feeds"} on{" "}
-                  <span className="text-zinc-300">{siteName}</span>
+                  <span className="text-foreground dark:text-zinc-300">{siteName}</span>
                 </>
               )}
             </span>
             {phase === "discovering" && (
-              <span className="ml-auto flex shrink-0 items-center gap-1.5 text-[11px] text-zinc-600">
+              <span className="ml-auto flex shrink-0 items-center gap-1.5 text-[11px] text-muted-foreground dark:text-zinc-600">
                 <Spinner className="size-3" />
                 looking for more
               </span>

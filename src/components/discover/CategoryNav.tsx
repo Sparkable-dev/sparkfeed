@@ -163,7 +163,7 @@ export function CategoryNav({
       <div
         className={`sticky top-12 z-20 mb-8 border-b transition-colors duration-200 ${
           stuck
-            ? "border-zinc-800/60 bg-[#0a0a0a]/95 backdrop-blur-sm"
+            ? "border-border dark:border-zinc-800/60 bg-card dark:bg-[#0a0a0a]/95 backdrop-blur-sm"
             : "border-transparent"
         }`}
       >
@@ -187,8 +187,8 @@ export function CategoryNav({
                 onClick={() => select(c.slug)}
                 className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-medium whitespace-nowrap transition-colors ${
                   active === c.slug
-                    ? "bg-white text-black"
-                    : "text-zinc-400 hover:bg-white/5 hover:text-zinc-100"
+                    ? "bg-primary dark:bg-white text-primary-foreground dark:text-black"
+                    : "text-muted-foreground dark:text-zinc-400 hover:bg-accent dark:hover:bg-white/5 hover:text-foreground dark:hover:text-zinc-100"
                 }`}
               >
                 {c.name}

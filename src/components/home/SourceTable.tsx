@@ -49,7 +49,7 @@ const MAX_HEIGHT = "max-h-[280px]"
 
 const STATUS_STYLE: Record<SourceStatus, { dot: string; label: string }> = {
   broken: { dot: "bg-amber-400", label: "Not fetching" },
-  quiet: { dot: "bg-zinc-600", label: "Quiet" },
+  quiet: { dot: "bg-accent dark:bg-zinc-600", label: "Quiet" },
   new: { dot: "bg-blue-400/70", label: "New" },
   active: { dot: "bg-emerald-400/80", label: "Active" },
 }
@@ -143,7 +143,7 @@ export function SourceTable({
 
   return (
     <>
-      <section className="min-w-0 rounded-2xl border border-white/[0.07] bg-white/[0.02]">
+      <section className="min-w-0 rounded-2xl border border-border dark:border-white/[0.07] bg-card dark:bg-white/[0.02]">
         {/*
           The title doubles as the first column's header. It was two rows and a
           "Source" label directly under the word "Sources", which spent a whole
@@ -154,10 +154,10 @@ export function SourceTable({
           ever qualified that one column, and as a caption floating at the far
           right it read as if it described the whole table.
         */}
-        <div className={`${GRID} border-b border-white/[0.06] px-3.5 pt-3 pb-2`}>
-          <h2 className="min-w-0 truncate text-sm font-bold tracking-tight text-zinc-100">
+        <div className={`${GRID} border-b border-border dark:border-white/[0.06] px-3.5 pt-3 pb-2`}>
+          <h2 className="min-w-0 truncate text-sm font-bold tracking-tight text-foreground dark:text-zinc-100">
             Sources
-            <span className="ml-2 text-xs font-medium text-zinc-500">
+            <span className="ml-2 text-xs font-medium text-muted-foreground dark:text-zinc-500">
               {needsAttention > 0
                 ? `${needsAttention} ${needsAttention === 1 ? "needs" : "need"} a look`
                 : `${sources.length} active`}
@@ -165,11 +165,11 @@ export function SourceTable({
           </h2>
           <span
             title="Average gap between posts, over the last 30 days"
-            className={`hidden text-[10px] font-semibold tracking-wide text-zinc-600 uppercase sm:block`}
+            className={`hidden text-[10px] font-semibold tracking-wide text-muted-foreground dark:text-zinc-600 uppercase sm:block`}
           >
             Typical
           </span>
-          <span className="text-right text-[10px] font-semibold tracking-wide text-zinc-600 uppercase sm:text-left">
+          <span className="text-right text-[10px] font-semibold tracking-wide text-muted-foreground dark:text-zinc-600 uppercase sm:text-left">
             Last post
           </span>
           <span aria-hidden="true" />
@@ -182,8 +182,8 @@ export function SourceTable({
             return (
               <div
                 key={source.id}
-                className={`${GRID} border-b border-white/[0.04] px-3.5 py-2 text-xs last:border-0
-                  transition-colors hover:bg-white/[0.03]`}
+                className={`${GRID} border-b border-border dark:border-white/[0.04] px-3.5 py-2 text-xs last:border-0
+                  transition-colors hover:bg-accent dark:hover:bg-white/[0.03]`}
               >
                 <Link to={source.href} className="flex min-w-0 items-center gap-2">
                   <span
@@ -191,7 +191,7 @@ export function SourceTable({
                     title={style.label}
                     className={`size-1.5 shrink-0 rounded-full ${style.dot}`}
                   />
-                  <span className="min-w-0 truncate font-medium text-zinc-200">
+                  <span className="min-w-0 truncate font-medium text-foreground dark:text-zinc-200">
                     {source.name}
                   </span>
                 </Link>
@@ -201,11 +201,11 @@ export function SourceTable({
                   the window there is no interval to average, and a source we
                   have only held for two days genuinely has nothing to report.
                 */}
-                <span className="hidden text-zinc-500 tabular-nums sm:block">
+                <span className="hidden text-muted-foreground dark:text-zinc-500 tabular-nums sm:block">
                   {gap ?? "no data"}
                 </span>
 
-                <span className="text-right text-zinc-500 tabular-nums sm:text-left">
+                <span className="text-right text-muted-foreground dark:text-zinc-500 tabular-nums sm:text-left">
                   {source.lastPostAt ? timeAgo(source.lastPostAt) : "Never"}
                 </span>
 
@@ -215,27 +215,27 @@ export function SourceTable({
                       type="button"
                       onClick={() => void handleRetry(source)}
                       title="Retry now"
-                      className="inline-flex size-6 items-center justify-center rounded-md text-amber-400/90
-                        transition-colors hover:bg-white/10 hover:text-amber-300"
+                      className="inline-flex size-6 items-center justify-center rounded-md text-amber-700 dark:text-amber-400/90
+                        transition-colors hover:bg-accent dark:hover:bg-white/10 hover:text-amber-700 dark:hover:text-amber-300"
                     >
                       <RefreshCw className="size-3" />
                     </button>
                   ) : busy ? (
-                    <span className="inline-flex size-6 items-center justify-center text-zinc-500">
+                    <span className="inline-flex size-6 items-center justify-center text-muted-foreground dark:text-zinc-500">
                       <Loader2 className="size-3 animate-spin" />
                     </span>
                   ) : (
                     <DropdownMenu>
                       <DropdownMenuTrigger
                         aria-label={`Manage ${source.name}`}
-                        className="inline-flex size-6 items-center justify-center rounded-md text-zinc-600
-                          transition-colors hover:bg-white/10 hover:text-zinc-200"
+                        className="inline-flex size-6 items-center justify-center rounded-md text-muted-foreground dark:text-zinc-600
+                          transition-colors hover:bg-accent dark:hover:bg-white/10 hover:text-foreground dark:hover:text-zinc-200"
                       >
                         <MoreHorizontal className="size-3.5" />
                       </DropdownMenuTrigger>
                       <DropdownMenuContent
                         align="end"
-                        className="min-w-[180px] rounded-xl border border-zinc-700/60 bg-[#0a0a0a] p-1 text-zinc-200 shadow-2xl"
+                        className="min-w-[180px] rounded-xl border border-border dark:border-zinc-700/60 bg-card dark:bg-[#0a0a0a] p-1 text-foreground dark:text-zinc-200 shadow-2xl"
                       >
                         {/* No "Open" entry: the row's name is already the link. */}
                         <DropdownMenuItem
@@ -246,20 +246,20 @@ export function SourceTable({
                           }
                           className="cursor-pointer gap-2 rounded-lg px-2.5 py-1.5 text-xs"
                         >
-                          <Rss className="size-3.5 text-zinc-500" />
+                          <Rss className="size-3.5 text-muted-foreground dark:text-zinc-500" />
                           Copy feed URL
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           onClick={() => void handleRetry(source)}
                           className="cursor-pointer gap-2 rounded-lg px-2.5 py-1.5 text-xs"
                         >
-                          <RefreshCw className="size-3.5 text-zinc-500" />
+                          <RefreshCw className="size-3.5 text-muted-foreground dark:text-zinc-500" />
                           Fetch now
                         </DropdownMenuItem>
-                        <DropdownMenuSeparator className="my-1 bg-zinc-800" />
+                        <DropdownMenuSeparator className="my-1 bg-accent dark:bg-zinc-800" />
                         <DropdownMenuItem
                           onClick={() => setPendingDelete(source)}
-                          className="cursor-pointer gap-2 rounded-lg px-2.5 py-1.5 text-xs text-red-400 focus:text-red-400"
+                          className="cursor-pointer gap-2 rounded-lg px-2.5 py-1.5 text-xs text-red-700 dark:text-red-400 focus:text-red-700 dark:focus:text-red-400"
                         >
                           <Trash2 className="size-3.5" />
                           Remove source
@@ -283,16 +283,16 @@ export function SourceTable({
         open={pendingDelete !== null}
         onOpenChange={(open) => !open && setPendingDelete(null)}
       >
-        <AlertDialogContent className="border-zinc-800 bg-zinc-950 text-white">
+        <AlertDialogContent className="border-border dark:border-zinc-800 bg-card dark:bg-zinc-950 text-foreground dark:text-white">
           <AlertDialogHeader>
             <AlertDialogTitle>Remove {pendingDelete?.name}?</AlertDialogTitle>
-            <AlertDialogDescription className="text-zinc-400">
+            <AlertDialogDescription className="text-muted-foreground dark:text-zinc-400">
               This deletes the source and everything it has fetched. It cannot be
               undone, but you can add the feed again later.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="border-zinc-700 bg-transparent text-zinc-300 hover:bg-zinc-800">
+            <AlertDialogCancel className="border-border dark:border-zinc-700 bg-transparent text-foreground dark:text-zinc-300 hover:bg-accent dark:hover:bg-zinc-800">
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction

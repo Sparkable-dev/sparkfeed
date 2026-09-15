@@ -74,10 +74,10 @@ function InvitePage() {
     if (!isVerifying && !isLoggedIn && !error) {
       const redirectTo = `/invite?token=${encodeURIComponent(token)}&email=${encodeURIComponent(email)}`
       if (userExists) {
-        navigate({ to: "/login", search: { redirect: redirectTo } })
+        navigate({ to: "/sign-in", search: { redirect: redirectTo } })
       } else {
         navigate({
-          to: "/signup",
+          to: "/sign-up",
           search: { redirect: redirectTo, email },
         })
       }
@@ -112,7 +112,7 @@ function InvitePage() {
 
   if (isVerifying) {
     return (
-      <div className="flex h-screen items-center justify-center bg-black">
+      <div className="flex h-screen items-center justify-center bg-card dark:bg-black">
         <Loader2 className="h-8 w-8 animate-spin text-purple-500" />
       </div>
     )
@@ -120,28 +120,28 @@ function InvitePage() {
 
   if (error) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-black p-4">
+      <div className="flex min-h-screen flex-col items-center justify-center bg-card dark:bg-black p-4">
         {/* SparkFeed logo above card */}
         <div className="mb-6 flex items-center justify-center gap-2">
           <div className="rounded-xl bg-purple-600 p-2">
-            <Zap className="h-5 w-5 text-white" fill="currentColor" />
+            <Zap className="h-5 w-5 text-foreground dark:text-white" fill="currentColor" />
           </div>
-          <span className="text-lg font-bold text-white">SparkFeed</span>
+          <span className="text-lg font-bold text-foreground dark:text-white">SparkFeed</span>
         </div>
 
-        <Card className="flex w-full max-w-md flex-col gap-4 rounded-2xl border-zinc-800 bg-zinc-900 p-8 text-center">
+        <Card className="flex w-full max-w-md flex-col gap-4 rounded-2xl border-border dark:border-zinc-800 bg-card dark:bg-zinc-900 p-8 text-center">
           <div className="mb-2 flex justify-center">
             <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-red-500/10">
               <X className="h-8 w-8 text-red-500" />
             </div>
           </div>
-          <h1 className="mb-2 text-2xl font-bold text-white">
+          <h1 className="mb-2 text-2xl font-bold text-foreground dark:text-white">
             Invitation Error
           </h1>
-          <p className="mb-6 text-zinc-400">{error}</p>
+          <p className="mb-6 text-muted-foreground dark:text-zinc-400">{error}</p>
           <Button
-            onClick={() => navigate({ to: "/login" })}
-            className="w-full bg-zinc-800 text-white hover:bg-zinc-700"
+            onClick={() => navigate({ to: "/sign-in" })}
+            className="w-full bg-accent dark:bg-zinc-800 text-foreground dark:text-white hover:bg-accent dark:hover:bg-zinc-700"
           >
             Back to Login
           </Button>
@@ -151,29 +151,29 @@ function InvitePage() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-black p-4">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-card dark:bg-black p-4">
       {/* SparkFeed logo above card */}
       <div className="mb-6 flex items-center justify-center gap-2">
         <div className="rounded-xl bg-purple-600 p-2">
-          <Zap className="h-5 w-5 text-white" fill="currentColor" />
+          <Zap className="h-5 w-5 text-foreground dark:text-white" fill="currentColor" />
         </div>
-        <span className="text-lg font-bold text-white">SparkFeed</span>
+        <span className="text-lg font-bold text-foreground dark:text-white">SparkFeed</span>
       </div>
 
       {/* Card */}
-      <Card className="w-full max-w-md rounded-2xl border-zinc-800 bg-zinc-900">
+      <Card className="w-full max-w-md rounded-2xl border-border dark:border-zinc-800 bg-card dark:bg-zinc-900">
         <CardHeader className="pb-2 text-center">
           {/* Icon */}
           <div className="mb-4 flex justify-center">
             <div className="rounded-2xl bg-purple-600/20 p-4">
-              <UserPlus className="h-7 w-7 text-purple-400" />
+              <UserPlus className="h-7 w-7 text-purple-700 dark:text-purple-400" />
             </div>
           </div>
 
-          <CardTitle className="text-2xl font-bold text-white">
+          <CardTitle className="text-2xl font-bold text-foreground dark:text-white">
             Join Workspace
           </CardTitle>
-          <CardDescription className="text-zinc-400">
+          <CardDescription className="text-muted-foreground dark:text-zinc-400">
             Accept the invitation to start collaborating
           </CardDescription>
         </CardHeader>
@@ -181,16 +181,16 @@ function InvitePage() {
         <CardContent className="flex flex-col gap-5 pt-2 pb-10">
           {/* Email field */}
           <div className="flex flex-col gap-2">
-            <Label className="text-xs tracking-wider text-zinc-500 uppercase">
+            <Label className="text-xs tracking-wider text-muted-foreground dark:text-zinc-500 uppercase">
               Email
             </Label>
-            <div className="relative flex items-center rounded-xl border border-zinc-800 bg-zinc-950/50 opacity-60">
-              <Mail className="pointer-events-none absolute left-3.5 h-4 w-4 text-zinc-600" />
+            <div className="relative flex items-center rounded-xl border border-border dark:border-zinc-800 bg-card dark:bg-zinc-950/50 opacity-60">
+              <Mail className="pointer-events-none absolute left-3.5 h-4 w-4 text-muted-foreground dark:text-zinc-600" />
               <Input
                 type="email"
                 disabled
                 value={email}
-                className="h-11 cursor-not-allowed border-0 bg-transparent pl-10 text-zinc-400 focus-visible:border-none focus-visible:ring-0 focus-visible:ring-offset-0"
+                className="h-11 cursor-not-allowed border-0 bg-transparent pl-10 text-muted-foreground dark:text-zinc-400 focus-visible:border-none focus-visible:ring-0 focus-visible:ring-offset-0"
               />
             </div>
           </div>
@@ -198,9 +198,9 @@ function InvitePage() {
           {/* Logged in info box */}
           {isLoggedIn && (
             <div className="rounded-xl border border-purple-500/20 bg-purple-500/10 p-4">
-              <p className="text-sm leading-relaxed text-zinc-300">
+              <p className="text-sm leading-relaxed text-foreground dark:text-zinc-300">
                 You are logged in as{" "}
-                <span className="font-semibold text-white">{userEmail}</span>.
+                <span className="font-semibold text-foreground dark:text-white">{userEmail}</span>.
                 Click below to join the workspace with this account.
               </p>
             </div>
@@ -223,8 +223,8 @@ function InvitePage() {
       {/* Back to Login */}
       <div className="mt-5 text-center">
         <Link
-          to="/login"
-          className="inline-flex items-center gap-1 text-sm text-zinc-500 transition-colors hover:text-zinc-300"
+          to="/sign-in"
+          className="inline-flex items-center gap-1 text-sm text-muted-foreground dark:text-zinc-500 transition-colors hover:text-foreground dark:hover:text-zinc-300"
         >
           <ChevronLeft className="h-3.5 w-3.5" />
           Back to Login

@@ -1,8 +1,9 @@
 import * as React from "react"
 import { Link } from "@tanstack/react-router"
-import { CheckIcon, PencilIcon, Trash2Icon, XIcon } from "lucide-react"
+import { CheckIcon, MoreHorizontal, PencilIcon, Trash2Icon, XIcon } from "lucide-react"
 import { shortAge } from "./use-chat-history"
 import type { ChatSummary } from "./use-chat-history"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { cn } from "@/lib/utils"
 
 /**
@@ -64,9 +65,10 @@ export function ChatList({
               to="/dashboard/ai/$threadId"
               params={{ threadId: thread.id }}
               onClick={onNavigate}
+              aria-current={thread.id === activeId ? "page" : undefined}
               title={thread.preview || thread.title}
               className={cn(
-                "flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors",
+                "flex items-center gap-2 rounded-md px-2 py-2 pr-9 text-sm outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring",
                 thread.id === activeId
                   ? "bg-sidebar-accent font-medium text-sidebar-accent-foreground"
                   : "text-sidebar-foreground/70 hover:bg-sidebar-accent/60"
@@ -91,18 +93,21 @@ export function ChatList({
                 beside them. At this width both together push the title into an
                 ellipsis on almost every row.
               */}
-              <span className="shrink-0 text-[11px] tabular-nums text-sidebar-foreground/35 group-hover/chat:invisible">
+              <span className="absolute end-2 top-1/2 -translate-y-1/2 text-[11px] tabular-nums text-muted-foreground opacity-0 [@media(hover:hover)]:opacity-100 group-hover/chat:opacity-0 group-focus-within/chat:opacity-0 group-has-[[data-popup-open]]/chat:opacity-0">
                 {shortAge(thread.updatedAt)}
               </span>
             </Link>
 
-            <div className="absolute end-1.5 top-1/2 hidden -translate-y-1/2 items-center gap-0.5 group-hover/chat:flex">
-              <RowAction label="Rename" onClick={() => setEditing(thread.id)}>
-                <PencilIcon className="size-3" />
-              </RowAction>
-              <RowAction label="Delete" onClick={() => onDelete(thread.id)}>
-                <Trash2Icon className="size-3" />
-              </RowAction>
+            <div className="absolute end-1 top-1/2 -translate-y-1/2 opacity-100 transition-opacity [@media(hover:hover)]:opacity-0 group-hover/chat:opacity-100 group-focus-within/chat:opacity-100 has-[[data-popup-open]]:opacity-100">
+              <DropdownMenu>
+                <DropdownMenuTrigger render={<button type="button" aria-label={`Actions for ${thread.title}`} className="grid size-7 place-items-center rounded text-muted-foreground hover:bg-sidebar-accent focus-visible:ring-2 focus-visible:ring-ring" />}>
+                  <MoreHorizontal className="size-4" />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" side="right">
+                  <DropdownMenuItem onClick={() => setEditing(thread.id)}><PencilIcon className="size-4" />Rename</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => onDelete(thread.id)} className="text-destructive"><Trash2Icon className="size-4" />Delete</DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </li>
         )
@@ -131,7 +136,7 @@ function RowAction({
         event.stopPropagation()
         onClick()
       }}
-      className="grid size-5 place-items-center rounded text-sidebar-foreground/50 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+      className="grid size-7 place-items-center rounded text-sidebar-foreground/50 hover:bg-sidebar-accent hover:text-sidebar-foreground focus-visible:ring-2 focus-visible:ring-ring"
     >
       {children}
     </button>
@@ -159,9 +164,7 @@ function RenameRow({
           if (e.key === "Enter") onSave(value.trim())
           if (e.key === "Escape") onCancel()
         }}
-        // Blur saves rather than cancels: clicking away from a field you have
-        // just typed into means "keep it" to almost everyone.
-        onBlur={() => onSave(value.trim())}
+        aria-label="Conversation title"
         className="min-w-0 flex-1 rounded border border-sidebar-border bg-sidebar-accent/40 px-1.5 py-1 text-sm text-sidebar-foreground outline-none focus:border-primary/50"
       />
       <RowAction label="Save" onClick={() => onSave(value.trim())}>

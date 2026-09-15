@@ -39,7 +39,7 @@ export function ArticleCard({ article }: ArticleCardProps) {
       <Card
         id={`article-card-${article.id}`}
         onClick={() => openReader(article)}
-        className="group relative flex flex-col gap-0 overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl border-white/5 hover:border-white/10 p-0 rounded-xl cursor-pointer bg-[#161616]"
+        className="group relative flex flex-col gap-0 overflow-hidden transition-colors duration-150 border border-border ring-0 shadow-none hover:border-foreground/20 dark:border-white/5 dark:hover:border-white/10 p-0 rounded-xl cursor-pointer bg-card dark:bg-[#161616]"
       >
         {/* Top: Image area — strict 4:3 ratio so it behaves consistently */}
         <div
@@ -67,15 +67,15 @@ export function ArticleCard({ article }: ArticleCardProps) {
         </div>
 
         {/* Bottom: Info area — auto height prevents text clipping! */}
-        <CardContent className="flex flex-col justify-between bg-[#1a1a1a] p-3 grow">
+        <CardContent className="flex flex-col justify-between bg-card dark:bg-[#1a1a1a] p-3 grow">
           <div className="flex flex-col gap-1 mb-2">
             {/* Published date */}
-            <p className="text-[10px] text-zinc-500 leading-none">
+            <p className="text-[10px] text-muted-foreground dark:text-zinc-500 leading-none">
               {formatDate(article.publishedAt)}
             </p>
 
             {/* Title — max 2 lines */}
-            <h3 className="line-clamp-2 text-[13px] font-semibold leading-snug text-white">
+            <h3 className="line-clamp-2 text-[13px] font-semibold leading-snug text-foreground dark:text-white">
               {article.title}
             </h3>
           </div>
@@ -89,7 +89,7 @@ export function ArticleCard({ article }: ArticleCardProps) {
               {/* Details panel */}
               <button
                 onClick={(e) => { e.stopPropagation(); openDetails(article) }}
-                className="flex items-center justify-center rounded px-2 py-0.5 text-zinc-400 border border-white/5 bg-white/5 hover:bg-white/10 hover:text-white transition-colors ml-1 h-7 w-7"
+                className="flex items-center justify-center rounded px-2 py-0.5 text-muted-foreground dark:text-zinc-400 border border-border dark:border-white/5 bg-muted dark:bg-white/5 hover:bg-accent dark:hover:bg-white/10 hover:text-foreground dark:hover:text-white transition-colors ml-1 h-7 w-7"
                 title="Article details"
                 aria-label="Show article details"
               >
@@ -99,7 +99,7 @@ export function ArticleCard({ article }: ArticleCardProps) {
               {/* Share (Icon only) */}
               <button
                 onClick={handleShare}
-                className="flex items-center justify-center rounded px-2 py-0.5 text-zinc-400 border border-white/5 bg-white/5 hover:bg-white/10 hover:text-white transition-colors ml-1 h-7 w-7"
+                className="flex items-center justify-center rounded px-2 py-0.5 text-muted-foreground dark:text-zinc-400 border border-border dark:border-white/5 bg-muted dark:bg-white/5 hover:bg-accent dark:hover:bg-white/10 hover:text-foreground dark:hover:text-white transition-colors ml-1 h-7 w-7"
                 title="Share article"
               >
                 <Share2 className="h-3 w-3" />
@@ -111,7 +111,7 @@ export function ArticleCard({ article }: ArticleCardProps) {
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={(e) => e.stopPropagation()}
-                className="ml-1 flex items-center justify-center rounded p-0.5 text-zinc-500 border border-white/5 bg-white/5 hover:bg-white/10 hover:text-white transition-colors h-7 w-7"
+                className="ml-1 flex items-center justify-center rounded p-0.5 text-muted-foreground dark:text-zinc-500 border border-border dark:border-white/5 bg-muted dark:bg-white/5 hover:bg-accent dark:hover:bg-white/10 hover:text-foreground dark:hover:text-white transition-colors h-7 w-7"
                 aria-label="Open in new tab"
               >
                 <ExternalLink className="h-3 w-3" />

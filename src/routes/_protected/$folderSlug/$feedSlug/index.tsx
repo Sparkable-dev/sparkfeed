@@ -33,7 +33,7 @@ function FeedPage() {
 
   if (!feedId) {
     return (
-      <div className="flex h-screen items-center justify-center text-zinc-500 text-sm">
+      <div className="flex h-screen items-center justify-center text-muted-foreground dark:text-zinc-500 text-sm">
         Feed "{feedSlug}" not found.
       </div>
     )

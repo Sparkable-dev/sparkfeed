@@ -263,7 +263,7 @@ export function BarChart({
           >
             {point.value.toLocaleString()}
             {total > 0 ? (
-              <span style={{ opacity: 0.5 }}>
+              <span style={{ opacity: "var(--chart-label-opacity, 0.5)" }}>
                 {" "}
                 {Math.round((point.value / total) * 100)}%
               </span>

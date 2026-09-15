@@ -16,6 +16,7 @@ import {
 import { GuestUpsellCard } from "./GuestUpsellCard"
 import type { FeedRow, FolderRow } from "@/lib/rss-types"
 import type {NavPageKey} from "@/config/nav-pages";
+import { AccountThemeItem } from "@/components/account-theme-item"
 import { authClient } from "@/lib/auth-client"
 import { useDemoAwareSession } from "@/hooks/useDemoAwareSession"
 import { DEMO_MODE } from "@/lib/demo"
@@ -32,6 +33,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarRail,
+  useSidebar,
 } from "@/components/ui/sidebar"
 import { useGuestShare } from "@/hooks/guest-share-context"
 import {
@@ -70,6 +72,7 @@ export function AppSidebar({
 }: AppSidebarProps) {
   const { data: session } = useDemoAwareSession()
   const guest = useGuestShare()
+  const { isMobile } = useSidebar()
 
   /*
     The destinations themselves come from shared config, so the command
@@ -94,7 +97,7 @@ export function AppSidebar({
     favorites: favoritesCount,
   }
 
-  const navMain = NAV_PAGES.map((page) => ({
+  const navMain = NAV_PAGES.filter((page) => page.key !== "ai").map((page) => ({
     title: page.title,
     href: page.href,
     icon: icons[page.key],
@@ -110,7 +113,7 @@ export function AppSidebar({
     await authClient.signOut({
       fetchOptions: {
         onSuccess: () => {
-          window.location.href = "/login"
+          window.location.href = "/sign-in"
           toast.success("Signed out successfully")
         }
       }
@@ -118,7 +121,7 @@ export function AppSidebar({
   }
 
   return (
-    <Sidebar collapsible="icon" className="border-r border-zinc-800" {...props}>
+    <Sidebar collapsible="icon" className="border-r border-border" {...props}>
       <SidebarHeader className="p-2 pt-3">
         {/*
           TeamSwitcher is every-item-is-a-mutation: switch workspace, create one,
@@ -127,12 +130,12 @@ export function AppSidebar({
         */}
         {guest ? (
           <div className="flex items-center gap-2.5 rounded-lg px-2 py-1.5">
-            <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-violet-500 to-violet-700">
-              <Zap className="size-4 text-white" fill="currentColor" />
+            <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary">
+              <Zap className="size-4 text-foreground dark:text-white" fill="currentColor" />
             </span>
             <span className="flex flex-col gap-0.5 leading-none group-data-[collapsible=icon]:hidden">
-              <span className="text-sm font-bold text-zinc-100">Sparkfeed</span>
-              <span className="text-[10px] font-medium text-zinc-500">
+              <span className="text-sm font-semibold text-foreground">Sparkfeed</span>
+              <span className="text-[10px] font-medium text-muted-foreground">
                 Shared {guest.kind}
               </span>
             </span>
@@ -144,14 +147,11 @@ export function AppSidebar({
       <SidebarContent>
         {/*
           Every NavMain target sits under _protected, so for a guest all four
-          would bounce to /login. Four nav items that look broken read worse
+          would bounce to /sign-in. Four nav items that look broken read worse
           than no nav items.
         */}
         {!guest && <NavMain items={navMain} />}
-        {/*
-          Directly under Spark AI, which is the last nav row for exactly this
-          reason — see the note in `@/config/nav-pages`.
-        */}
+        {/* Spark AI owns its new-chat link and history disclosure. */}
         {!guest && <ChatHistory />}
         <NavFolders
           folders={folders}
@@ -162,11 +162,11 @@ export function AppSidebar({
           onEditFeed={onEditFeed}
         />
       </SidebarContent>
-      <SidebarFooter className="p-2 border-t border-zinc-800/50">
+      <SidebarFooter className="p-2 border-t border-sidebar-border">
         {DEMO_MODE && (
           <div className="mx-2 mb-1 flex items-center gap-1.5 rounded-md border border-amber-500/20 bg-amber-500/10 px-2 py-1 group-data-[collapsible=icon]:hidden">
             <div className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse" />
-            <span className="text-[10px] font-bold uppercase tracking-wider text-amber-400">Demo Mode</span>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-amber-700 dark:text-amber-400">Demo Mode</span>
           </div>
         )}
         {guest ? <GuestUpsellCard /> : <NavDeveloper />}
@@ -179,51 +179,52 @@ export function AppSidebar({
             */}
             {guest ? (
               <div className="flex w-full items-center gap-3 rounded-full px-2 py-1.5">
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-zinc-800 text-xs font-bold text-zinc-400 ring-1 ring-white/10">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-sidebar-accent text-xs font-bold text-muted-foreground ring-1 ring-border">
                   G
                 </div>
                 <div className="flex flex-col items-start gap-0.5 overflow-hidden leading-none group-data-[collapsible=icon]:hidden">
-                  <span className="w-full truncate text-left text-sm font-bold text-zinc-200">
+                  <span className="w-full truncate text-left text-sm font-semibold text-sidebar-foreground">
                     Guest
                   </span>
-                  <span className="w-full truncate text-left text-[10px] text-zinc-500">
+                  <span className="w-full truncate text-left text-[10px] text-muted-foreground">
                     Not signed in
                   </span>
                 </div>
               </div>
             ) : (
             <DropdownMenu>
-              <DropdownMenuTrigger render={<SidebarMenuButton size="lg" className="rounded-full hover:bg-zinc-800/50" />}>
+              <DropdownMenuTrigger aria-label="Account menu" render={<SidebarMenuButton size="lg" className="rounded-lg hover:bg-sidebar-accent/60" />}>
                 <div className="flex items-center gap-3 w-full">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-zinc-800 text-zinc-400 font-bold text-xs shrink-0 ring-1 ring-white/10 group-hover:ring-white/20 group-hover:scale-105 transition-all duration-200">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-sidebar-accent text-muted-foreground font-bold text-xs shrink-0 ring-1 ring-border group-hover:ring-ring/30 transition-colors duration-150">
                     {session?.user?.name?.[0]?.toUpperCase()}
                   </div>
                   <div className="flex flex-col items-start gap-0.5 leading-none overflow-hidden group-data-[collapsible=icon]:hidden">
-                    <span className="truncate font-bold text-sm text-zinc-200 w-full text-left">
+                    <span className="truncate font-semibold text-sm text-sidebar-foreground w-full text-left">
                       {session?.user?.name}
                     </span>
-                    <span className="truncate text-[10px] text-zinc-500 w-full text-left">
+                    <span className="truncate text-[10px] text-muted-foreground w-full text-left">
                       {session?.user?.email}
                     </span>
                   </div>
-                  <ChevronRight className="ml-auto size-3.5 text-zinc-600 group-data-[collapsible=icon]:hidden" />
+                  <ChevronRight className="ml-auto size-3.5 text-muted-foreground group-data-[collapsible=icon]:hidden" />
                 </div>
               </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-56 rounded-xl bg-zinc-950 border-zinc-800 shadow-2xl p-2" align="start" side="right" sideOffset={12}>
+              <DropdownMenuContent className="w-56 rounded-xl bg-popover border-border shadow-2xl p-2" align="start" side={isMobile ? "top" : "right"} sideOffset={isMobile ? 8 : 12}>
                 <div className="px-2 py-1.5 mb-1">
-                  <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Account</p>
+                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Account</p>
                 </div>
                 <DropdownMenuItem
                   onClick={() => {
                     window.location.href = "/settings?tab=profile"
                   }}
-                  className="gap-2 p-2 rounded-lg text-zinc-300 hover:bg-white/5 cursor-pointer"
+                  className="gap-2 p-2 rounded-lg text-foreground hover:bg-accent cursor-pointer"
                 >
                   <Settings className="size-4" />
                   <span className="text-sm font-medium">Settings</span>
                 </DropdownMenuItem>
-                <DropdownMenuSeparator className="my-1 bg-zinc-800/50" />
-                <DropdownMenuItem onClick={handleLogout} className="gap-2 p-2 rounded-lg text-red-400 hover:bg-red-500/10 cursor-pointer">
+                <AccountThemeItem />
+                <DropdownMenuSeparator className="my-1 bg-sidebar-accent/50" />
+                <DropdownMenuItem onClick={handleLogout} className="gap-2 p-2 rounded-lg text-red-700 dark:text-red-400 hover:bg-red-500/10 cursor-pointer">
                   <LogOut className="size-4" />
                   <span className="text-sm font-medium">Log out</span>
                 </DropdownMenuItem>

@@ -194,7 +194,7 @@ export function AccountSettings({ session }: AccountSettingsProps) {
       const result = await authClient.deleteUser()
       if (result.error) throw new Error(result.error.message)
       toast.success("Account deleted")
-      window.location.href = "/login"
+      window.location.href = "/sign-in"
     } catch (error) {
       toast.error(
         error instanceof Error

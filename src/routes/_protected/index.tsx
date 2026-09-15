@@ -147,10 +147,10 @@ function HomePage() {
             piece of work.
           */
           <div className="min-w-0">
-            <h1 className="text-2xl font-bold tracking-tight text-zinc-50">
+            <h1 className="text-2xl font-bold tracking-tight text-foreground dark:text-zinc-50">
               Let's find you something to read
             </h1>
-            <p className="mt-1 mb-8 text-sm text-zinc-400">
+            <p className="mt-1 mb-8 text-sm text-muted-foreground dark:text-zinc-400">
               Pick a few sources and this becomes your feed. Add a whole
               collection, or just the one you want.
             </p>
@@ -201,8 +201,8 @@ function HomePage() {
             */}
             <Link
               to="/discover"
-              className="flex items-center justify-center gap-2 rounded-2xl border border-dashed border-white/10
-                px-4 py-5 text-sm text-zinc-500 transition-colors hover:border-white/20 hover:text-zinc-200"
+              className="flex items-center justify-center gap-2 rounded-2xl border border-dashed border-border dark:border-white/10
+                px-4 py-5 text-sm text-muted-foreground dark:text-zinc-500 transition-colors hover:border-border dark:hover:border-white/20 hover:text-foreground dark:hover:text-zinc-200"
             >
               Nothing left? Browse the source catalogue
               <ArrowRight className="size-4" />

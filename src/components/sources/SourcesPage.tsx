@@ -122,13 +122,13 @@ export function SourcesPage(props: SourcesPageProps) {
       {totalFeeds > 0 && <SourcesOverview overview={overview} />}
 
       {filtering && (
-        <p className="text-[11px] text-zinc-500">
+        <p className="text-[11px] text-muted-foreground dark:text-zinc-500">
           Showing matches only. Clear the search to rearrange — positions in a filtered list
           are not the positions that get saved.
         </p>
       )}
 
-      <section className="min-w-0 rounded-2xl border border-white/[0.07] bg-white/[0.02] pt-3 pb-2">
+      <section className="min-w-0 rounded-2xl border border-border dark:border-white/[0.07] bg-card dark:bg-white/[0.02] pt-3 pb-2">
         {/*
           The one thing the old heading said that nothing else does. The counts
           it carried are now the overview's job, and the word "Sources" was
@@ -136,7 +136,7 @@ export function SourcesPage(props: SourcesPageProps) {
           that dragging is how you change it, is not written anywhere else.
         */}
         {!filtering && totalFeeds > 0 && (
-          <p className="px-3 pb-2 text-[11px] text-zinc-600">
+          <p className="px-3 pb-2 text-[11px] text-muted-foreground dark:text-zinc-600">
             Drag to arrange — this is the order your sidebar uses.
           </p>
         )}
@@ -201,7 +201,7 @@ export function SourcesPage(props: SourcesPageProps) {
                     )}
 
                     {folder.feeds.length === 0 && (
-                      <p className="py-2 pl-9 text-xs text-zinc-600">
+                      <p className="py-2 pl-9 text-xs text-muted-foreground dark:text-zinc-600">
                         {folder.isRealFolder
                           ? "No feeds yet. Drag one here, or add one from the folder menu."
                           : "Every feed is in a folder."}
@@ -270,7 +270,7 @@ export function SourcesPage(props: SourcesPageProps) {
           })}
 
           {visible.length === 0 && (
-            <p className="px-3 py-6 text-center text-xs text-zinc-600">
+            <p className="px-3 py-6 text-center text-xs text-muted-foreground dark:text-zinc-600">
               Nothing matches “{props.filter}”.
             </p>
           )}
@@ -281,8 +281,8 @@ export function SourcesPage(props: SourcesPageProps) {
         <Link
           to="/discover"
           className="flex items-center justify-center gap-2 rounded-2xl border border-dashed
-            border-white/10 px-4 py-5 text-sm text-zinc-500 transition-colors
-            hover:border-white/20 hover:text-zinc-200"
+            border-border dark:border-white/10 px-4 py-5 text-sm text-muted-foreground dark:text-zinc-500 transition-colors
+            hover:border-border dark:hover:border-white/20 hover:text-foreground dark:hover:text-zinc-200"
         >
           No sources yet. Browse the catalogue to add some.
         </Link>

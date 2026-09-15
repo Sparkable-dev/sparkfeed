@@ -34,7 +34,7 @@ function DemoTeamSwitcher() {
     <SidebarMenu>
       <SidebarMenuItem>
         <SidebarMenuButton size="lg" className="rounded-full">
-          <div className="flex aspect-square size-8 items-center justify-center rounded-full bg-violet-600 text-white">
+          <div className="flex aspect-square size-8 items-center justify-center rounded-full bg-primary text-primary-foreground">
             <User className="size-4" />
           </div>
           <div className="min-w-0 flex-1 text-left leading-tight group-data-[collapsible=icon]:hidden">
@@ -100,14 +100,15 @@ function AuthenticatedTeamSwitcher() {
       <SidebarMenuItem>
         <DropdownMenu>
           <DropdownMenuTrigger
+            aria-label="Switch workspace"
             render={
               <SidebarMenuButton
                 size="lg"
-                className="rounded-full hover:bg-zinc-800/50"
+                className="rounded-lg hover:bg-sidebar-accent/60"
               />
             }
           >
-            <div className="flex aspect-square size-8 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-blue-600 to-purple-600 text-white shadow-md transition-all duration-200 group-hover:scale-105">
+            <div className="flex aspect-square size-8 items-center justify-center overflow-hidden rounded-full bg-primary text-primary-foreground ">
               {activeOrg?.logo ? (
                 <img
                   src={activeOrg.logo}
@@ -127,23 +128,23 @@ function AuthenticatedTeamSwitcher() {
               )}
             </div>
             <div className="flex min-w-0 flex-1 flex-col items-start gap-0.5 overflow-hidden leading-none group-data-[collapsible=icon]:hidden">
-              <span className="w-full truncate text-sm font-bold text-zinc-200">
+              <span className="w-full truncate text-sm font-semibold text-sidebar-foreground">
                 {activeOrg?.name || personalWorkspaceName(user?.name)}
               </span>
-              <span className="w-full truncate text-[10px] font-medium text-zinc-500">
+              <span className="w-full truncate text-[10px] font-medium text-muted-foreground">
                 {workspacePlanLabel(personalPlan, Boolean(activeOrg))}
               </span>
             </div>
-            <ChevronDownIcon className="ml-auto size-3.5 text-zinc-500 group-data-[collapsible=icon]:hidden" />
+            <ChevronDownIcon className="ml-auto size-3.5 text-muted-foreground group-data-[collapsible=icon]:hidden" />
           </DropdownMenuTrigger>
           <DropdownMenuContent
-            className="w-64 rounded-xl border-zinc-800 bg-zinc-950 p-2 shadow-2xl"
+            className="w-64 rounded-xl border-border bg-popover p-2 shadow-2xl"
             align="start"
             side="bottom"
             sideOffset={8}
           >
             <div className="mb-1 px-2 py-1.5">
-              <p className="text-[10px] font-bold tracking-widest text-zinc-500 uppercase">
+              <p className="text-[10px] font-bold tracking-widest text-muted-foreground uppercase">
                 Select Workspace
               </p>
             </div>
@@ -151,9 +152,9 @@ function AuthenticatedTeamSwitcher() {
             <DropdownMenuGroup>
               <DropdownMenuItem
                 onClick={() => handleSwitch(null)}
-                className={`cursor-pointer gap-3 rounded-lg p-2 transition-colors ${!activeOrg ? "bg-blue-600/10 text-blue-400" : "text-zinc-400 hover:bg-white/5"}`}
+                className={`cursor-pointer gap-3 rounded-lg p-2 transition-colors ${!activeOrg ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:bg-accent"}`}
               >
-                <div className="flex size-7 items-center justify-center overflow-hidden rounded-full border border-zinc-800 bg-zinc-900 shadow-sm">
+                <div className="flex size-7 items-center justify-center overflow-hidden rounded-full border border-border bg-muted shadow-sm">
                   {user?.image ? (
                     <img
                       src={user.image}
@@ -175,7 +176,7 @@ function AuthenticatedTeamSwitcher() {
                     <Button
                       variant="outline"
                       size="sm"
-                      className="h-6 rounded-md border-zinc-800 bg-white/5 px-2 text-[10px] font-bold transition-all hover:bg-white/10 hover:text-white"
+                      className="h-6 rounded-md border-border bg-accent/40 px-2 text-[10px] font-bold transition-all hover:bg-accent hover:text-accent-foreground"
                       onClick={(e) => {
                         e.stopPropagation()
                         window.location.href = "/settings?tab=profile"
@@ -191,9 +192,9 @@ function AuthenticatedTeamSwitcher() {
                 <DropdownMenuItem
                   key={org.id}
                   onClick={() => handleSwitch(org.id)}
-                  className={`mt-1 cursor-pointer gap-3 rounded-lg p-2 transition-colors ${activeOrg?.id === org.id ? "bg-blue-600/10 text-blue-400" : "text-zinc-400 hover:bg-white/5"}`}
+                  className={`mt-1 cursor-pointer gap-3 rounded-lg p-2 transition-colors ${activeOrg?.id === org.id ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:bg-accent"}`}
                 >
-                  <div className="flex size-7 items-center justify-center overflow-hidden rounded-full border border-zinc-800 bg-zinc-900 shadow-sm">
+                  <div className="flex size-7 items-center justify-center overflow-hidden rounded-full border border-border bg-muted shadow-sm">
                     {org.logo ? (
                       <img
                         src={org.logo}
@@ -215,7 +216,7 @@ function AuthenticatedTeamSwitcher() {
                       <Button
                         variant="outline"
                         size="sm"
-                        className="h-6 rounded-md border-zinc-800 bg-white/5 px-2 text-[10px] font-bold transition-all hover:bg-white/10 hover:text-white"
+                        className="h-6 rounded-md border-border bg-accent/40 px-2 text-[10px] font-bold transition-all hover:bg-accent hover:text-accent-foreground"
                         onClick={(e) => {
                           e.stopPropagation()
                           navigate({
@@ -235,13 +236,13 @@ function AuthenticatedTeamSwitcher() {
 
             {workspaceCreation.allowed ? (
               <>
-                <DropdownMenuSeparator className="my-2 bg-zinc-800/50" />
+                <DropdownMenuSeparator className="my-2 bg-sidebar-accent/50" />
                 <DropdownMenuGroup>
                   <DropdownMenuItem
                     onClick={() => setShowCreateModal(true)}
-                    className="cursor-pointer gap-3 rounded-lg p-2 text-zinc-400 transition-colors hover:bg-blue-600/5 hover:text-blue-400"
+                    className="cursor-pointer gap-3 rounded-lg p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
                   >
-                    <div className="flex size-7 items-center justify-center rounded-lg border border-dashed border-zinc-700 bg-transparent">
+                    <div className="flex size-7 items-center justify-center rounded-lg border border-dashed border-border bg-transparent">
                       <PlusIcon className="size-4" />
                     </div>
                     <p className="text-sm font-semibold">Create Workspace</p>

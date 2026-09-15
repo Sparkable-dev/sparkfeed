@@ -48,7 +48,7 @@ export function ArticleReaderProvider({
           fallback={
             <p
               role="status"
-              className="fixed right-4 bottom-4 z-50 rounded-lg bg-zinc-900 p-3 text-sm text-zinc-100"
+              className="fixed right-4 bottom-4 z-50 rounded-lg bg-card dark:bg-zinc-900 p-3 text-sm text-foreground dark:text-zinc-100"
             >
               Opening reader…
             </p>

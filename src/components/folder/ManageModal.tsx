@@ -60,9 +60,9 @@ function DetailRow({
   children: React.ReactNode
 }) {
   return (
-    <div className="flex items-start justify-between gap-4 border-b border-zinc-800/60 py-2.5 last:border-0">
-      <span className="shrink-0 text-xs text-zinc-500">{label}</span>
-      <span className="min-w-0 text-right text-xs text-zinc-200">{children}</span>
+    <div className="flex items-start justify-between gap-4 border-b border-border py-2.5 last:border-0">
+      <span className="shrink-0 text-xs text-muted-foreground">{label}</span>
+      <span className="min-w-0 text-right text-xs text-foreground">{children}</span>
     </div>
   )
 }
@@ -198,19 +198,19 @@ export function ManageModal({
   // `flex-none` overrides the primitive's flex-1, which would otherwise spread
   // the labels across the full dialog width.
   const triggerClass =
-    "h-full flex-none rounded-none border-b-2 border-transparent px-0 text-sm font-semibold text-zinc-500 transition-colors hover:text-zinc-200 data-active:border-white data-active:text-white"
+    "h-full flex-none rounded-none border-b-2 border-transparent px-0 text-sm font-semibold text-muted-foreground transition-colors hover:text-foreground data-active:border-primary data-active:text-foreground"
 
   const firstTab = isFeed ? "details" : "sources"
 
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="flex max-h-[85vh] w-[92vw] flex-col overflow-hidden border-zinc-800 bg-zinc-950 p-0 text-white sm:max-w-[880px]">
+        <DialogContent className="flex max-h-[85vh] w-[92vw] flex-col overflow-hidden border-border bg-background p-0 text-foreground sm:max-w-[880px]">
           <DialogHeader className="min-w-0 shrink-0 px-6 pt-6">
             <DialogTitle className="truncate text-xl font-bold tracking-tight">
               {name}
             </DialogTitle>
-            <DialogDescription className="truncate text-zinc-500">
+            <DialogDescription className="truncate text-muted-foreground">
               {subtitle}
             </DialogDescription>
           </DialogHeader>
@@ -223,7 +223,7 @@ export function ManageModal({
             <div className="shrink-0 px-6">
               <TabsList
                 variant="line"
-                className="h-10 w-full justify-start gap-6 rounded-none border-b border-zinc-800 bg-transparent p-0"
+                className="h-10 w-full justify-start gap-6 rounded-none border-b border-border bg-transparent p-0"
               >
                 <TabsTrigger value={firstTab} className={triggerClass}>
                   {isFeed ? "Details" : "Sources"}
@@ -247,7 +247,7 @@ export function ManageModal({
                         href={feedRow?.url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 break-all text-zinc-300 underline-offset-2 hover:underline"
+                        className="inline-flex items-center gap-1 break-all text-foreground underline-offset-2 hover:underline"
                       >
                         {feedRow?.url}
                         <ExternalLink className="size-3 shrink-0" />
@@ -273,14 +273,14 @@ export function ManageModal({
                       ) : feedHealth?.lastFetchedAt ? (
                         <span className="text-emerald-400">OK</span>
                       ) : (
-                        <span className="text-zinc-500">Not checked yet</span>
+                        <span className="text-muted-foreground">Not checked yet</span>
                       )}
                     </DetailRow>
                   </div>
 
                   <Button
                     variant="outline"
-                    className="mt-5 border-zinc-700 text-zinc-300 hover:bg-white/5 hover:text-white"
+                    className="mt-5 border-border text-foreground hover:bg-accent hover:text-foreground"
                     onClick={() => {
                       if (guardDemo() || !feedRow) return
                       setEditingFeed(feedRow)
@@ -294,11 +294,11 @@ export function ManageModal({
                 <TabsContent value="sources" className="mt-0">
                   {loading ? (
                     <div className="flex h-32 items-center justify-center">
-                      <Loader2 className="size-5 animate-spin text-zinc-600" />
+                      <Loader2 className="size-5 animate-spin text-muted-foreground" />
                     </div>
                   ) : (
                     <div className="flex flex-col gap-3">
-                      <p className="text-xs leading-relaxed text-zinc-500">
+                      <p className="text-xs leading-relaxed text-muted-foreground">
                         Sites with a feed are read directly. Sites without one
                         are read by parsing the page, which is why they can stop
                         finding posts if the site changes.
@@ -318,7 +318,7 @@ export function ManageModal({
               )}
 
               <TabsContent value="sharing" className="mt-0">
-                <p className="mb-4 text-xs leading-relaxed text-zinc-500">
+                <p className="mb-4 text-xs leading-relaxed text-muted-foreground">
                   {isFeed
                     ? "A share link is public to anyone who has it, and shows this feed's articles."
                     : "A share link is public to anyone who has it, and everything inside this folder is visible through it."}
@@ -338,10 +338,10 @@ export function ManageModal({
 
               <TabsContent value="danger" className="mt-0">
                 <div className="rounded-xl border border-red-500/20 bg-red-500/5 p-4">
-                  <h3 className="text-sm font-semibold text-zinc-100">
+                  <h3 className="text-sm font-semibold text-foreground">
                     Delete this {kind}
                   </h3>
-                  <p className="mt-1 mb-4 text-xs leading-relaxed text-zinc-400">
+                  <p className="mt-1 mb-4 text-xs leading-relaxed text-muted-foreground">
                     {isFeed
                       ? "Removes this feed and every article cached from it. This cannot be undone."
                       : "Removes its feeds, every cached article, the scraped sources beneath it, and any sub-folders. This cannot be undone."}
@@ -391,7 +391,7 @@ export function ManageModal({
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="border-white/10 text-zinc-400 hover:bg-white/5 hover:text-white">
+            <AlertDialogCancel className="border-border text-muted-foreground hover:bg-accent hover:text-foreground">
               Keep it
             </AlertDialogCancel>
             <AlertDialogAction
@@ -421,11 +421,11 @@ export function ManageModal({
             value={confirmName}
             onChange={(e) => setConfirmName(e.target.value)}
             placeholder={name}
-            className="border-zinc-700 bg-zinc-950 text-white"
+            className="border-border bg-background text-foreground"
             autoFocus
           />
           <AlertDialogFooter>
-            <AlertDialogCancel className="border-white/10 text-zinc-400 hover:bg-white/5 hover:text-white">
+            <AlertDialogCancel className="border-border text-muted-foreground hover:bg-accent hover:text-foreground">
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction

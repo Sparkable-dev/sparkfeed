@@ -133,27 +133,27 @@ export function ApiKeysPanel() {
           </div>
         ) : keys.length === 0 ? (
           <div className="flex flex-col items-center gap-2 py-8 text-center">
-            <KeyRound className="size-5 text-zinc-600" />
+            <KeyRound className="size-5 text-muted-foreground dark:text-zinc-600" />
             <p className="text-xs text-muted-foreground">
               No keys yet. Create one to connect an agent.
             </p>
           </div>
         ) : (
-          <ul className="flex flex-col divide-y divide-zinc-800/60">
+          <ul className="flex flex-col divide-y divide-border dark:divide-zinc-800/60">
             {keys.map((row) => (
               <li key={row.id} className="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium text-foreground">{row.name}</p>
                   <p className="mt-0.5 font-mono text-[11px] text-muted-foreground">
                     {row.prefix}
-                    <span className="text-zinc-600">…</span>
+                    <span className="text-muted-foreground dark:text-zinc-600">…</span>
                   </p>
                 </div>
                 <div className="hidden shrink-0 text-right sm:block">
                   <p className="text-[11px] text-muted-foreground">
                     {row.lastUsedAt ? `Used ${formatDate(row.lastUsedAt)}` : "Never used"}
                   </p>
-                  <p className="text-[10px] text-zinc-600">
+                  <p className="text-[10px] text-muted-foreground dark:text-zinc-600">
                     {row.scopes.filter((s) => s !== "mcp").length} scopes
                   </p>
                 </div>
@@ -161,7 +161,7 @@ export function ApiKeysPanel() {
                   size="icon"
                   variant="ghost"
                   aria-label={`Revoke ${row.name}`}
-                  className="size-8 shrink-0 text-zinc-500 hover:text-red-400"
+                  className="size-8 shrink-0 text-muted-foreground dark:text-zinc-500 hover:text-red-700 dark:hover:text-red-400"
                   onClick={() => setPendingDelete(row)}
                 >
                   <Trash2 className="size-3.5" />
@@ -228,8 +228,8 @@ export function ApiKeysPanel() {
               recovered later.
             </DialogDescription>
           </DialogHeader>
-          <div className="flex items-center gap-2 rounded-lg border border-zinc-800 bg-black/40 p-2.5">
-            <code className="min-w-0 flex-1 truncate font-mono text-[11px] text-zinc-200">
+          <div className="flex items-center gap-2 rounded-lg border border-border dark:border-zinc-800 bg-card dark:bg-black/40 p-2.5">
+            <code className="min-w-0 flex-1 truncate font-mono text-[11px] text-foreground dark:text-zinc-200">
               {revealed}
             </code>
             <Button
@@ -243,10 +243,10 @@ export function ApiKeysPanel() {
                 if (ok) setCopied(true)
               }}
             >
-              {copied ? <Check className="size-3.5 text-emerald-400" /> : <Copy className="size-3.5" />}
+              {copied ? <Check className="size-3.5 text-emerald-700 dark:text-emerald-400" /> : <Copy className="size-3.5" />}
             </Button>
           </div>
-          <p className="flex items-start gap-2 text-[11px] text-amber-300/80">
+          <p className="flex items-start gap-2 text-[11px] text-amber-700 dark:text-amber-300/80">
             <AlertTriangle className="mt-0.5 size-3.5 shrink-0" />
             Treat it like a password. Anyone with this key can read this workspace.
           </p>

@@ -20,10 +20,10 @@ import { useCommandPalette } from "@/components/command/command-palette-context"
  */
 
 const TILE =
-  "group flex items-center gap-2.5 rounded-xl border border-white/[0.07] bg-white/[0.03] px-3 py-2.5 " +
-  "text-left transition-colors hover:border-white/15 hover:bg-white/[0.07]"
+  "group flex items-center gap-2.5 rounded-xl border border-border dark:border-white/[0.07] bg-muted dark:bg-white/[0.03] px-3 py-2.5 " +
+  "text-left transition-colors hover:border-border dark:hover:border-white/15 hover:bg-accent dark:hover:bg-white/[0.07]"
 
-const LABEL = "min-w-0 truncate text-xs font-semibold text-zinc-200"
+const LABEL = "min-w-0 truncate text-xs font-semibold text-foreground dark:text-zinc-200"
 
 function Glyph({ icon: Icon, tint }: { icon: LucideIcon; tint: string }) {
   return (
@@ -48,22 +48,22 @@ export function QuickActions() {
   return (
     <div className="grid grid-cols-2 gap-2">
       <button type="button" onClick={() => run("add-feed")} className={TILE}>
-        <Glyph icon={Plus} tint="bg-blue-500/15 text-blue-300" />
+        <Glyph icon={Plus} tint="bg-blue-500/15 text-blue-700 dark:text-blue-300" />
         <span className={LABEL}>Add a feed</span>
       </button>
 
       <Link to="/discover" className={TILE}>
-        <Glyph icon={Telescope} tint="bg-violet-500/15 text-violet-300" />
+        <Glyph icon={Telescope} tint="bg-violet-500/15 text-violet-700 dark:text-violet-300" />
         <span className={LABEL}>Discover sources</span>
       </Link>
 
       <Link to="/dashboard/ai" className={TILE}>
-        <Glyph icon={Sparkles} tint="bg-amber-500/15 text-amber-300" />
+        <Glyph icon={Sparkles} tint="bg-amber-500/15 text-amber-700 dark:text-amber-300" />
         <span className={LABEL}>Ask Spark AI</span>
       </Link>
 
       <button type="button" onClick={() => run("new-folder")} className={TILE}>
-        <Glyph icon={FolderPlus} tint="bg-emerald-500/15 text-emerald-300" />
+        <Glyph icon={FolderPlus} tint="bg-emerald-500/15 text-emerald-700 dark:text-emerald-300" />
         <span className={LABEL}>New folder</span>
       </button>
     </div>

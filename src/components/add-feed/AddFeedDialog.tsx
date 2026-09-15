@@ -320,14 +320,14 @@ export function AddFeedDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         showCloseButton
-        className="flex max-h-[85vh] flex-col gap-0 border-white/10 bg-[#141414] p-0 text-white sm:max-w-lg"
+        className="flex max-h-[85vh] flex-col gap-0 border-border dark:border-white/10 bg-card dark:bg-[#141414] p-0 text-foreground dark:text-white sm:max-w-lg"
       >
         <DialogHeader className="px-5 pt-5 pb-3">
           <DialogTitle className="text-base font-semibold">Add sources</DialogTitle>
         </DialogHeader>
 
         {DEMO_MODE && (
-          <p className="mx-5 mb-3 rounded-lg border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-xs text-amber-400">
+          <p className="mx-5 mb-3 rounded-lg border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-400">
             Adding sources is locked in demo mode.
           </p>
         )}
@@ -390,7 +390,7 @@ export function AddFeedDialog({
           </div>
         </Tabs>
 
-        <div className="shrink-0 border-t border-white/[0.07] px-5 py-3">
+        <div className="shrink-0 border-t border-border dark:border-white/[0.07] px-5 py-3">
           <DestinationField
             value={destination}
             onChange={setDestination}
@@ -400,11 +400,11 @@ export function AddFeedDialog({
           />
         </div>
 
-        <DialogFooter className="shrink-0 border-t border-white/[0.07] px-5 py-3">
+        <DialogFooter className="shrink-0 border-t border-border dark:border-white/[0.07] px-5 py-3">
           <Button
             variant="ghost"
             onClick={() => onOpenChange(false)}
-            className="text-sm text-zinc-400 hover:text-white"
+            className="text-sm text-muted-foreground dark:text-zinc-400 hover:text-foreground dark:hover:text-white"
           >
             Cancel
           </Button>
@@ -412,7 +412,7 @@ export function AddFeedDialog({
             id="add-feed-save-btn"
             disabled={busy || picks.length === 0 || !destinationReady || DEMO_MODE}
             onClick={() => void handleAdd()}
-            className="gap-1.5 bg-white text-sm font-semibold text-black hover:bg-zinc-200"
+            className="gap-1.5 bg-primary dark:bg-white text-sm font-semibold text-primary-foreground dark:text-black hover:bg-primary/90 dark:hover:bg-zinc-200"
           >
             {submitting && <Spinner className="size-3.5" />}
             {/*

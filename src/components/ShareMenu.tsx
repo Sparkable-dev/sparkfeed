@@ -92,7 +92,7 @@ export function ShareMenu({ url, title }: { url: string; title: string }) {
       <DropdownMenuTrigger
         aria-label="Share"
         title="Share"
-        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/5 text-zinc-300 transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-none"
+        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border dark:border-white/10 bg-muted dark:bg-white/5 text-foreground dark:text-zinc-300 transition-colors hover:bg-accent dark:hover:bg-white/10 hover:text-foreground dark:hover:text-white focus-visible:outline-none"
       >
         <Share2 className="size-3.5" />
       </DropdownMenuTrigger>
@@ -101,7 +101,7 @@ export function ShareMenu({ url, title }: { url: string; title: string }) {
         side="bottom"
         sideOffset={6}
         style={{ width: "13rem" }}
-        className="border-white/10 bg-[#1a1a1a] text-zinc-200"
+        className="border-border dark:border-white/10 bg-card dark:bg-[#1a1a1a] text-foreground dark:text-zinc-200"
       >
         <DropdownMenuItem onClick={copyLink}>
           <Copy />

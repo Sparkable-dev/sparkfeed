@@ -61,8 +61,8 @@ export function SourceQuadrant({ points }: { points: Array<SourcePoint> }) {
   return (
     <div className="flex min-w-0 flex-col gap-2">
       <div className="flex items-baseline justify-between gap-2">
-        <h3 className="text-xs font-semibold text-zinc-300">Volume against silence</h3>
-        <span className="text-[10px] text-zinc-600">last {WINDOW_DAYS} days</span>
+        <h3 className="text-xs font-semibold text-foreground dark:text-zinc-300">Volume against silence</h3>
+        <span className="text-[10px] text-muted-foreground dark:text-zinc-600">last {WINDOW_DAYS} days</span>
       </div>
 
       {/*
@@ -77,7 +77,7 @@ export function SourceQuadrant({ points }: { points: Array<SourcePoint> }) {
         )
           .map((quadrant) => `${counts[quadrant]} ${QUADRANTS[quadrant].label.toLowerCase()}`)
           .join(", ")}`}
-        className="relative h-32 w-full rounded-lg border border-white/[0.06] bg-black/20"
+        className="relative h-32 w-full rounded-lg border border-border dark:border-white/[0.06] bg-card dark:bg-black/20"
       >
         {/* Corner labels, each carrying its own count. */}
         <QuadrantLabel
@@ -112,12 +112,12 @@ export function SourceQuadrant({ points }: { points: Array<SourcePoint> }) {
         <div className="absolute inset-x-3 top-5 bottom-4">
           <span
             aria-hidden="true"
-            className="absolute inset-y-0 w-px bg-white/[0.09]"
+            className="absolute inset-y-0 w-px bg-muted dark:bg-white/[0.09]"
             style={{ left: `${splitX}%` }}
           />
           <span
             aria-hidden="true"
-            className="absolute inset-x-0 h-px bg-white/[0.09]"
+            className="absolute inset-x-0 h-px bg-muted dark:bg-white/[0.09]"
             style={{ bottom: `${splitY}%` }}
           />
 
@@ -144,7 +144,7 @@ export function SourceQuadrant({ points }: { points: Array<SourcePoint> }) {
                 larger blob.
               */
               className={`absolute size-2 -translate-x-1/2 translate-y-1/2 rounded-full
-                ring-2 ring-black/70 ${STATUS_STYLE[point.status].dot}`}
+                ring-2 ring-ring dark:ring-black/70 ${STATUS_STYLE[point.status].dot}`}
               style={{
                 left: `${silenceOffset(point.quietDays)}%`,
                 bottom: `${volumeOffset(point.posts30d, max)}%`,
@@ -159,7 +159,7 @@ export function SourceQuadrant({ points }: { points: Array<SourcePoint> }) {
         judgement calls, and a divider that does not say where it is cannot be
         told apart from one placed to make the picture look tidy.
       */}
-      <div className="flex items-center justify-between gap-2 text-[10px] text-zinc-600">
+      <div className="flex items-center justify-between gap-2 text-[10px] text-muted-foreground dark:text-zinc-600">
         <span>posted today</span>
         <span className="hidden sm:inline">
           splits at {QUIET_AFTER_DAYS} days and {REGULAR_POSTS} posts
@@ -187,7 +187,7 @@ function QuadrantLabel({
     <span
       title={hint}
       className={`pointer-events-auto absolute text-[10px] leading-tight
-        ${count === 0 ? "text-zinc-700" : alarming ? "text-amber-400/80" : "text-zinc-500"}
+        ${count === 0 ? "text-muted-foreground dark:text-zinc-700" : alarming ? "text-amber-700 dark:text-amber-400/80" : "text-muted-foreground dark:text-zinc-500"}
         ${className}`}
     >
       {label}

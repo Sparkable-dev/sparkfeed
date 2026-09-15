@@ -24,28 +24,28 @@ export function DestinationTiles({
       icon: Sun,
       label: "Today",
       detail: newCount > 0 ? `${newCount} new` : "Nothing new yet",
-      tint: "text-amber-300",
+      tint: "text-amber-700 dark:text-amber-300",
     },
     {
       href: "/all",
       icon: CompassIcon,
       label: "All articles",
       detail: "Everything, one stream",
-      tint: "text-blue-300",
+      tint: "text-blue-700 dark:text-blue-300",
     },
     {
       href: "/favorites",
       icon: Heart,
       label: "Favorites",
       detail: favoritesCount > 0 ? `${favoritesCount} saved` : "Nothing saved yet",
-      tint: "text-rose-300",
+      tint: "text-rose-700 dark:text-rose-300",
     },
     {
       href: "/discover",
       icon: Telescope,
       label: "Discover",
       detail: "Find new sources",
-      tint: "text-violet-300",
+      tint: "text-violet-700 dark:text-violet-300",
     },
   ]
 
@@ -57,15 +57,15 @@ export function DestinationTiles({
           <Link
             key={tile.href}
             to={tile.href}
-            className="flex min-w-0 flex-col gap-2 rounded-xl border border-white/[0.07] bg-white/[0.02] p-3.5
-              transition-colors hover:border-white/15 hover:bg-white/[0.06]"
+            className="flex min-w-0 flex-col gap-2 rounded-xl border border-border dark:border-white/[0.07] bg-card dark:bg-white/[0.02] p-3.5
+              transition-colors hover:border-border dark:hover:border-white/15 hover:bg-accent dark:hover:bg-white/[0.06]"
           >
             <Icon className={`size-4 shrink-0 ${tile.tint}`} />
             <span className="min-w-0">
-              <span className="block truncate text-sm font-semibold text-zinc-100">
+              <span className="block truncate text-sm font-semibold text-foreground dark:text-zinc-100">
                 {tile.label}
               </span>
-              <span className="block truncate text-[11px] text-zinc-500">
+              <span className="block truncate text-[11px] text-muted-foreground dark:text-zinc-500">
                 {tile.detail}
               </span>
             </span>

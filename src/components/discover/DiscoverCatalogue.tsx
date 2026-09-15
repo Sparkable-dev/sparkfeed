@@ -45,8 +45,8 @@ const FEED_WIDTH = "w-[70vw] sm:w-[272px]"
 const COLLECTION_WIDTH = "w-[78vw] sm:w-[420px]"
 
 const CARD_BASE =
-  "flex shrink-0 snap-start flex-col overflow-hidden rounded-xl border border-white/5 " +
-  "bg-[#161616] transition-all duration-300 hover:-translate-y-1 hover:border-white/10 hover:shadow-2xl"
+  "flex shrink-0 snap-start flex-col overflow-hidden rounded-xl border border-border dark:border-white/5 " +
+  "bg-card dark:bg-[#161616] transition-all duration-300 hover:-translate-y-1 hover:border-border dark:hover:border-white/10 hover:shadow-2xl"
 
 function FeedCard({
   feed,
@@ -70,19 +70,19 @@ function FeedCard({
           onOpen()
         }
       }}
-      className={`${CARD_BASE} ${FEED_WIDTH} cursor-pointer gap-3 p-4 focus-visible:ring-2 focus-visible:ring-white/30 focus-visible:outline-none`}
+      className={`${CARD_BASE} ${FEED_WIDTH} cursor-pointer gap-3 p-4 focus-visible:ring-2 focus-visible:ring-ring dark:focus-visible:ring-white/30 focus-visible:outline-none`}
     >
       <div className="flex min-w-0 items-center gap-3">
         <SourceIcon name={feed.name} slug={feed.slug} file={feed.iconFile} accent={feed.accent} />
         <div className="flex min-w-0 flex-col">
-          <span className="truncate text-sm font-semibold text-zinc-100">{feed.name}</span>
-          <span className="truncate text-[11px] text-zinc-500">
+          <span className="truncate text-sm font-semibold text-foreground dark:text-zinc-100">{feed.name}</span>
+          <span className="truncate text-[11px] text-muted-foreground dark:text-zinc-500">
             {domainOf(feed.siteUrl ?? feed.feedUrl)}
           </span>
         </div>
       </div>
 
-      <p className="line-clamp-2 min-h-[2.5rem] text-xs leading-relaxed text-zinc-400">
+      <p className="line-clamp-2 min-h-[2.5rem] text-xs leading-relaxed text-muted-foreground dark:text-zinc-400">
         {feed.description}
       </p>
 
@@ -138,7 +138,7 @@ function CollectionCard({
           onOpen()
         }
       }}
-      className={`${CARD_BASE} ${COLLECTION_WIDTH} cursor-pointer focus-visible:ring-2 focus-visible:ring-white/30 focus-visible:outline-none`}
+      className={`${CARD_BASE} ${COLLECTION_WIDTH} cursor-pointer focus-visible:ring-2 focus-visible:ring-ring dark:focus-visible:ring-white/30 focus-visible:outline-none`}
     >
       {/*
         The wash is what makes a collection read as the anchor of the row. Kept
@@ -159,10 +159,10 @@ function CollectionCard({
           size={48}
         />
         <div className="flex min-w-0 flex-col gap-0.5">
-          <span className="truncate text-base font-bold tracking-tight text-zinc-50">
+          <span className="truncate text-base font-bold tracking-tight text-foreground dark:text-zinc-50">
             {card.name}
           </span>
-          <span className="inline-flex w-fit items-center gap-1 rounded-md border border-white/10 bg-white/5 px-1.5 py-0.5 text-[10px] font-semibold tracking-wide text-zinc-300 uppercase">
+          <span className="inline-flex w-fit items-center gap-1 rounded-md border border-border dark:border-white/10 bg-muted dark:bg-white/5 px-1.5 py-0.5 text-[10px] font-semibold tracking-wide text-foreground dark:text-zinc-300 uppercase">
             <Layers className="size-2.5" />
             {card.feeds.length} {card.feeds.length === 1 ? "feed" : "feeds"}
           </span>
@@ -170,7 +170,7 @@ function CollectionCard({
       </div>
 
       <div className="flex flex-1 flex-col gap-3 px-4 pt-1 pb-4">
-        <p className="line-clamp-2 text-xs leading-relaxed text-zinc-400">
+        <p className="line-clamp-2 text-xs leading-relaxed text-muted-foreground dark:text-zinc-400">
           {card.description}
         </p>
 
@@ -179,7 +179,7 @@ function CollectionCard({
           {card.feeds.map((f) => (
             <span
               key={f.slug}
-              className="inline-flex items-center gap-1.5 rounded-md border border-white/5 bg-white/[0.03] px-2 py-1 text-[10px] text-zinc-400"
+              className="inline-flex items-center gap-1.5 rounded-md border border-border dark:border-white/5 bg-muted dark:bg-white/[0.03] px-2 py-1 text-[10px] text-muted-foreground dark:text-zinc-400"
             >
               <SourceIcon
                 name={f.name}
@@ -238,15 +238,15 @@ export function DiscoverCatalogue({
           <section key={category.slug} id={`category-${category.slug}`} className="scroll-mt-16">
             <div className="mb-3 flex items-end justify-between gap-4">
               <div className="min-w-0">
-                <h2 className="text-lg font-bold tracking-tight text-zinc-100">
+                <h2 className="text-lg font-bold tracking-tight text-foreground dark:text-zinc-100">
                   {category.name}
                 </h2>
-                <p className="mt-0.5 text-xs text-zinc-500">{category.blurb}</p>
+                <p className="mt-0.5 text-xs text-muted-foreground dark:text-zinc-500">{category.blurb}</p>
               </div>
               {variant === "empty" ? (
                 <Link
                   to="/discover"
-                  className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-zinc-400 transition-colors hover:text-white"
+                  className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-muted-foreground dark:text-zinc-400 transition-colors hover:text-foreground dark:hover:text-white"
                 >
                   Browse all
                   <ArrowRight className="size-3" />
@@ -255,7 +255,7 @@ export function DiscoverCatalogue({
                 <Link
                   to="/discover/$categorySlug"
                   params={{ categorySlug: category.slug }}
-                  className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-zinc-400 transition-colors hover:text-white"
+                  className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-muted-foreground dark:text-zinc-400 transition-colors hover:text-foreground dark:hover:text-white"
                 >
                   View more
                   <ArrowRight className="size-3" />

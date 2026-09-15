@@ -118,10 +118,10 @@ export function SourcesDnd({
       <DragOverlay>
         {activeLabel && (
           <div
-            className="flex items-center gap-2 rounded-lg border border-white/15 bg-zinc-900/95
-              px-3 py-2 text-xs font-medium text-zinc-100 shadow-2xl backdrop-blur"
+            className="flex items-center gap-2 rounded-lg border border-border dark:border-white/15 bg-card dark:bg-zinc-900/95
+              px-3 py-2 text-xs font-medium text-foreground dark:text-zinc-100 shadow-2xl backdrop-blur"
           >
-            <GripVertical className="size-3.5 text-zinc-500" />
+            <GripVertical className="size-3.5 text-muted-foreground dark:text-zinc-500" />
             {activeLabel}
           </div>
         )}

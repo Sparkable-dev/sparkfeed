@@ -135,7 +135,7 @@ describe.runIf(process.env.RUN_PLATFORM_POSTGRES_TESTS === "true")(
       expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(1)
       expect(mail).toHaveBeenCalledExactlyOnceWith(
         email,
-        `https://beta.example.test/signup?email=${encodeURIComponent(email)}`,
+        `https://beta.example.test/sign-up?email=${encodeURIComponent(email)}`,
         true
       )
       expect(

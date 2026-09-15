@@ -92,7 +92,7 @@ function SortableHeader({
 }) {
   return (
     <button
-      className="-ml-2 inline-flex items-center gap-1 rounded px-2 py-1 text-xs font-semibold text-zinc-400 transition-colors hover:text-zinc-100"
+      className="-ml-2 inline-flex items-center gap-1 rounded px-2 py-1 text-xs font-semibold text-muted-foreground transition-colors hover:text-foreground"
       onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
     >
       {label}
@@ -141,14 +141,14 @@ function StatusCell({ source }: { source: ManagedSource }) {
         </TooltipTrigger>
         <TooltipContent className="max-w-xs">
           <p className="font-medium">Last failed {timeAgo(source.lastErrorAt)}</p>
-          <p className="mt-1 text-zinc-400">{source.lastError}</p>
+          <p className="mt-1 text-muted-foreground">{source.lastError}</p>
         </TooltipContent>
       </Tooltip>
     )
   }
 
   if (!source.lastFetchedAt) {
-    return <span className="text-xs text-zinc-500">Not checked yet</span>
+    return <span className="text-xs text-muted-foreground">Not checked yet</span>
   }
 
   return <span className="text-xs text-emerald-400">OK</span>
@@ -175,10 +175,10 @@ export function FolderFeedsTable({
         header: ({ column }) => <SortableHeader label="Source" column={column} />,
         cell: ({ row }) => (
           <div className="flex min-w-0 flex-col gap-0.5">
-            <span className="truncate text-sm font-medium text-zinc-100">
+            <span className="truncate text-sm font-medium text-foreground">
               {row.original.name}
             </span>
-            <span className="truncate text-[11px] text-zinc-500">
+            <span className="truncate text-[11px] text-muted-foreground">
               {row.original.url}
             </span>
           </div>
@@ -196,7 +196,7 @@ export function FolderFeedsTable({
         meta: { className: "hidden md:table-cell" },
         header: ({ column }) => <SortableHeader label="Articles" column={column} />,
         cell: ({ row }) => (
-          <span className="text-sm tabular-nums text-zinc-300">
+          <span className="text-sm tabular-nums text-foreground">
             {row.original.articleCount}
           </span>
         ),
@@ -206,14 +206,14 @@ export function FolderFeedsTable({
         meta: { className: "hidden md:table-cell" },
         header: ({ column }) => <SortableHeader label="Last checked" column={column} />,
         cell: ({ row }) => (
-          <span className="text-xs text-zinc-400">
+          <span className="text-xs text-muted-foreground">
             {timeAgo(row.original.lastFetchedAt)}
           </span>
         ),
       },
       {
         id: "status",
-        header: () => <span className="text-xs font-semibold text-zinc-400">Status</span>,
+        header: () => <span className="text-xs font-semibold text-muted-foreground">Status</span>,
         cell: ({ row }) => <StatusCell source={row.original} />,
       },
       {
@@ -225,7 +225,7 @@ export function FolderFeedsTable({
               <DropdownMenu>
                 <DropdownMenuTrigger
                   render={
-                    <Button variant="ghost" size="icon" className="size-8 text-zinc-500 hover:text-white" />
+                    <Button variant="ghost" size="icon" className="size-8 text-muted-foreground hover:text-foreground" />
                   }
                 >
                   <span className="sr-only">Open menu</span>
@@ -282,14 +282,14 @@ export function FolderFeedsTable({
         placeholder="Filter sources…"
         value={filter}
         onChange={(e) => setFilter(e.target.value)}
-        className="h-8 max-w-xs border-zinc-800 bg-zinc-950/60 text-xs"
+        className="h-8 max-w-xs border-border bg-background/60 text-xs"
       />
 
-      <div className="overflow-hidden rounded-lg border border-zinc-800">
+      <div className="overflow-hidden rounded-lg border border-border">
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id} className="border-zinc-800 hover:bg-transparent">
+              <TableRow key={headerGroup.id} className="border-border hover:bg-transparent">
                 {headerGroup.headers.map((header) => (
                   <TableHead
                     key={header.id}
@@ -306,7 +306,7 @@ export function FolderFeedsTable({
           <TableBody>
             {table.getRowModel().rows.length ? (
               table.getRowModel().rows.map((row) => (
-                <TableRow key={row.id} className="border-zinc-800/60">
+                <TableRow key={row.id} className="border-border">
                   {row.getVisibleCells().map((cell) => (
                     <TableCell
                       key={cell.id}
@@ -319,7 +319,7 @@ export function FolderFeedsTable({
               ))
             ) : (
               <TableRow className="hover:bg-transparent">
-                <TableCell colSpan={columns.length} className="h-20 text-center text-sm text-zinc-500">
+                <TableCell colSpan={columns.length} className="h-20 text-center text-sm text-muted-foreground">
                   {sources.length === 0
                     ? "No sources in this folder yet."
                     : "No sources match that filter."}

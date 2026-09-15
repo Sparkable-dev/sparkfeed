@@ -65,8 +65,8 @@ function visitUrl(feed: CatalogueCardFeed): string | null {
 }
 
 const CHIP =
-  "inline-flex shrink-0 items-center gap-1 rounded-md border border-white/10 bg-white/5 " +
-  "px-1.5 py-0.5 text-[10px] text-zinc-400 transition-colors hover:text-zinc-100"
+  "inline-flex shrink-0 items-center gap-1 rounded-md border border-border dark:border-white/10 bg-muted dark:bg-white/5 " +
+  "px-1.5 py-0.5 text-[10px] text-muted-foreground dark:text-zinc-400 transition-colors hover:text-foreground dark:hover:text-zinc-100"
 
 /**
  * Chip labels are desktop-only.
@@ -119,7 +119,7 @@ function FeedSection({
             fixed-width and `shrink-0`, so a long name truncates instead of
             wrapping the row — which is what "The Verge — Tech" was doing.
           */}
-          <span className="min-w-0 truncate text-[11px] font-semibold tracking-wide text-zinc-400 uppercase">
+          <span className="min-w-0 truncate text-[11px] font-semibold tracking-wide text-muted-foreground dark:text-zinc-400 uppercase">
             {feed.name}
           </span>
 
@@ -165,10 +165,10 @@ function FeedSection({
         <div className="flex flex-col gap-1">
           {[0, 1, 2].map((i) => (
             <div key={i} className="flex items-start gap-3 px-2 py-2">
-              <div className="size-12 shrink-0 animate-pulse rounded-md bg-white/[0.04]" />
+              <div className="size-12 shrink-0 animate-pulse rounded-md bg-muted dark:bg-white/[0.04]" />
               <div className="flex flex-1 flex-col gap-1.5 pt-1">
-                <div className="h-2.5 w-full animate-pulse rounded bg-white/[0.04]" />
-                <div className="h-2.5 w-1/3 animate-pulse rounded bg-white/[0.04]" />
+                <div className="h-2.5 w-full animate-pulse rounded bg-muted dark:bg-white/[0.04]" />
+                <div className="h-2.5 w-1/3 animate-pulse rounded bg-muted dark:bg-white/[0.04]" />
               </div>
             </div>
           ))}
@@ -185,7 +185,7 @@ function FeedSection({
           adding and should not read as broken; a feed we could not reach is a
           fact the user deserves before they add it.
         */
-        <p className="px-2 py-3 text-xs text-zinc-600">
+        <p className="px-2 py-3 text-xs text-muted-foreground dark:text-zinc-600">
           {preview?.state === "unavailable"
             ? "Could not read this feed just now."
             : "This feed has no posts yet."}
@@ -249,7 +249,7 @@ export function CataloguePreviewDialog({
           nothing and is far too narrow — both have to be overridden, and the
           replacement width is a reading measure rather than as-wide-as-it-fits.
         */
-        className="flex max-h-[80vh] w-[92vw] flex-col overflow-hidden border-zinc-800 bg-zinc-950 p-0 text-white sm:max-w-[520px]"
+        className="flex max-h-[80vh] w-[92vw] flex-col overflow-hidden border-border dark:border-zinc-800 bg-card dark:bg-zinc-950 p-0 text-foreground dark:text-white sm:max-w-[520px]"
       >
         {card && (
           <>
@@ -268,10 +268,10 @@ export function CataloguePreviewDialog({
                   size={40}
                 />
                 <div className="flex min-w-0 flex-1 flex-col gap-1 pr-6">
-                  <DialogTitle className="truncate text-base font-bold tracking-tight text-zinc-50">
+                  <DialogTitle className="truncate text-base font-bold tracking-tight text-foreground dark:text-zinc-50">
                     {card.name}
                   </DialogTitle>
-                  <DialogDescription className="line-clamp-2 text-xs leading-relaxed text-zinc-400">
+                  <DialogDescription className="line-clamp-2 text-xs leading-relaxed text-muted-foreground dark:text-zinc-400">
                     {card.description}
                   </DialogDescription>
                 </div>
@@ -279,7 +279,7 @@ export function CataloguePreviewDialog({
 
               <div className="mt-3 flex flex-wrap items-center gap-1.5">
                 {isCollection && (
-                  <span className="inline-flex items-center gap-1 rounded-md border border-white/10 bg-white/5 px-1.5 py-0.5 text-[10px] font-semibold tracking-wide text-zinc-300 uppercase">
+                  <span className="inline-flex items-center gap-1 rounded-md border border-border dark:border-white/10 bg-muted dark:bg-white/5 px-1.5 py-0.5 text-[10px] font-semibold tracking-wide text-foreground dark:text-zinc-300 uppercase">
                     <Layers className="size-2.5" />
                     {card.feeds.length}{" "}
                     {card.feeds.length === 1 ? "feed" : "feeds"}
@@ -336,14 +336,14 @@ export function CataloguePreviewDialog({
               ))}
 
               {status === "error" && (
-                <p className="px-2 text-xs text-zinc-600">
+                <p className="px-2 text-xs text-muted-foreground dark:text-zinc-600">
                   Could not load recent articles. You can still add this source.
                 </p>
               )}
             </div>
 
-            <div className="flex shrink-0 items-center justify-between gap-3 border-t border-zinc-800 bg-zinc-900/40 px-5 py-3">
-              <span className="truncate text-[11px] text-zinc-500">
+            <div className="flex shrink-0 items-center justify-between gap-3 border-t border-border dark:border-zinc-800 bg-card dark:bg-zinc-900/40 px-5 py-3">
+              <span className="truncate text-[11px] text-muted-foreground dark:text-zinc-500">
                 {members.length === 1
                   ? !isCollection && card.sourceKind === "page"
                     ? "Adds one website source."

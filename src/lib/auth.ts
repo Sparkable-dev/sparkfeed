@@ -7,6 +7,8 @@ import {
 import { drizzleAdapter } from "better-auth/adapters/drizzle"
 import { tanstackStartCookies } from "better-auth/tanstack-start"
 import { organization } from "better-auth/plugins/organization"
+import { PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH } from "@/lib/auth-validation"
+import { emailVerificationOptions } from "@/lib/auth-email-verification"
 import { customerAccountSecurity } from "@/lib/auth-security"
 import { hostedDashboardPlugin } from "@/server/platform/hosted-auth"
 import { db } from "@/db/index"
@@ -163,6 +165,8 @@ export const auth = betterAuth({
   emailAndPassword: {
     enabled: true,
     requireEmailVerification: true,
+    minPasswordLength: PASSWORD_MIN_LENGTH,
+    maxPasswordLength: PASSWORD_MAX_LENGTH,
     customSyntheticUser: ({ coreFields, additionalFields, id }) => ({
       ...coreFields,
       role: "user",
@@ -177,30 +181,7 @@ export const auth = betterAuth({
       await sendPasswordResetEmail(user.email, url)
     },
   },
-  emailVerification: {
-    sendOnSignUp: true,
-    autoSignInAfterVerification: false,
-    sendVerificationEmail: async ({ user, url }) => {
-      console.log(`[DEBUG] sendVerificationEmail triggered for ${user.email}`)
-      try {
-        // Parse the token from the Better Auth endpoint URL and point it to our UI route
-        const parsedUrl = new URL(url)
-        const token = parsedUrl.searchParams.get("token") || ""
-        const clientRouteUrl = `${parsedUrl.origin}/verify-email?token=${token}`
-
-        await sendVerificationEmail(user.email, clientRouteUrl)
-        console.log(
-          `[DEBUG] sendVerificationEmail successful for ${user.email}`
-        )
-      } catch (err) {
-        console.error(
-          `[ERROR] sendVerificationEmail failed for ${user.email}:`,
-          err
-        )
-        throw err
-      }
-    },
-  },
+  emailVerification: emailVerificationOptions(sendVerificationEmail),
   plugins: [
     ...(cloudAuth ? [customerAccountSecurity()] : []),
     ...(dodoPlugin ? [dodoPlugin] : []),

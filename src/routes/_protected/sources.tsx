@@ -407,7 +407,7 @@ function SourcesRoute() {
           if (!open) setDeleteTarget(null)
         }}
       >
-        <AlertDialogContent className="border-zinc-800 bg-zinc-950 text-white">
+        <AlertDialogContent className="border-border dark:border-zinc-800 bg-card dark:bg-zinc-950 text-foreground dark:text-white">
           <AlertDialogHeader>
             <AlertDialogTitle>Delete {deleteTarget?.name}?</AlertDialogTitle>
             {/*
@@ -415,14 +415,14 @@ function SourcesRoute() {
               with it, and deleting a folder takes every feed inside it and
               their articles too — neither is obvious from the word "delete".
             */}
-            <AlertDialogDescription className="text-zinc-400">
+            <AlertDialogDescription className="text-muted-foreground dark:text-zinc-400">
               {deleteTarget?.kind === "folder"
                 ? "This deletes the folder, every feed inside it, and all of their articles. It cannot be undone."
                 : "This deletes the feed and every article it has fetched. It cannot be undone, but you can add the feed again later."}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="border-zinc-700 bg-transparent text-zinc-300 hover:bg-zinc-800">
+            <AlertDialogCancel className="border-border dark:border-zinc-700 bg-transparent text-foreground dark:text-zinc-300 hover:bg-accent dark:hover:bg-zinc-800">
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction

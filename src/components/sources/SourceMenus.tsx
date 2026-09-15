@@ -34,14 +34,14 @@ import { UNFILED_DESTINATION } from "@/lib/unfiled"
  */
 
 const TRIGGER =
-  "inline-flex size-7 shrink-0 items-center justify-center rounded-md text-zinc-600 " +
-  "transition-colors hover:bg-white/10 hover:text-zinc-200"
+  "inline-flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground dark:text-zinc-600 " +
+  "transition-colors hover:bg-accent dark:hover:bg-white/10 hover:text-foreground dark:hover:text-zinc-200"
 
 const CONTENT =
-  "min-w-[196px] rounded-xl border border-zinc-700/60 bg-[#0a0a0a] p-1 text-zinc-200 shadow-2xl"
+  "min-w-[196px] rounded-xl border border-border dark:border-zinc-700/60 bg-card dark:bg-[#0a0a0a] p-1 text-foreground dark:text-zinc-200 shadow-2xl"
 
 const ITEM = "cursor-pointer gap-2 rounded-lg px-2.5 py-1.5 text-xs"
-const DESTRUCTIVE = `${ITEM} text-red-400 focus:text-red-400`
+const DESTRUCTIVE = `${ITEM} text-red-700 dark:text-red-400 focus:text-red-700 dark:focus:text-red-400`
 
 /** Where a folder's own RSS export lives. See `routes/$folderSlug.xml.ts`. */
 function folderFeedUrl(href: string): string {
@@ -72,20 +72,20 @@ export function FolderMenu({
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className={CONTENT}>
         <DropdownMenuItem onClick={onAddFeed} className={ITEM}>
-          <Rss className="size-3.5 text-zinc-500" />
+          <Rss className="size-3.5 text-muted-foreground dark:text-zinc-500" />
           Add feed to this folder
         </DropdownMenuItem>
         <DropdownMenuItem onClick={onRefresh} className={ITEM}>
-          <RefreshCw className="size-3.5 text-zinc-500" />
+          <RefreshCw className="size-3.5 text-muted-foreground dark:text-zinc-500" />
           Refresh all feeds
         </DropdownMenuItem>
-        <DropdownMenuSeparator className="my-1 bg-zinc-800" />
+        <DropdownMenuSeparator className="my-1 bg-accent dark:bg-zinc-800" />
         <DropdownMenuItem onClick={onRename} className={ITEM}>
-          <Pencil className="size-3.5 text-zinc-500" />
+          <Pencil className="size-3.5 text-muted-foreground dark:text-zinc-500" />
           Rename…
         </DropdownMenuItem>
         <DropdownMenuItem onClick={onShare} className={ITEM}>
-          <Share2 className="size-3.5 text-zinc-500" />
+          <Share2 className="size-3.5 text-muted-foreground dark:text-zinc-500" />
           Share…
         </DropdownMenuItem>
         <DropdownMenuItem
@@ -96,14 +96,14 @@ export function FolderMenu({
           }
           className={ITEM}
         >
-          <ExternalLink className="size-3.5 text-zinc-500" />
+          <ExternalLink className="size-3.5 text-muted-foreground dark:text-zinc-500" />
           Copy folder feed URL
         </DropdownMenuItem>
         <DropdownMenuItem onClick={onManage} className={ITEM}>
-          <Settings2 className="size-3.5 text-zinc-500" />
+          <Settings2 className="size-3.5 text-muted-foreground dark:text-zinc-500" />
           Manage…
         </DropdownMenuItem>
-        <DropdownMenuSeparator className="my-1 bg-zinc-800" />
+        <DropdownMenuSeparator className="my-1 bg-accent dark:bg-zinc-800" />
         <DropdownMenuItem onClick={onDelete} className={DESTRUCTIVE}>
           <Trash2 className="size-3.5" />
           Delete folder…
@@ -141,7 +141,7 @@ export function FeedMenu({
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className={CONTENT}>
         <DropdownMenuItem onClick={onFetchNow} className={ITEM}>
-          <RefreshCw className="size-3.5 text-zinc-500" />
+          <RefreshCw className="size-3.5 text-muted-foreground dark:text-zinc-500" />
           Fetch now
         </DropdownMenuItem>
 
@@ -152,7 +152,7 @@ export function FeedMenu({
         */}
         <DropdownMenuSub>
           <DropdownMenuSubTrigger className={ITEM}>
-            <FolderInput className="size-3.5 text-zinc-500" />
+            <FolderInput className="size-3.5 text-muted-foreground dark:text-zinc-500" />
             Move to folder
           </DropdownMenuSubTrigger>
           <DropdownMenuSubContent className={CONTENT}>
@@ -166,7 +166,7 @@ export function FeedMenu({
                 {folder.name}
               </DropdownMenuItem>
             ))}
-            <DropdownMenuSeparator className="my-1 bg-zinc-800" />
+            <DropdownMenuSeparator className="my-1 bg-accent dark:bg-zinc-800" />
             <DropdownMenuItem
               disabled={currentFolderId === null}
               onClick={() => onMoveTo(null)}
@@ -177,28 +177,28 @@ export function FeedMenu({
           </DropdownMenuSubContent>
         </DropdownMenuSub>
 
-        <DropdownMenuSeparator className="my-1 bg-zinc-800" />
+        <DropdownMenuSeparator className="my-1 bg-accent dark:bg-zinc-800" />
         <DropdownMenuItem onClick={onRename} className={ITEM}>
-          <Pencil className="size-3.5 text-zinc-500" />
+          <Pencil className="size-3.5 text-muted-foreground dark:text-zinc-500" />
           Rename…
         </DropdownMenuItem>
         <DropdownMenuItem onClick={onEdit} className={ITEM}>
-          <SlidersHorizontal className="size-3.5 text-zinc-500" />
+          <SlidersHorizontal className="size-3.5 text-muted-foreground dark:text-zinc-500" />
           Edit filters…
         </DropdownMenuItem>
         <DropdownMenuItem onClick={onShare} className={ITEM}>
-          <Share2 className="size-3.5 text-zinc-500" />
+          <Share2 className="size-3.5 text-muted-foreground dark:text-zinc-500" />
           Share…
         </DropdownMenuItem>
         <DropdownMenuItem
           onClick={() => void copyText(feed.url, { successMessage: "Feed URL copied" })}
           className={ITEM}
         >
-          <Rss className="size-3.5 text-zinc-500" />
+          <Rss className="size-3.5 text-muted-foreground dark:text-zinc-500" />
           Copy feed URL
         </DropdownMenuItem>
 
-        <DropdownMenuSeparator className="my-1 bg-zinc-800" />
+        <DropdownMenuSeparator className="my-1 bg-accent dark:bg-zinc-800" />
         <DropdownMenuItem onClick={onDelete} className={DESTRUCTIVE}>
           <Trash2 className="size-3.5" />
           Remove feed…

@@ -38,7 +38,7 @@ export function Section({
   action?: ReactNode
 }) {
   return (
-    <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-5">
+    <section className="rounded-xl border border-border dark:border-zinc-800 bg-card dark:bg-zinc-950/40 p-5">
       <div className="mb-4 flex items-start justify-between gap-4">
         <div>
           <h2 className="text-sm font-semibold text-foreground">{title}</h2>

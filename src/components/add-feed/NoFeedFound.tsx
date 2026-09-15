@@ -58,17 +58,17 @@ export function NoFeedFound({
   const suggestions = suggestionsFor(url)
 
   return (
-    <div className="flex flex-col gap-3 rounded-xl border border-white/[0.07] bg-white/[0.02] p-3">
+    <div className="flex flex-col gap-3 rounded-xl border border-border dark:border-white/[0.07] bg-muted dark:bg-white/[0.02] p-3">
       <div>
-        <p className="text-sm text-zinc-200">No feed on that address.</p>
-        <p className="mt-1 text-xs text-zinc-500">
+        <p className="text-sm text-foreground dark:text-zinc-200">No feed on that address.</p>
+        <p className="mt-1 text-xs text-muted-foreground dark:text-zinc-500">
           We read the page's own links and tried {PROBED.join(", ")}.
         </p>
       </div>
 
       {suggestions.length > 0 && (
         <div className="flex min-w-0 flex-col gap-1">
-          <p className="text-xs text-zinc-500">Many sites keep their feed elsewhere:</p>
+          <p className="text-xs text-muted-foreground dark:text-zinc-500">Many sites keep their feed elsewhere:</p>
           <div className="flex flex-wrap gap-1.5">
             {suggestions.map((host) => (
               <button
@@ -76,8 +76,8 @@ export function NoFeedFound({
                 type="button"
                 disabled={busy}
                 onClick={() => onTry(`https://${host}`)}
-                className="inline-flex items-center gap-1 rounded-lg border border-white/10 px-2 py-1
-                  text-xs text-zinc-300 transition-colors hover:bg-white/10 hover:text-white
+                className="inline-flex items-center gap-1 rounded-lg border border-border dark:border-white/10 px-2 py-1
+                  text-xs text-foreground dark:text-zinc-300 transition-colors hover:bg-accent dark:hover:bg-white/10 hover:text-foreground dark:hover:text-white
                   disabled:opacity-50"
               >
                 {host}
@@ -94,8 +94,8 @@ export function NoFeedFound({
           id="add-feed-scrape-btn"
           disabled={busy}
           onClick={onWatchPage}
-          className="self-start rounded-lg border border-white/10 px-2.5 py-1 text-xs text-zinc-300
-            transition-colors hover:bg-white/10 hover:text-white disabled:opacity-50"
+          className="self-start rounded-lg border border-border dark:border-white/10 px-2.5 py-1 text-xs text-foreground dark:text-zinc-300
+            transition-colors hover:bg-accent dark:hover:bg-white/10 hover:text-foreground dark:hover:text-white disabled:opacity-50"
         >
           Watch this page instead
         </button>

@@ -1,8 +1,8 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router"
-import { ChevronRight, Edit2, FolderIcon, Globe, Link2, Lock, PlusIcon, Settings2, Share2, Trash2 } from "lucide-react"
+import { ChevronRight, Edit2, FolderIcon, Globe, Link2, Lock, PlusIcon, Rss, Settings2, Share2, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 import type { FeedRow, FolderRow } from "@/lib/rss-types"
 import type { ReactNode } from "react"
@@ -50,6 +50,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { deleteFeed, deleteFolder, renameFolder } from "@/server/rss"
 import { DEMO_MODE } from "@/lib/demo"
+import { useSidebar } from "@/components/ui/sidebar"
 import { useGuestShare } from "@/hooks/guest-share-context"
 import { useCommandAction } from "@/components/command/command-palette-context"
 
@@ -97,6 +98,27 @@ interface NavFoldersProps {
   onEditFeed: (feed: FeedRow) => void
 }
 
+function FolderLabel({ folder, count }: { folder: FolderRow; count: number }) {
+  return <>
+    <FolderIcon className="size-4 shrink-0 text-sidebar-foreground/60" />
+    <span className="flex min-w-0 flex-1 items-center gap-1.5">
+      <span className="truncate" title={folder.name}>{folder.name}</span>
+      <ShareBadge isShared={folder.isShared} hasPassword={folder.hasPassword} />
+    </span>
+    {count > 0 && <span className="rounded-md bg-sidebar-accent px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-muted-foreground">{count}</span>}
+  </>
+}
+
+function RowMenu({ menu, children }: { menu: ReactNode; children: ReactNode }) {
+  const guest = useGuestShare()
+  return guest ? <>{children}</> : (
+    <ContextMenu>
+      <ContextMenuTrigger>{children}</ContextMenuTrigger>
+      {menu}
+    </ContextMenu>
+  )
+}
+
 export function NavFolders({
   folders,
   feeds,
@@ -114,6 +136,8 @@ export function NavFolders({
   const routerState = useRouterState()
   const pathname = routerState.location.pathname
   const navigate = useNavigate()
+  const { isMobile, setOpenMobile } = useSidebar()
+  const closeMobile = () => { if (isMobile) setOpenMobile(false) }
 
   const guest = useGuestShare()
 
@@ -123,25 +147,6 @@ export function NavFolders({
     "new-folder",
     guest ? null : () => { if (!guardDemo()) setAddFolderOpen(true) },
   )
-
-  /**
-   * Wraps a row in its context menu, or doesn't.
-   *
-   * Every item in those menus renames, deletes or shares something that is not
-   * the guest's. Showing them disabled would be worse than not showing them, so
-   * for a guest the trigger disappears and the row renders bare. Written as one
-   * wrapper rather than duplicating each row's JSX behind a conditional, so the
-   * authenticated output is byte-identical to before.
-   */
-  const RowMenu = ({ menu, children }: { menu: ReactNode; children: ReactNode }) =>
-    guest ? (
-      <>{children}</>
-    ) : (
-      <ContextMenu>
-        <ContextMenuTrigger>{children}</ContextMenuTrigger>
-        {menu}
-      </ContextMenu>
-    )
 
   const [openFolders, setOpenFolders] = useState<Set<string>>(() => {
     const initial = new Set<string>()
@@ -165,13 +170,33 @@ export function NavFolders({
     return initial
   })
 
-  const toggleOpen = (folderId: string) =>
-    setOpenFolders((prev) => {
-      const next = new Set(prev)
-      if (next.has(folderId)) next.delete(folderId)
-      else next.add(folderId)
-      return next
-    })
+  useEffect(() => {
+    try {
+      const saved: unknown = JSON.parse(sessionStorage.getItem("sparkfeed-sidebar-open-folders") ?? "[]")
+      if (Array.isArray(saved)) {
+        setOpenFolders((previous) => new Set([...saved.filter((id): id is string => typeof id === "string"), ...previous]))
+      }
+    } catch { /* Folder expansion still works when storage is unavailable. */ }
+  }, [])
+
+  const activeFolderId = folders.find((folder) => {
+    const folderSlug = slugify(folder.name)
+    return guest
+      ? folder.id === guest.entityId || feeds.some((feed) => feed.folderId === folder.id && feed.id === guest.selectedFeedId)
+      : pathname === `/${folderSlug}` || feeds.some((feed) => feed.folderId === folder.id && pathname === `/${folderSlug}/${slugify(feed.name)}`)
+  })?.id
+
+  useEffect(() => {
+    if (activeFolderId) setOpenFolders((previous) => new Set(previous).add(activeFolderId))
+  }, [pathname, activeFolderId, guest?.selectedFeedId])
+
+  const setFolderOpen = (folderId: string, open: boolean) => {
+    const next = new Set(openFolders)
+    if (open) next.add(folderId)
+    else next.delete(folderId)
+    setOpenFolders(next)
+    try { sessionStorage.setItem("sparkfeed-sidebar-open-folders", JSON.stringify([...next])) } catch { /* Optional preference. */ }
+  }
 
   const handleRenameConfirm = async () => {
     if (!renameFolderData || !newFolderName || newFolderName === renameFolderData.name) {
@@ -236,18 +261,18 @@ export function NavFolders({
   return (
     <>
       {/* ── Folders section ──────────────────────────────────── */}
-      <div className="flex flex-col px-3 pt-3 group-data-[collapsible=icon]:hidden">
+      <div className="flex shrink-0 flex-col px-3 pt-3 group-data-[collapsible=icon]:hidden">
 
         {/* Section heading — same px-2 left edge as the rows below */}
         <div className="flex items-center justify-between px-2 mb-1">
-          <span className="text-[11px] font-semibold uppercase tracking-widest text-sidebar-foreground/40 select-none">
+          <span className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground select-none">
             Folders
           </span>
           {!guest && (
             <button
               onClick={() => { if (!guardDemo()) setAddFolderOpen(true) }}
               aria-label="Add folder"
-              className="flex size-5 items-center justify-center rounded-md text-sidebar-foreground/40 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors duration-150"
+              className="flex size-7 items-center justify-center rounded-md text-sidebar-foreground/40 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors duration-150"
             >
               <PlusIcon className="size-3.5" />
             </button>
@@ -276,16 +301,12 @@ export function NavFolders({
                   (f) => pathname === `/${folderSlug}/${slugify(f.name)}`
                 )
             const isOpen = openFolders.has(folder.id)
-            const isActive = isFolderActive || isAnyFeedActive
 
             return (
               <Collapsible
                 key={folder.id}
                 open={isOpen}
-                onOpenChange={() => {
-                  toggleOpen(folder.id)
-                  if (!isOpen && !guest) navigate({ to: "/$folderSlug", params: { folderSlug } })
-                }}
+                onOpenChange={(open) => setFolderOpen(folder.id, open)}
               >
                 <RowMenu
                   menu={
@@ -327,61 +348,27 @@ export function NavFolders({
                     </ContextMenuContent>
                   }
                 >
-                  {/* Folder row — same height/padding/gap as NavMain rows */}
-                  <div
-                    data-active={isActive}
-                    className={`group flex w-full items-center gap-2.5 rounded-lg px-2 py-2 transition-colors duration-150 cursor-pointer
-                      ${isActive
-                        ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                        : "hover:bg-sidebar-accent/60 text-sidebar-foreground/70"
-                      }`}
-                    onClick={() => {
-                      if (guest) {
-                        // The shared folder itself just clears the feed filter.
-                        // A subfolder is a different share URL — and it resolves,
-                        // because the share walk climbs upward to this parent.
-                        if (isRootShared) guest.selectFeed(null)
-                        else navigate({ to: "/sprk/$folderSlug", params: { folderSlug: `${folderSlug}-${folder.id}` } })
-                      } else {
-                        navigate({ to: "/$folderSlug", params: { folderSlug } })
-                      }
-                      toggleOpen(folder.id)
-                    }}
-                  >
-                    {/* icon slot — same size-4 as NavMain */}
-                    <span className="flex size-4 shrink-0 items-center justify-center">
-                      <FolderIcon className="size-4" />
-                    </span>
-
-                    {/* label */}
-                    <span className="flex flex-1 items-center gap-1.5 min-w-0">
-                      <span className="truncate text-sm font-medium leading-none">{folder.name}</span>
-                      <ShareBadge isShared={folder.isShared} hasPassword={folder.hasPassword} />
-                    </span>
-
-                    <div className="ml-auto flex items-center gap-1">
-                      {/* badge */}
-                      {folderCount > 0 && (
-                        <span className="rounded-md bg-sidebar-accent px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-sidebar-foreground/50">
-                          {folderCount}
-                        </span>
-                      )}
-                    </div>
-
-                    {/* chevron toggle */}
+                  <div className="flex items-center gap-1">
+                    {guest ? (
+                      <button type="button" aria-current={isFolderActive ? "page" : undefined}
+                        className={`flex min-w-0 flex-1 items-center gap-2.5 rounded-lg px-2 py-2 text-left text-sm font-medium outline-none transition-colors hover:bg-sidebar-accent/60 focus-visible:ring-2 focus-visible:ring-ring ${isFolderActive ? "bg-sidebar-accent text-sidebar-accent-foreground" : isAnyFeedActive ? "text-sidebar-foreground" : "text-sidebar-foreground/75"}`}
+                        onClick={() => {
+                          if (isRootShared) guest.selectFeed(null)
+                          else void navigate({ to: "/sprk/$folderSlug", params: { folderSlug: `${folderSlug}-${folder.id}` } })
+                          closeMobile()
+                        }}>
+                        <FolderLabel folder={folder} count={folderCount} />
+                      </button>
+                    ) : (
+                      <Link to="/$folderSlug" params={{ folderSlug }} aria-current={isFolderActive ? "page" : undefined}
+                        onClick={closeMobile}
+                        className={`flex min-w-0 flex-1 items-center gap-2.5 rounded-lg px-2 py-2 text-left text-sm font-medium outline-none transition-colors hover:bg-sidebar-accent/60 focus-visible:ring-2 focus-visible:ring-ring ${isFolderActive ? "bg-sidebar-accent text-sidebar-accent-foreground" : isAnyFeedActive ? "text-sidebar-foreground" : "text-sidebar-foreground/75"}`}>
+                        <FolderLabel folder={folder} count={folderCount} />
+                      </Link>
+                    )}
                     {folderFeeds.length > 0 && (
-                      <CollapsibleTrigger
-                        render={
-                          <button type="button" aria-label={`Toggle ${folder.name}`} className="ml-1 flex size-4 shrink-0 items-center justify-center rounded text-sidebar-foreground/30 hover:text-sidebar-foreground/70 transition-colors" />
-                        }
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          toggleOpen(folder.id)
-                        }}
-                      >
-                        <ChevronRight
-                          className={`size-3.5 transition-transform duration-200 ${isOpen ? "rotate-90" : ""}`}
-                        />
+                      <CollapsibleTrigger render={<button type="button" aria-label={`${isOpen ? "Collapse" : "Expand"} ${folder.name}`} title={`${isOpen ? "Collapse" : "Expand"} ${folder.name}`} className="grid size-8 shrink-0 place-items-center rounded-md text-sidebar-foreground/60 hover:bg-sidebar-accent focus-visible:ring-2 focus-visible:ring-ring" />}>
+                        <ChevronRight className={`size-3.5 transition-transform duration-150 motion-reduce:transition-none ${isOpen ? "rotate-90" : ""}`} />
                       </CollapsibleTrigger>
                     )}
                   </div>
@@ -389,7 +376,7 @@ export function NavFolders({
 
                 {/* Sub-feeds — indented by the icon width + gap */}
                 <CollapsibleContent>
-                  <div className="ml-[26px] mt-0.5 flex flex-col gap-0.5 border-l border-sidebar-border pl-3 pb-1">
+                  <div className="ml-4 mt-0.5 flex flex-col gap-0.5 border-l border-sidebar-border pl-3 pb-1">
                     {folderFeeds.map((feed) => {
                       const feedSlug = slugify(feed.name)
                       const feedCount = articleCounts[feed.id] || 0
@@ -397,7 +384,7 @@ export function NavFolders({
                         ? guest.selectedFeedId === feed.id
                         : pathname === `/${folderSlug}/${feedSlug}`
 
-                      const rowClass = `group flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors duration-150
+                      const rowClass = `group flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring transition-colors duration-150
                         ${isFeedActive
                           ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
                           : "text-sidebar-foreground/60 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground/90"
@@ -409,7 +396,7 @@ export function NavFolders({
                           {feed.kind === "page" && <PageSourceDot />}
                           <ShareBadge isShared={feed.isShared} hasPassword={feed.hasPassword} />
                           {feedCount > 0 && (
-                            <span className="ml-auto rounded-md bg-sidebar-accent px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-sidebar-foreground/40">
+                            <span className="ml-auto rounded-md bg-sidebar-accent px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-muted-foreground">
                               {feedCount}
                             </span>
                           )}
@@ -465,7 +452,8 @@ export function NavFolders({
                               type="button"
                               data-active={isFeedActive}
                               className={rowClass}
-                              onClick={() => guest.selectFeed(feed.id)}
+                              aria-current={isFeedActive ? "page" : undefined}
+                              onClick={() => { guest.selectFeed(feed.id); closeMobile() }}
                             >
                               {rowInner}
                             </button>
@@ -474,6 +462,8 @@ export function NavFolders({
                               to="/$folderSlug/$feedSlug"
                               params={{ folderSlug, feedSlug }}
                               data-active={isFeedActive}
+                              aria-current={isFeedActive ? "page" : undefined}
+                              onClick={closeMobile}
                               className={rowClass}
                             >
                               {rowInner}
@@ -492,9 +482,9 @@ export function NavFolders({
 
       {/* ── Standalone feeds (no folder) ─────────────────────── */}
       {standAloneFeeds.length > 0 && (
-        <div className="flex flex-col px-3 pt-3 group-data-[collapsible=icon]:hidden">
+        <div className="flex shrink-0 flex-col px-3 pt-3 group-data-[collapsible=icon]:hidden">
           <div className="flex items-center px-2 mb-1">
-            <span className="text-[11px] font-semibold uppercase tracking-widest text-sidebar-foreground/40 select-none">
+            <span className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground select-none">
               {UNFILED_LABEL}
             </span>
           </div>
@@ -545,31 +535,33 @@ export function NavFolders({
                     </ContextMenuContent>
                   }
                 >
-                  <div
+                  <button type="button"
                     data-active={isFeedActive}
                     className={`group flex w-full items-center gap-2.5 rounded-lg px-2 py-2 cursor-pointer transition-colors duration-150
                       ${isFeedActive
                         ? "bg-sidebar-accent text-sidebar-accent-foreground"
                         : "hover:bg-sidebar-accent/60 text-sidebar-foreground/70"
                       }`}
-                    onClick={() =>
-                      guest
-                        ? guest.selectFeed(feed.id)
-                        : navigate({ to: "/feed/$feedSlug", params: { feedSlug } })
-                    }
+                    aria-current={isFeedActive ? "page" : undefined}
+                    title={feed.name}
+                    onClick={() => {
+                      if (guest) guest.selectFeed(feed.id)
+                      else void navigate({ to: "/feed/$feedSlug", params: { feedSlug } })
+                      closeMobile()
+                    }}
                   >
                     <span className="flex size-4 shrink-0 items-center justify-center">
-                      <FolderIcon className="size-4" />
+                      <Rss className="size-4" />
                     </span>
-                    <span className="flex-1 truncate text-sm font-medium leading-none">{feed.name}</span>
+                    <span className="flex-1 truncate text-left text-sm font-medium leading-none">{feed.name}</span>
                     {feed.kind === "page" && <PageSourceDot />}
                     <ShareBadge isShared={feed.isShared} hasPassword={feed.hasPassword} />
                     {feedCount > 0 && (
-                      <span className="ml-auto rounded-md bg-sidebar-accent px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-sidebar-foreground/50">
+                      <span className="ml-auto rounded-md bg-sidebar-accent px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-muted-foreground">
                         {feedCount}
                       </span>
                     )}
-                  </div>
+                  </button>
                 </RowMenu>
               )
             })}
@@ -598,7 +590,7 @@ export function NavFolders({
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="border-white/10 text-zinc-400 hover:bg-white/5 hover:text-white">
+            <AlertDialogCancel className="border-border text-muted-foreground hover:bg-accent hover:text-accent-foreground">
               Keep {deleteData?.type}
             </AlertDialogCancel>
             <AlertDialogAction
@@ -618,19 +610,19 @@ export function NavFolders({
         open={renameFolderData !== null}
         onOpenChange={() => setRenameFolderData(null)}
       >
-        <DialogContent className="bg-zinc-900 border-zinc-800">
+        <DialogContent className="bg-muted border-border">
           <DialogHeader>
-            <DialogTitle className="text-white">
+            <DialogTitle className="text-foreground">
               Rename Folder
             </DialogTitle>
-            <DialogDescription className="text-zinc-400">
+            <DialogDescription className="text-muted-foreground">
               Enter a new name for "{renameFolderData?.name}"
             </DialogDescription>
           </DialogHeader>
           <Input
             value={newFolderName}
             onChange={(e) => setNewFolderName(e.target.value)}
-            className="bg-zinc-950 border-zinc-800 text-white"
+            className="bg-popover border-border text-foreground"
             placeholder="Folder name"
             autoFocus
             onKeyDown={(e) => {
@@ -640,13 +632,13 @@ export function NavFolders({
           <DialogFooter>
             <Button
               variant="outline"
-              className="border-zinc-700 text-zinc-300"
+              className="border-border text-foreground"
               onClick={() => setRenameFolderData(null)}
             >
               Cancel
             </Button>
             <Button
-              className="bg-white text-black hover:bg-zinc-200"
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
               onClick={handleRenameConfirm}
             >
               Rename

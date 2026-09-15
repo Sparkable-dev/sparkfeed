@@ -56,19 +56,19 @@ export function HomeHero({
       */}
       <div className="flex min-w-0 flex-col gap-4 lg:col-span-7">
         <div className="min-w-0">
-          <h1 className="text-2xl leading-tight font-bold tracking-tight text-zinc-50 sm:text-3xl">
+          <h1 className="text-2xl leading-tight font-bold tracking-tight text-foreground dark:text-zinc-50 sm:text-3xl">
             {greeting(new Date().getHours())}
             {fullName ? "," : "."}
             {fullName && (
               <>
                 <br />
-                <span className="break-words text-zinc-400">{fullName}</span>
+                <span className="break-words text-muted-foreground dark:text-zinc-400">{fullName}</span>
               </>
             )}
           </h1>
 
           <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1.5">
-            <p className="text-sm text-zinc-400">
+            <p className="text-sm text-muted-foreground dark:text-zinc-400">
               {newCount > 0 ? (
                 <>
                   {/*
@@ -77,7 +77,7 @@ export function HomeHero({
                   */}
                   <Link
                     to="/today"
-                    className="font-semibold text-zinc-100 underline-offset-4 hover:underline"
+                    className="font-semibold text-foreground dark:text-zinc-100 underline-offset-4 hover:underline"
                   >
                     {newCount} new
                   </Link>{" "}

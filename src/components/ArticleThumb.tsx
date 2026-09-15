@@ -91,7 +91,7 @@ export function ArticleThumb({
         <span
           aria-hidden="true"
           className={`absolute inset-0 flex items-center justify-center px-3 text-center font-semibold
-            tracking-tight text-balance text-white/30 select-none ${
+            tracking-tight text-balance text-white/90 select-none ${
               scale === "sm" ? "text-xs" : scale === "lg" ? "text-xl" : "text-sm"
             }`}
         >

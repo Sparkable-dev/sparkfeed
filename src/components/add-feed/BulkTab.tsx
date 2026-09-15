@@ -64,14 +64,14 @@ export function BulkTab({
         onChange={(e) => onTextChange(e.target.value)}
         placeholder={"simonwillison.net\noverreacted.io\nhttps://danluu.com/atom.xml"}
         aria-label="Addresses, one per line"
-        className="min-h-24 resize-y rounded-lg border-zinc-700/60 bg-zinc-900/40 text-xs"
+        className="min-h-24 resize-y rounded-lg border-input dark:border-zinc-700/60 bg-card dark:bg-zinc-900/40 text-xs"
       />
 
       <div className="flex min-w-0 items-center gap-2">
-        <p className="min-w-0 flex-1 text-xs text-zinc-600">
+        <p className="min-w-0 flex-1 text-xs text-muted-foreground dark:text-zinc-600">
           One per line. Bare sites work too — up to {MAX_BULK_URLS}.
           {parsed.overflow > 0 && (
-            <span className="text-amber-400/90">
+            <span className="text-amber-700 dark:text-amber-400/90">
               {" "}
               {parsed.overflow} past the limit will be ignored.
             </span>
@@ -83,7 +83,7 @@ export function BulkTab({
           variant="outline"
           disabled={busy || parsed.urls.length === 0}
           onClick={onCheck}
-          className="h-8 shrink-0 border-white/10 bg-transparent text-xs text-zinc-200 hover:bg-white/10"
+          className="h-8 shrink-0 border-border dark:border-white/10 bg-transparent text-xs text-foreground dark:text-zinc-200 hover:bg-accent dark:hover:bg-white/10"
         >
           {busy ? <Spinner className="size-3.5" /> : `Check ${parsed.urls.length || ""}`.trim()}
         </Button>
@@ -91,13 +91,13 @@ export function BulkTab({
 
       {busy && total > 0 && (
         <div className="flex min-w-0 flex-col gap-1.5">
-          <div className="h-1 w-full overflow-hidden rounded-full bg-white/10">
+          <div className="h-1 w-full overflow-hidden rounded-full bg-muted dark:bg-white/10">
             <div
-              className="h-full rounded-full bg-zinc-400 transition-[width] duration-300"
+              className="h-full rounded-full bg-muted dark:bg-zinc-400 transition-[width] duration-300"
               style={{ width: `${(done / total) * 100}%` }}
             />
           </div>
-          <p className="text-[11px] text-zinc-600 tabular-nums">
+          <p className="text-[11px] text-muted-foreground dark:text-zinc-600 tabular-nums">
             checked {done} of {total}
           </p>
         </div>
@@ -105,7 +105,7 @@ export function BulkTab({
 
       {results.length > 0 && (
         <div className="flex min-w-0 flex-col">
-          <label className="flex cursor-pointer items-center gap-3 border-b border-white/[0.06] px-2 pb-2">
+          <label className="flex cursor-pointer items-center gap-3 border-b border-border dark:border-white/[0.06] px-2 pb-2">
             <Checkbox
               checked={allSelected}
               indeterminate={selectedCount > 0 && !allSelected}
@@ -113,7 +113,7 @@ export function BulkTab({
               onCheckedChange={onToggleAll}
               aria-label="Select every feed"
             />
-            <span className="min-w-0 truncate text-xs text-zinc-400">
+            <span className="min-w-0 truncate text-xs text-muted-foreground dark:text-zinc-400">
               {selectable.length} ready
               {alreadyAdded > 0 && ` · ${alreadyAdded} already added`}
               {failures.length > 0 && ` · ${failures.length} not a feed`}
@@ -142,10 +142,10 @@ export function BulkTab({
               >
                 <span aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
                 <span className="min-w-0 flex-1">
-                  <span className="block min-w-0 truncate text-sm text-zinc-400">
+                  <span className="block min-w-0 truncate text-sm text-muted-foreground dark:text-zinc-400">
                     {failure.input}
                   </span>
-                  <span className="mt-0.5 block text-xs text-amber-400/80">
+                  <span className="mt-0.5 block text-xs text-amber-700 dark:text-amber-400/80">
                     {failure.error?.message ?? "No feed found."}
                   </span>
                 </span>

@@ -89,8 +89,8 @@ export function CategoryRow({
 
   const arrow =
     "absolute top-1/2 z-10 hidden size-9 -translate-y-1/2 items-center justify-center rounded-full " +
-    "border border-white/10 bg-zinc-900/90 text-zinc-300 shadow-xl backdrop-blur-sm transition-all " +
-    "hover:bg-zinc-800 hover:text-white disabled:pointer-events-none disabled:opacity-0 " +
+    "border border-border dark:border-white/10 bg-card dark:bg-zinc-900/90 text-foreground dark:text-zinc-300 shadow-xl backdrop-blur-sm transition-all " +
+    "hover:bg-accent dark:hover:bg-zinc-800 hover:text-foreground dark:hover:text-white disabled:pointer-events-none disabled:opacity-0 " +
     "md:flex md:opacity-0 md:group-hover/row:opacity-100 md:focus-visible:opacity-100"
 
   return (

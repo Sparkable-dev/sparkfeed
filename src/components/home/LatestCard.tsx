@@ -101,8 +101,8 @@ function useFittedLines(
 }
 
 const ACTION =
-  "flex size-7 items-center justify-center rounded-md border border-white/5 bg-white/5 " +
-  "text-zinc-400 transition-colors hover:bg-white/10 hover:text-white"
+  "flex size-7 items-center justify-center rounded-md border border-border dark:border-white/5 bg-muted dark:bg-white/5 " +
+  "text-muted-foreground dark:text-zinc-400 transition-colors hover:bg-accent dark:hover:bg-white/10 hover:text-foreground dark:hover:text-white"
 
 export function LatestCard({ articles }: { articles: Array<ArticleRow> }) {
   const [index, setIndex] = useState(0)
@@ -138,7 +138,7 @@ export function LatestCard({ articles }: { articles: Array<ArticleRow> }) {
   return (
     <>
       <div
-        className="flex h-full min-w-0 flex-col overflow-hidden rounded-2xl border border-white/[0.07] bg-[#161616]"
+        className="flex h-full min-w-0 flex-col overflow-hidden rounded-2xl border border-border dark:border-white/[0.07] bg-card dark:bg-[#161616]"
         onMouseEnter={() => setPaused(true)}
         onMouseLeave={() => setPaused(false)}
         onFocusCapture={() => setPaused(true)}
@@ -148,7 +148,7 @@ export function LatestCard({ articles }: { articles: Array<ArticleRow> }) {
           type="button"
           onClick={() => openReader(article)}
           aria-label={article.title}
-          className="group relative aspect-[16/10] w-full shrink-0 overflow-hidden bg-zinc-900"
+          className="group relative aspect-[16/10] w-full shrink-0 overflow-hidden bg-card dark:bg-zinc-900"
         >
           {/*
             Every image stays mounted and cross-fades. Swapping a single `src`
@@ -177,7 +177,7 @@ export function LatestCard({ articles }: { articles: Array<ArticleRow> }) {
 
         <div className="flex min-h-0 flex-1 flex-col gap-2 p-4">
           <div className="flex items-start justify-between gap-3">
-            <span className="text-[10px] text-zinc-500">
+            <span className="text-[10px] text-muted-foreground dark:text-zinc-500">
               {timeAgo(publishedIso(article))}
             </span>
             {/*
@@ -191,8 +191,8 @@ export function LatestCard({ articles }: { articles: Array<ArticleRow> }) {
           <button
             type="button"
             onClick={() => openReader(article)}
-            className="line-clamp-3 text-left text-[15px] leading-snug font-bold text-white
-              transition-colors hover:text-zinc-300"
+            className="line-clamp-3 text-left text-[15px] leading-snug font-bold text-foreground dark:text-white
+              transition-colors hover:text-foreground dark:hover:text-zinc-300"
           >
             {article.title}
           </button>
@@ -216,7 +216,7 @@ export function LatestCard({ articles }: { articles: Array<ArticleRow> }) {
             {description && (
               <p
                 ref={textRef}
-                className="overflow-hidden text-xs leading-relaxed text-zinc-400"
+                className="overflow-hidden text-xs leading-relaxed text-muted-foreground dark:text-zinc-400"
                 style={{
                   display: "-webkit-box",
                   WebkitBoxOrient: "vertical",
@@ -272,7 +272,7 @@ export function LatestCard({ articles }: { articles: Array<ArticleRow> }) {
                   aria-current={i === active}
                   onClick={() => setIndex(i)}
                   className={`h-1.5 rounded-full transition-all ${
-                    i === active ? "w-5 bg-white" : "w-1.5 bg-white/25 hover:bg-white/50"
+                    i === active ? "w-5 bg-foreground dark:bg-white" : "w-1.5 bg-muted-foreground/60 dark:bg-white/25 hover:bg-foreground dark:hover:bg-white/50"
                   }`}
                 />
               ))}

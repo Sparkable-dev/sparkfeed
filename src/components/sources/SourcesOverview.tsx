@@ -41,26 +41,26 @@ export function SourcesOverview({ overview }: { overview: Overview }) {
   return (
     <section
       aria-label="Overview"
-      className="grid min-w-0 gap-5 rounded-2xl border border-white/[0.07] bg-white/[0.02]
+      className="grid min-w-0 gap-5 rounded-2xl border border-border dark:border-white/[0.07] bg-card dark:bg-white/[0.02]
         p-4 sm:grid-cols-2 lg:grid-cols-12"
     >
       {/* ── The numbers ──────────────────────────────────────────────── */}
       <div className="flex min-w-0 flex-col gap-3 lg:col-span-3">
         <div className="min-w-0">
-          <p className="text-2xl leading-none font-bold tracking-tight text-zinc-50 tabular-nums">
+          <p className="text-2xl leading-none font-bold tracking-tight text-foreground dark:text-zinc-50 tabular-nums">
             {feedCount}
-            <span className="ml-1.5 text-sm font-medium text-zinc-500">
+            <span className="ml-1.5 text-sm font-medium text-muted-foreground dark:text-zinc-500">
               {feedCount === 1 ? "source" : "sources"}
             </span>
           </p>
-          <p className="mt-1 text-xs text-zinc-500">
+          <p className="mt-1 text-xs text-muted-foreground dark:text-zinc-500">
             {folderCount === 0
               ? "not in any folder yet"
               : `across ${folderCount} ${folderCount === 1 ? "folder" : "folders"}`}
             {attention > 0 && (
               <>
                 {" · "}
-                <span className="text-amber-400/80">
+                <span className="text-amber-700 dark:text-amber-400/80">
                   {attention} {attention === 1 ? "needs" : "need"} a look
                 </span>
               </>
@@ -74,13 +74,13 @@ export function SourcesOverview({ overview }: { overview: Overview }) {
       {/* ── Where the volume comes from ──────────────────────────────── */}
       <div className="flex min-w-0 flex-col gap-2 lg:col-span-4">
         <div className="flex items-baseline justify-between gap-2">
-          <h3 className="text-xs font-semibold text-zinc-300">Posts by folder</h3>
+          <h3 className="text-xs font-semibold text-foreground dark:text-zinc-300">Posts by folder</h3>
           {/*
             The total and the rate, because a bar chart of shares says nothing
             about scale — 90% of eleven posts and 90% of nine thousand look
             identical.
           */}
-          <span className="text-[10px] text-zinc-600 tabular-nums">
+          <span className="text-[10px] text-muted-foreground dark:text-zinc-600 tabular-nums">
             {posts30d.toLocaleString()} in {WINDOW_DAYS}d
             {posts30d > 0 && ` · ~${perDay < 1 ? perDay.toFixed(1) : Math.round(perDay)}/day`}
           </span>
@@ -89,7 +89,7 @@ export function SourcesOverview({ overview }: { overview: Overview }) {
           shape="bars"
           points={byFolder}
           accent={CHART_ACCENT}
-          className="text-zinc-400"
+          className="text-foreground dark:text-zinc-400"
         />
       </div>
 
@@ -148,7 +148,7 @@ function StatusMeter({
 
       <ul className="flex min-w-0 flex-wrap gap-x-3 gap-y-1">
         {present.map((status) => (
-          <li key={status} className="flex items-center gap-1.5 text-[11px] text-zinc-500">
+          <li key={status} className="flex items-center gap-1.5 text-[11px] text-muted-foreground dark:text-zinc-500">
             <span
               aria-hidden="true"
               className={`size-1.5 shrink-0 rounded-full ${STATUS_STYLE[status].dot}`}

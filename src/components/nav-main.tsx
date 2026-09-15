@@ -2,6 +2,8 @@
 
 import { Link, useRouterState } from "@tanstack/react-router"
 
+import { useSidebar } from "@/components/ui/sidebar"
+
 export function NavMain({
   items,
 }: {
@@ -16,11 +18,12 @@ export function NavMain({
     onClick?: () => void
   }>
 }) {
+  const { isMobile, setOpenMobile } = useSidebar()
   const routerState = useRouterState()
   const pathname = routerState.location.pathname
 
   return (
-    <div className="flex flex-col gap-0.5 px-3 group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:items-center group-data-[collapsible=icon]:w-full">
+    <div className="flex shrink-0 flex-col gap-0.5 px-3 group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:items-center group-data-[collapsible=icon]:w-full">
       {items.map((item) => {
         const linkHref = item.href || item.url || "#"
         const isActive =
@@ -40,7 +43,7 @@ export function NavMain({
               {item.title}
             </span>
             {item.badge !== undefined && (
-              <span className="ml-auto rounded-md bg-sidebar-accent px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-sidebar-foreground/50 group-data-[collapsible=icon]:hidden">
+              <span className="ml-auto rounded-md bg-sidebar-accent px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-muted-foreground dark:text-sidebar-foreground/50 group-data-[collapsible=icon]:hidden">
                 {item.badge}
               </span>
             )}
@@ -48,7 +51,7 @@ export function NavMain({
         )
 
         const cls = `
-          group flex w-full items-center gap-2.5 rounded-lg px-2 py-2 transition-colors duration-150
+          outline-none focus-visible:ring-2 focus-visible:ring-ring group flex w-full items-center gap-2.5 rounded-lg px-2 py-2 transition-colors duration-150
           group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:p-0! group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:w-8!
           ${isActive
             ? "bg-sidebar-accent text-sidebar-accent-foreground"
@@ -60,6 +63,9 @@ export function NavMain({
             <Link
               key={item.title}
               to={linkHref}
+              aria-current={isActive ? "page" : undefined}
+              title={item.title}
+              onClick={() => { if (isMobile) setOpenMobile(false) }}
               data-active={isActive}
               className={cls.trim()}
             >
@@ -70,7 +76,9 @@ export function NavMain({
 
         return (
           <button
+            type="button"
             key={item.title}
+            title={item.title}
             onClick={item.onClick}
             data-active={isActive}
             className={cls.trim()}

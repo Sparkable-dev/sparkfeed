@@ -28,14 +28,14 @@ export function CommandPaletteTrigger() {
       onClick={openPalette}
       aria-label="Open the command palette"
       aria-keyshortcuts="Meta+K Control+K"
-      className="flex h-8 w-full items-center gap-2 rounded-lg border border-zinc-700/60 bg-zinc-900/40
-        pr-2 pl-3 text-xs text-zinc-500 transition-colors hover:border-zinc-600 hover:text-zinc-300"
+      className="flex h-8 w-full items-center gap-2 rounded-lg border border-border dark:border-zinc-700/60 bg-card dark:bg-zinc-900/40
+        pr-2 pl-3 text-xs text-muted-foreground dark:text-zinc-500 transition-colors hover:border-border dark:hover:border-zinc-600 hover:text-foreground dark:hover:text-zinc-300"
     >
       <Search className="size-3.5 shrink-0" />
       <span className="truncate">Jump to anything…</span>
       <kbd
         className="ml-auto flex w-10 shrink-0 items-center justify-center gap-0.5 rounded border
-          border-zinc-700/60 bg-zinc-900 px-1.5 py-0.5 font-sans text-[10px] text-zinc-500"
+          border-border dark:border-zinc-700/60 bg-card dark:bg-zinc-900 px-1.5 py-0.5 font-sans text-[10px] text-muted-foreground dark:text-zinc-500"
       >
         {isMac === null ? "" : isMac ? "⌘K" : "^K"}
       </kbd>

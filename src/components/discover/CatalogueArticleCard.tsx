@@ -42,7 +42,7 @@ export function CatalogueArticleRow({ article }: { article: PreviewArticle }) {
       target="_blank"
       rel="noopener noreferrer"
       className="group flex items-start gap-3 rounded-lg px-2 py-2 transition-colors
-        hover:bg-white/[0.04] focus-visible:bg-white/[0.04] focus-visible:outline-none"
+        hover:bg-accent dark:hover:bg-white/[0.04] focus-visible:bg-muted dark:focus-visible:bg-white/[0.04] focus-visible:outline-none"
     >
       <div className="size-12 shrink-0">
         <ArticleThumb
@@ -54,13 +54,13 @@ export function CatalogueArticleRow({ article }: { article: PreviewArticle }) {
       </div>
 
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-        <span className="line-clamp-2 text-[13px] leading-snug font-medium text-zinc-200 transition-colors group-hover:text-white">
+        <span className="line-clamp-2 text-[13px] leading-snug font-medium text-foreground dark:text-zinc-200 transition-colors group-hover:text-foreground dark:group-hover:text-white">
           {article.title}
         </span>
-        <span className="text-[11px] text-zinc-600">{date}</span>
+        <span className="text-[11px] text-muted-foreground dark:text-zinc-600">{date}</span>
       </div>
 
-      <ExternalLink className="mt-1 size-3 shrink-0 text-zinc-700 opacity-0 transition-opacity group-hover:opacity-100" />
+      <ExternalLink className="mt-1 size-3 shrink-0 text-muted-foreground dark:text-zinc-700 opacity-0 transition-opacity group-hover:opacity-100" />
     </a>
   )
 }
@@ -74,8 +74,8 @@ export function CatalogueArticleCard({ article }: { article: PreviewArticle }) {
       target="_blank"
       rel="noopener noreferrer"
       className="group flex w-[220px] shrink-0 snap-start flex-col overflow-hidden rounded-lg border
-        border-white/5 bg-[#161616] transition-all duration-300 hover:-translate-y-0.5
-        hover:border-white/15 hover:shadow-xl focus-visible:ring-2 focus-visible:ring-white/30
+        border-border dark:border-white/5 bg-card dark:bg-[#161616] transition-all duration-300 hover:-translate-y-0.5
+        hover:border-border dark:hover:border-white/15 hover:shadow-xl focus-visible:ring-2 focus-visible:ring-ring dark:focus-visible:ring-white/30
         focus-visible:outline-none"
     >
       <div
@@ -89,7 +89,7 @@ export function CatalogueArticleCard({ article }: { article: PreviewArticle }) {
         />
         <span
           className="absolute right-2 bottom-2 z-10 flex size-6 items-center justify-center
-            rounded-full border border-white/10 bg-black/50 text-white/80 opacity-0 backdrop-blur-md
+            rounded-full border border-border dark:border-white/10 bg-card dark:bg-black/50 text-foreground dark:text-white/80 opacity-0 backdrop-blur-md
             transition-opacity group-hover:opacity-100"
         >
           <ExternalLink className="size-3" />
@@ -97,10 +97,10 @@ export function CatalogueArticleCard({ article }: { article: PreviewArticle }) {
       </div>
 
       <div className="flex flex-1 flex-col gap-1.5 p-3">
-        <span className="text-[10px] font-medium tracking-wide text-zinc-500 uppercase">
+        <span className="text-[10px] font-medium tracking-wide text-muted-foreground dark:text-zinc-500 uppercase">
           {date || domainOf(article.link)}
         </span>
-        <span className="line-clamp-3 text-xs leading-snug font-semibold text-zinc-100">
+        <span className="line-clamp-3 text-xs leading-snug font-semibold text-foreground dark:text-zinc-100">
           {article.title}
         </span>
       </div>

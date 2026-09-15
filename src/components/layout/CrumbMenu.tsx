@@ -17,8 +17,8 @@ import {
  * and hang this off the leaf.
  */
 const ITEM =
-  "flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2 text-sm text-zinc-300 " +
-  "transition-colors hover:bg-zinc-800 hover:text-white focus:bg-zinc-800 focus:text-white"
+  "flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2 text-sm text-foreground dark:text-zinc-300 " +
+  "transition-colors hover:bg-accent dark:hover:bg-zinc-800 hover:text-foreground dark:hover:text-white focus:bg-accent dark:focus:bg-zinc-800 focus:text-foreground dark:focus:text-white"
 
 export function CrumbMenu({
   label,
@@ -62,15 +62,15 @@ export function CrumbMenu({
     <DropdownMenu>
       <DropdownMenuTrigger
         aria-label={isFeed ? "Feed actions" : "Folder actions"}
-        className="inline-flex size-5 shrink-0 items-center justify-center rounded text-zinc-500
-          transition-colors hover:bg-white/5 hover:text-zinc-200"
+        className="inline-flex size-5 shrink-0 items-center justify-center rounded text-muted-foreground dark:text-zinc-500
+          transition-colors hover:bg-accent dark:hover:bg-white/5 hover:text-foreground dark:hover:text-zinc-200"
       >
         <ChevronDown className="size-3.5" />
       </DropdownMenuTrigger>
 
       <DropdownMenuContent
         align="start"
-        className="min-w-52 rounded-xl border border-zinc-800 bg-zinc-900 p-1 shadow-2xl"
+        className="min-w-52 rounded-xl border border-border dark:border-zinc-800 bg-card dark:bg-zinc-900 p-1 shadow-2xl"
       >
         {!isFeed && folderId && (
           <>
@@ -93,11 +93,11 @@ export function CrumbMenu({
               </DropdownMenuItem>
             )}
             {(onShare || onRename) && onDelete && (
-              <DropdownMenuSeparator className="my-1 bg-zinc-800" />
+              <DropdownMenuSeparator className="my-1 bg-accent dark:bg-zinc-800" />
             )}
             {onDelete && (
               <DropdownMenuItem
-                className={`${ITEM} text-red-400 hover:text-red-300 focus:text-red-300`}
+                className={`${ITEM} text-red-700 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 focus:text-red-700 dark:focus:text-red-300`}
                 onClick={() => onDelete(folderId, label)}
               >
                 <Trash2 className="size-4" />
@@ -115,7 +115,7 @@ export function CrumbMenu({
                   <Settings2 className="size-4" />
                   Manage feed
                 </DropdownMenuItem>
-                <DropdownMenuSeparator className="my-1 bg-zinc-800" />
+                <DropdownMenuSeparator className="my-1 bg-accent dark:bg-zinc-800" />
               </>
             )}
             {onShareFeed && (
@@ -131,11 +131,11 @@ export function CrumbMenu({
               </DropdownMenuItem>
             )}
             {(onShareFeed || onRenameFeed) && onDeleteFeed && (
-              <DropdownMenuSeparator className="my-1 bg-zinc-800" />
+              <DropdownMenuSeparator className="my-1 bg-accent dark:bg-zinc-800" />
             )}
             {onDeleteFeed && (
               <DropdownMenuItem
-                className={`${ITEM} text-red-400 hover:text-red-300 focus:text-red-300`}
+                className={`${ITEM} text-red-700 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 focus:text-red-700 dark:focus:text-red-300`}
                 onClick={() => onDeleteFeed(feedId, label)}
               >
                 <Trash2 className="size-4" />

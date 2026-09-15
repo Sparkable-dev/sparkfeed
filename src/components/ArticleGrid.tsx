@@ -36,13 +36,13 @@ export function ArticleGrid({
   onRefreshed,
 }: ArticleGridProps) {
   return (
-    <div className="flex min-h-screen flex-1 flex-col bg-[#0a0a0a]">
+    <div className="flex min-h-screen flex-1 flex-col bg-card dark:bg-[#0a0a0a]">
       {/* Grid */}
       <div className="flex-1 overflow-y-auto p-5">
         {articles.length === 0 ? (
           emptyState ?? (
             <div className="flex h-64 flex-col items-center justify-center gap-3">
-              <p className="text-sm text-zinc-600">
+              <p className="text-sm text-muted-foreground dark:text-zinc-600">
                 No articles in {title}.
               </p>
             </div>

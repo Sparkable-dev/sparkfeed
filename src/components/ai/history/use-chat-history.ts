@@ -48,6 +48,7 @@ export function notifyChatSaved(): void {
  */
 export function useChatHistory() {
   const [threads, setThreads] = React.useState<Array<ChatSummary>>([])
+  const [error, setError] = React.useState(false)
   const [loading, setLoading] = React.useState(!DEMO_MODE)
 
   const pathname = useRouterState({ select: (s) => s.location.pathname })
@@ -60,9 +61,9 @@ export function useChatHistory() {
     try {
       const rows = await listChats({ data: {} })
       setThreads(rows)
+      setError(false)
     } catch {
-      // A history that cannot load is not worth a toast on every page. The
-      // section renders its empty state and the rest of the app is unaffected.
+      setError(true)
     } finally {
       setLoading(false)
     }
@@ -108,15 +109,17 @@ export function useChatHistory() {
     try {
       await deleteChat({ data: { threadId: id } })
       toast.success("Chat deleted")
+      return true
     } catch {
       // Put it back rather than leaving the sidebar claiming something was
       // deleted that is still there.
       setThreads(previous)
       toast.error("Could not delete that chat")
+      return false
     }
   }, [threads])
 
-  return { threads, loading, refresh, rename, remove }
+  return { threads, loading, error, refresh, rename, remove }
 }
 
 /** "1h", "20h", "3d" — the compact form a dense list has room for. */

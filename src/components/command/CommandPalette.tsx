@@ -299,10 +299,10 @@ export function CommandPalette() {
         onValueChange={setActive}
         className="rounded-xl p-0"
       >
-        <div className="flex items-center gap-2 border-b border-zinc-800 px-4">
-          <Search className="size-4 shrink-0 text-zinc-500" />
+        <div className="flex items-center gap-2 border-b border-border dark:border-zinc-800 px-4">
+          <Search className="size-4 shrink-0 text-muted-foreground dark:text-zinc-500" />
           {scope && (
-            <span className="flex shrink-0 items-center gap-1.5 rounded-md bg-blue-500/10 px-2 py-1 text-xs font-medium text-blue-400">
+            <span className="flex shrink-0 items-center gap-1.5 rounded-md bg-blue-500/10 px-2 py-1 text-xs font-medium text-blue-700 dark:text-blue-400">
               {scope.kind === "folder" ? <FolderIcon className="size-3" /> : <Telescope className="size-3" />}
               {scope.label}
             </span>
@@ -318,13 +318,13 @@ export function CommandPalette() {
                 ? `Search ${scope.label}…`
                 : "Jump to a folder, feed or page, or run a command…"
             }
-            className="h-12 flex-1 bg-transparent text-sm text-zinc-100 outline-hidden placeholder:text-zinc-600"
+            className="h-12 flex-1 bg-transparent text-sm text-foreground dark:text-zinc-100 outline-hidden placeholder:text-muted-foreground dark:placeholder:text-zinc-600"
           />
         </div>
 
         <CommandList className="max-h-[60vh] p-1">
           {!hasResults && (
-            <CommandEmpty className="py-8 text-center text-sm text-zinc-500">
+            <CommandEmpty className="py-8 text-center text-sm text-muted-foreground dark:text-zinc-500">
               Nothing matches “{trimmed}”.
             </CommandEmpty>
           )}
@@ -340,17 +340,17 @@ export function CommandPalette() {
                     key={item.id}
                     value={item.id}
                     onSelect={() => run(item)}
-                    className="gap-2.5 text-zinc-200"
+                    className="gap-2.5 text-foreground dark:text-zinc-200"
                   >
-                    <Icon className="size-4 shrink-0 text-zinc-500" />
+                    <Icon className="size-4 shrink-0 text-muted-foreground dark:text-zinc-500" />
                     <span className="shrink-0 truncate">{item.label}</span>
                     {item.sublabel && (
-                      <span className="truncate text-xs text-zinc-600">{item.sublabel}</span>
+                      <span className="truncate text-xs text-muted-foreground dark:text-zinc-600">{item.sublabel}</span>
                     )}
                     {item.kind === "folder" && !scope && (
                       <span
                         data-slot="command-shortcut"
-                        className="ml-auto flex shrink-0 items-center gap-1 text-[10px] text-zinc-600"
+                        className="ml-auto flex shrink-0 items-center gap-1 text-[10px] text-muted-foreground dark:text-zinc-600"
                       >
                         <ChevronRight className="size-3" />
                         feeds
@@ -369,13 +369,13 @@ export function CommandPalette() {
                   key={fixed.id}
                   value={`scope:${fixed.id}`}
                   onSelect={() => enterScope({ kind: "fixed", id: fixed.id, label: fixed.label })}
-                  className="gap-2.5 text-zinc-400"
+                  className="gap-2.5 text-muted-foreground dark:text-zinc-400"
                 >
-                  <Telescope className="size-4 shrink-0 text-zinc-600" />
+                  <Telescope className="size-4 shrink-0 text-muted-foreground dark:text-zinc-600" />
                   {fixed.label}
                   <span
                     data-slot="command-shortcut"
-                    className="ml-auto shrink-0 text-[10px] text-zinc-600"
+                    className="ml-auto shrink-0 text-[10px] text-muted-foreground dark:text-zinc-600"
                   >
                     {fixed.label.toLowerCase()} &gt;
                   </span>
@@ -385,7 +385,7 @@ export function CommandPalette() {
           )}
         </CommandList>
 
-        <div className="flex items-center gap-4 border-t border-zinc-800 px-4 py-2 text-[10px] text-zinc-600">
+        <div className="flex items-center gap-4 border-t border-border dark:border-zinc-800 px-4 py-2 text-[10px] text-muted-foreground dark:text-zinc-600">
           <span className="flex items-center gap-1">
             <CornerDownLeft className="size-3" /> open
           </span>

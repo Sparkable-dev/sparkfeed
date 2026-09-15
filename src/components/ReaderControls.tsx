@@ -41,7 +41,7 @@ export function ReaderControls() {
           <Button
             variant="ghost"
             size="icon"
-            className="h-6 w-6 text-zinc-500 hover:text-white"
+            className="h-6 w-6 text-muted-foreground dark:text-zinc-500 hover:text-foreground dark:hover:text-white"
             title="Reading options"
           />
         }
@@ -51,40 +51,40 @@ export function ReaderControls() {
       <PopoverContent
         align="end"
         sideOffset={8}
-        className="w-64 gap-3 border-white/10 bg-[#1a1a1a] text-zinc-200"
+        className="w-64 gap-3 border-border dark:border-white/10 bg-card dark:bg-[#1a1a1a] text-foreground dark:text-zinc-200"
       >
         {/* Text size */}
         <div className="flex items-center justify-between">
-          <span className="text-xs font-medium text-zinc-400">Text size</span>
+          <span className="text-xs font-medium text-muted-foreground dark:text-zinc-400">Text size</span>
           <div className="flex items-center gap-1">
             <button
               onClick={decreaseFont}
               disabled={fontScale <= FONT_MIN}
               aria-label="Decrease text size"
-              className="flex h-7 w-7 items-center justify-center rounded-md border border-white/10 bg-white/5 hover:bg-white/10 disabled:opacity-30"
+              className="flex h-7 w-7 items-center justify-center rounded-md border border-border dark:border-white/10 bg-muted dark:bg-white/5 hover:bg-accent dark:hover:bg-white/10 disabled:opacity-30"
             >
               <Minus className="h-3.5 w-3.5" />
             </button>
-            <span className="w-10 text-center text-xs text-zinc-300 tabular-nums">
+            <span className="w-10 text-center text-xs text-foreground dark:text-zinc-300 tabular-nums">
               {Math.round(fontScale * 100)}%
             </span>
             <button
               onClick={increaseFont}
               disabled={fontScale >= FONT_MAX}
               aria-label="Increase text size"
-              className="flex h-7 w-7 items-center justify-center rounded-md border border-white/10 bg-white/5 hover:bg-white/10 disabled:opacity-30"
+              className="flex h-7 w-7 items-center justify-center rounded-md border border-border dark:border-white/10 bg-muted dark:bg-white/5 hover:bg-accent dark:hover:bg-white/10 disabled:opacity-30"
             >
               <Plus className="h-3.5 w-3.5" />
             </button>
           </div>
         </div>
 
-        <div className="h-px bg-white/10" />
+        <div className="h-px bg-muted dark:bg-white/10" />
 
         {/* Width */}
         <div className="flex items-center justify-between">
-          <span className="text-xs font-medium text-zinc-400">Width</span>
-          <div className="flex gap-0.5 rounded-md border border-white/10 bg-white/5 p-0.5">
+          <span className="text-xs font-medium text-muted-foreground dark:text-zinc-400">Width</span>
+          <div className="flex gap-0.5 rounded-md border border-border dark:border-white/10 bg-muted dark:bg-white/5 p-0.5">
             {WIDTHS.map((w) => (
               <button
                 key={w.key}
@@ -92,8 +92,8 @@ export function ReaderControls() {
                 className={cn(
                   "rounded px-2.5 py-1 text-xs transition-colors",
                   width === w.key
-                    ? "bg-white text-black"
-                    : "text-zinc-400 hover:text-white"
+                    ? "bg-primary dark:bg-white text-primary-foreground dark:text-black"
+                    : "text-muted-foreground dark:text-zinc-400 hover:text-foreground dark:hover:text-white"
                 )}
               >
                 {w.label}
@@ -102,11 +102,11 @@ export function ReaderControls() {
           </div>
         </div>
 
-        <div className="h-px bg-white/10" />
+        <div className="h-px bg-muted dark:bg-white/10" />
 
         {/* Theme */}
         <div className="flex items-center justify-between">
-          <span className="text-xs font-medium text-zinc-400">Theme</span>
+          <span className="text-xs font-medium text-muted-foreground dark:text-zinc-400">Theme</span>
           <div className="flex gap-1.5">
             {THEMES.map((t) => (
               <button
@@ -118,8 +118,8 @@ export function ReaderControls() {
                   "flex h-7 w-7 items-center justify-center rounded-full border text-[10px] font-bold transition-transform",
                   t.swatch,
                   theme === t.key
-                    ? "ring-2 ring-white ring-offset-1 ring-offset-[#1a1a1a]"
-                    : "border-white/20 hover:scale-105"
+                    ? "ring-2 ring-ring dark:ring-white ring-offset-1 ring-offset-[#1a1a1a]"
+                    : "border-border dark:border-white/20 hover:scale-105"
                 )}
               >
                 Aa
@@ -127,8 +127,8 @@ export function ReaderControls() {
             ))}
           </div>
         </div>
-        <div className="h-px bg-white/10" />
-        <div className="flex items-center justify-between text-xs font-medium text-zinc-400">
+        <div className="h-px bg-muted dark:bg-white/10" />
+        <div className="flex items-center justify-between text-xs font-medium text-muted-foreground dark:text-zinc-400">
           <span>Zen mode</span>
           <Switch
             checked={zenMode}

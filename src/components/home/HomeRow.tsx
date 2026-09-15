@@ -41,18 +41,18 @@ export function HomeRow({
   return (
     <section className="min-w-0">
       <div className="mb-3 flex min-w-0 items-baseline justify-between gap-3">
-        <h2 className="min-w-0 truncate text-sm font-bold tracking-tight text-zinc-100">
+        <h2 className="min-w-0 truncate text-sm font-bold tracking-tight text-foreground dark:text-zinc-100">
           {title}
           {newCount > 0 && (
-            <span className="ml-2 text-xs font-medium text-zinc-500">
+            <span className="ml-2 text-xs font-medium text-muted-foreground dark:text-zinc-500">
               {newCount} new
             </span>
           )}
         </h2>
         <Link
           to={href}
-          className="inline-flex shrink-0 items-center gap-0.5 text-xs font-medium text-zinc-500
-            transition-colors hover:text-zinc-100"
+          className="inline-flex shrink-0 items-center gap-0.5 text-xs font-medium text-muted-foreground dark:text-zinc-500
+            transition-colors hover:text-foreground dark:hover:text-zinc-100"
         >
           See all
           <ChevronRight className="size-3.5" />

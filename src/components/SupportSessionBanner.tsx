@@ -17,7 +17,7 @@ export function SupportSessionBanner() {
         className="rounded-md border border-amber-300/40 px-3 py-1 text-xs font-medium"
         onClick={async () => {
           await authClient.signOut()
-          window.location.href = "/login"
+          window.location.href = "/sign-in"
         }}
       >
         Exit support session

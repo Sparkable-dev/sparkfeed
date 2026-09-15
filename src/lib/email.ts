@@ -89,7 +89,7 @@ export async function sendPasswordResetEmail(
   const html = await render(
     React.createElement(ResetPasswordEmail, { resetUrl })
   )
-  await sendEmail(toEmail, "Reset your SparkFeed password", html)
+  await sendEmail(toEmail, "Reset your SparkFeed password", html, true)
 }
 
 export async function sendVerificationEmail(
@@ -99,7 +99,7 @@ export async function sendVerificationEmail(
   const html = await render(
     React.createElement(VerifyEmail, { verificationUrl })
   )
-  await sendEmail(toEmail, "Verify your SparkFeed account", html)
+  await sendEmail(toEmail, "Verify your SparkFeed account", html, true)
 }
 
 function escapeHtml(value: string) {

@@ -160,7 +160,7 @@ export function ShareSettings({
               </div>
 
               {fetchingPassword ? (
-                <div className="flex items-center gap-2 text-zinc-500 text-sm mt-4">
+                <div className="flex items-center gap-2 text-muted-foreground text-sm mt-4">
                   <Loader2 className="h-4 w-4 animate-spin" /> Fetching status...
                 </div>
               ) : isLinkEnabled && (
@@ -169,22 +169,22 @@ export function ShareSettings({
                     <Input
                       readOnly
                       value={shareUrl}
-                      className="bg-zinc-900 border-white/10 text-zinc-300 font-mono text-sm"
+                      className="bg-muted border-border text-foreground font-mono text-sm"
                     />
                     <Button
                       variant="outline"
                       size="icon"
                       onClick={handleCopyLink}
                       disabled={loading}
-                      className="bg-zinc-900 border-white/10 hover:bg-zinc-800 hover:text-white shrink-0"
+                      className="bg-muted border-border hover:bg-accent hover:text-foreground shrink-0"
                     >
                       {copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
                     </Button>
                   </div>
 
                   {/* SECTION B/C - Password Protection */}
-                  <div className="flex flex-col gap-4 rounded-lg border border-white/10 bg-zinc-900/50 p-4">
-                    <h4 className="text-sm font-medium text-zinc-300">Password Protection</h4>
+                  <div className="flex flex-col gap-4 rounded-lg border border-border bg-muted/50 p-4">
+                    <h4 className="text-sm font-medium text-foreground">Password Protection</h4>
 
                     {hasExistingPassword ? (
                       <div className="flex flex-col gap-4">
@@ -203,23 +203,23 @@ export function ShareSettings({
                       </div>
                     ) : (
                       <div className="flex flex-col gap-3">
-                        <p className="text-xs text-zinc-500">
+                        <p className="text-xs text-muted-foreground">
                           Set a password so anyone with the link and password can view this {type}
                         </p>
                         <div className="relative flex items-center">
-                          <KeyRound className="absolute left-3 h-4 w-4 text-zinc-500" />
+                          <KeyRound className="absolute left-3 h-4 w-4 text-muted-foreground" />
                           <Input
                             type={showPassword ? "text" : "password"}
                             placeholder="Enter a secure password"
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
                             disabled={loading}
-                            className="bg-zinc-950 border-white/10 pl-10 pr-10 focus-visible:ring-zinc-700 text-white"
+                            className="bg-background border-border pl-10 pr-10 focus-visible:ring-ring text-foreground"
                           />
                           <button
                             type="button"
                             onClick={() => setShowPassword(!showPassword)}
-                            className="absolute right-3 text-zinc-500 hover:text-zinc-300"
+                            className="absolute right-3 text-muted-foreground hover:text-foreground"
                           >
                             {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                           </button>
@@ -227,7 +227,7 @@ export function ShareSettings({
                         <Button
                           onClick={handleSavePassword}
                           disabled={loading || !password}
-                          className="w-full bg-white text-black hover:bg-zinc-200"
+                          className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
                         >
                           {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                           Save Password

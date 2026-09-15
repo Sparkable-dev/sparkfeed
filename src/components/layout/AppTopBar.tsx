@@ -67,8 +67,8 @@ export function AppTopBar({
 
   return (
     <header
-      className="sticky top-0 z-20 flex h-12 shrink-0 items-center gap-3 border-b border-zinc-800/60
-        bg-[#0d0d0d]/95 px-3 backdrop-blur-sm
+      className="sticky top-0 z-20 flex h-12 shrink-0 items-center gap-3 border-b border-border dark:border-zinc-800/60
+        bg-card dark:bg-[#0d0d0d]/95 px-3 backdrop-blur-sm
         lg:grid lg:grid-cols-[minmax(0,1fr)_auto_1fr]"
       /*
         A grid, not `justify-between`, so the palette is centred against the
@@ -120,8 +120,8 @@ export function AppTopBar({
                       aria-label={Icon ? crumb.label : undefined}
                       title={Icon ? crumb.label : undefined}
                       className={cn(
-                        "text-sm font-medium text-zinc-400 transition-colors hover:text-white",
-                        Icon ? "flex size-7 shrink-0 items-center justify-center rounded-md hover:bg-white/10" : "truncate",
+                        "text-sm font-medium text-muted-foreground dark:text-zinc-400 transition-colors hover:text-foreground dark:hover:text-white",
+                        Icon ? "flex size-7 shrink-0 items-center justify-center rounded-md hover:bg-accent dark:hover:bg-white/10" : "truncate",
                       )}
                     >
                       {Icon ? <Icon className="size-4" /> : crumb.label}
@@ -129,21 +129,21 @@ export function AppTopBar({
                   ) : (
                     <span
                       className={cn(
-                        "text-sm font-medium text-zinc-400",
+                        "text-sm font-medium text-muted-foreground dark:text-zinc-400",
                         Icon ? "flex size-7 shrink-0 items-center justify-center" : "truncate",
                       )}
                     >
                       {Icon ? <Icon className="size-4" /> : crumb.label}
                     </span>
                   )}
-                  <ChevronRight className="size-3.5 shrink-0 text-zinc-700" />
+                  <ChevronRight className="size-3.5 shrink-0 text-muted-foreground dark:text-zinc-700" />
                 </div>
               )
             })}
 
             {leaf && (
               <div className="flex min-w-0 items-center gap-1">
-                <span className="truncate text-sm font-semibold text-zinc-100">
+                <span className="truncate text-sm font-semibold text-foreground dark:text-zinc-100">
                   {leaf.label}
                 </span>
                 {crumbMenu}
@@ -183,7 +183,7 @@ export function AppTopBar({
         {search && searchOpen ? (
           <>
             <div className="relative min-w-0 flex-1 md:w-64 md:flex-none">
-              <Search className="pointer-events-none absolute top-1/2 left-3 size-3.5 -translate-y-1/2 text-zinc-500" />
+              <Search className="pointer-events-none absolute top-1/2 left-3 size-3.5 -translate-y-1/2 text-muted-foreground dark:text-zinc-500" />
               <Input
                 id={search.id}
                 autoFocus
@@ -193,8 +193,8 @@ export function AppTopBar({
                 onKeyDown={(e) => {
                   if (e.key === "Escape") closeSearch()
                 }}
-                className="h-8 w-full rounded-lg border-zinc-700/60 bg-zinc-900/40 pl-9 text-xs text-white
-                  transition-all placeholder:text-zinc-600 focus-visible:border-blue-500/50
+                className="h-8 w-full rounded-lg border-input dark:border-zinc-700/60 bg-card dark:bg-zinc-900/40 pl-9 text-xs text-foreground dark:text-white
+                  transition-all placeholder:text-muted-foreground dark:placeholder:text-zinc-600 focus-visible:border-blue-500/50
                   focus-visible:ring-blue-500/30"
               />
             </div>
@@ -202,7 +202,7 @@ export function AppTopBar({
               variant="ghost"
               size="icon"
               onClick={closeSearch}
-              className="size-8 shrink-0 text-zinc-400 hover:bg-white/10 hover:text-white"
+              className="size-8 shrink-0 text-muted-foreground dark:text-zinc-400 hover:bg-accent dark:hover:bg-white/10 hover:text-foreground dark:hover:text-white"
               title="Close search"
             >
               <X className="size-4" />
@@ -219,7 +219,7 @@ export function AppTopBar({
             {inline.map((action) => (
               <div key={action.id} className={action.kind === "custom" && action.alwaysVisible ? "flex shrink-0 items-center" : "hidden shrink-0 items-center lg:flex"}>
                 {action.kind === "note" ? (
-                  <span className="text-[11px] whitespace-nowrap text-zinc-500 tabular-nums">
+                  <span className="text-[11px] whitespace-nowrap text-muted-foreground dark:text-zinc-500 tabular-nums">
                     {action.text}
                   </span>
                 ) : (
@@ -233,7 +233,7 @@ export function AppTopBar({
                 variant="ghost"
                 size="icon"
                 onClick={() => setSearchOpen(true)}
-                className="size-8 shrink-0 text-zinc-400 hover:bg-white/10 hover:text-white"
+                className="size-8 shrink-0 text-muted-foreground dark:text-zinc-400 hover:bg-accent dark:hover:bg-white/10 hover:text-foreground dark:hover:text-white"
                 title="Search articles"
               >
                 <Search className="size-4" />
@@ -255,8 +255,8 @@ export function AppTopBar({
                   className={cn(
                     "shrink-0",
                     primary
-                      ? "h-8 gap-1.5 bg-white text-xs font-semibold text-black hover:bg-zinc-200"
-                      : "size-8 text-zinc-400 hover:bg-white/10 hover:text-white",
+                      ? "h-8 gap-1.5 bg-primary dark:bg-white text-xs font-semibold text-primary-foreground dark:text-black hover:bg-primary/90 dark:hover:bg-zinc-200"
+                      : "size-8 text-muted-foreground dark:text-zinc-400 hover:bg-accent dark:hover:bg-white/10 hover:text-foreground dark:hover:text-white",
                   )}
                 >
                   <Icon className={cn("size-4", action.busy && "animate-spin")} />
@@ -276,19 +276,19 @@ export function AppTopBar({
                 <DropdownMenuTrigger
                   aria-label="More"
                   className="inline-flex size-8 shrink-0 items-center justify-center rounded-md
-                    text-zinc-400 transition-colors hover:bg-white/10 hover:text-white lg:hidden"
+                    text-muted-foreground dark:text-zinc-400 transition-colors hover:bg-accent dark:hover:bg-white/10 hover:text-foreground dark:hover:text-white lg:hidden"
                 >
                   <MoreHorizontal className="size-4" />
                 </DropdownMenuTrigger>
                 <DropdownMenuContent
                   align="end"
-                  className="min-w-[200px] rounded-xl border border-zinc-700/60 bg-[#0a0a0a] p-1 text-zinc-200 shadow-2xl"
+                  className="min-w-[200px] rounded-xl border border-border dark:border-zinc-700/60 bg-card dark:bg-[#0a0a0a] p-1 text-foreground dark:text-zinc-200 shadow-2xl"
                 >
                   {overflow.map((action) =>
                     action.kind === "note" ? (
                       <div
                         key={action.id}
-                        className="px-3 py-1.5 text-xs text-zinc-500 tabular-nums"
+                        className="px-3 py-1.5 text-xs text-muted-foreground dark:text-zinc-500 tabular-nums"
                       >
                         {action.text}
                       </div>

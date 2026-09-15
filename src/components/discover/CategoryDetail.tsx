@@ -93,7 +93,7 @@ function SourceBlock({
   return (
     <div
       ref={ref}
-      className="rounded-xl border border-white/5 bg-[#121212] p-5"
+      className="rounded-xl border border-border dark:border-white/5 bg-card dark:bg-[#121212] p-5"
       style={{
         backgroundImage: `linear-gradient(135deg, ${accent}14 0%, transparent 40%)`,
       }}
@@ -108,11 +108,11 @@ function SourceBlock({
         />
         <div className="flex min-w-0 flex-1 flex-col gap-1">
           <div className="flex min-w-0 flex-wrap items-center gap-2">
-            <h3 className="truncate text-base font-bold tracking-tight text-zinc-50">
+            <h3 className="truncate text-base font-bold tracking-tight text-foreground dark:text-zinc-50">
               {card.name}
             </h3>
             {isCollection && (
-              <span className="inline-flex items-center gap-1 rounded-md border border-white/10 bg-white/5 px-1.5 py-0.5 text-[10px] font-semibold tracking-wide text-zinc-300 uppercase">
+              <span className="inline-flex items-center gap-1 rounded-md border border-border dark:border-white/10 bg-muted dark:bg-white/5 px-1.5 py-0.5 text-[10px] font-semibold tracking-wide text-foreground dark:text-zinc-300 uppercase">
                 <Layers className="size-2.5" />
                 {card.feeds.length} {card.feeds.length === 1 ? "feed" : "feeds"}
               </span>
@@ -122,14 +122,14 @@ function SourceBlock({
                 href={siteUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 text-[11px] text-zinc-500 transition-colors hover:text-zinc-200"
+                className="inline-flex items-center gap-1 text-[11px] text-muted-foreground dark:text-zinc-500 transition-colors hover:text-foreground dark:hover:text-zinc-200"
               >
                 <ExternalLink className="size-2.5" />
                 {domainOf(siteUrl)}
               </a>
             )}
           </div>
-          <p className="line-clamp-2 text-xs leading-relaxed text-zinc-400">
+          <p className="line-clamp-2 text-xs leading-relaxed text-muted-foreground dark:text-zinc-400">
             {card.description}
           </p>
         </div>
@@ -137,7 +137,7 @@ function SourceBlock({
         {!isCollection && card.sourceKind === "page" && (
           <span
             title="Articles collected from this website. No native feed used."
-            className="self-center rounded border border-white/10 px-2 py-1 text-[11px] text-zinc-400"
+            className="self-center rounded border border-border dark:border-white/10 px-2 py-1 text-[11px] text-muted-foreground dark:text-zinc-400"
           >
             Website
           </span>
@@ -157,7 +157,7 @@ function SourceBlock({
           {[0, 1, 2, 3].map((i) => (
             <div
               key={i}
-              className="h-[188px] w-[220px] shrink-0 animate-pulse rounded-lg bg-white/[0.04]"
+              className="h-[188px] w-[220px] shrink-0 animate-pulse rounded-lg bg-muted dark:bg-white/[0.04]"
             />
           ))}
         </div>
@@ -184,7 +184,7 @@ function SourceBlock({
                       size={18}
                       className="rounded"
                     />
-                    <span className="truncate text-[11px] font-semibold tracking-wide text-zinc-400 uppercase">
+                    <span className="truncate text-[11px] font-semibold tracking-wide text-muted-foreground dark:text-zinc-400 uppercase">
                       {feed.name}
                     </span>
 
@@ -210,7 +210,7 @@ function SourceBlock({
                 {preview && preview.articles.length > 0 ? (
                   <div>
                     {preview.stale && (
-                      <p className="mb-2 text-xs text-zinc-500">
+                      <p className="mb-2 text-xs text-muted-foreground dark:text-zinc-500">
                         Showing the last saved preview. This source could not be
                         refreshed.
                       </p>
@@ -225,7 +225,7 @@ function SourceBlock({
                     </CategoryRow>
                   </div>
                 ) : (
-                  <div className="flex items-center gap-3 text-xs text-zinc-500">
+                  <div className="flex items-center gap-3 text-xs text-muted-foreground dark:text-zinc-500">
                     <p>
                       {status === "error"
                         ? "Could not load this preview."
@@ -238,7 +238,7 @@ function SourceBlock({
                       preview?.state === "unavailable") && (
                       <button
                         onClick={retry}
-                        className="text-zinc-300 underline underline-offset-4"
+                        className="text-foreground dark:text-zinc-300 underline underline-offset-4"
                         title="Retry preview; publisher requests have a five-minute cooldown"
                       >
                         Retry
@@ -279,7 +279,7 @@ export function CategoryDetail({
         */}
         <Link
           to="/discover"
-          className="mb-3 inline-flex items-center gap-1.5 text-xs font-medium text-zinc-500 transition-colors hover:text-zinc-200"
+          className="mb-3 inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground dark:text-zinc-500 transition-colors hover:text-foreground dark:hover:text-zinc-200"
         >
           <ArrowLeft className="size-3.5" />
           All categories
@@ -289,7 +289,7 @@ export function CategoryDetail({
           {category.name}
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">{category.blurb}</p>
-        <p className="mt-2 text-xs text-zinc-600">
+        <p className="mt-2 text-xs text-muted-foreground dark:text-zinc-600">
           {sourceCount} {sourceCount === 1 ? "source" : "sources"}
         </p>
       </div>

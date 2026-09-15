@@ -1,9 +1,11 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Link, useRouterState } from "@tanstack/react-router"
 import { ChevronRight, Code2, KeyRound, Plug, Webhook } from "lucide-react"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
+
+import { useSidebar } from "@/components/ui/sidebar"
 
 interface DevItem {
   title: string
@@ -33,6 +35,8 @@ export function NavDeveloper() {
   const pathname = useRouterState({ select: (s) => s.location.pathname })
   const sectionActive = pathname.startsWith("/developer")
   const [open, setOpen] = useState(sectionActive)
+  const { isMobile, setOpenMobile } = useSidebar()
+  useEffect(() => { if (sectionActive) setOpen(true) }, [sectionActive])
 
   return (
     <div className="mb-1 px-1 group-data-[collapsible=icon]:hidden">
@@ -41,7 +45,7 @@ export function NavDeveloper() {
           render={
             <button
               type="button"
-              className={`group/dev flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-2 py-2 transition-colors duration-150 ${
+              className={`group/dev flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-2 py-2 outline-none focus-visible:ring-2 focus-visible:ring-ring transition-colors duration-150 ${
                 sectionActive
                   ? "text-sidebar-foreground"
                   : "text-sidebar-foreground/70 hover:bg-sidebar-accent/60"
@@ -63,7 +67,7 @@ export function NavDeveloper() {
         </CollapsibleTrigger>
 
         <CollapsibleContent>
-          <div className="mt-0.5 ml-[26px] flex flex-col gap-0.5 border-l border-sidebar-border pb-1 pl-3">
+          <div className="mt-0.5 ml-4 flex flex-col gap-0.5 border-l border-sidebar-border pb-1 pl-3">
             {ITEMS.map((item) => {
               const isActive = pathname.startsWith(item.href)
 
@@ -87,8 +91,10 @@ export function NavDeveloper() {
                 <Link
                   key={item.title}
                   to={item.href}
+                  onClick={() => { if (isMobile) setOpenMobile(false) }}
                   data-active={isActive}
-                  className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors duration-150 ${
+                  aria-current={isActive ? "page" : undefined}
+                  className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring transition-colors duration-150 ${
                     isActive
                       ? "bg-sidebar-accent font-medium text-sidebar-accent-foreground"
                       : "text-sidebar-foreground/60 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground/90"

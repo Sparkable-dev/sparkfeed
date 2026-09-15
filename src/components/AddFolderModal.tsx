@@ -79,23 +79,24 @@ export function AddFolderModal({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent showCloseButton className="max-w-sm border-white/10 bg-[#181818] text-white">
+      <DialogContent showCloseButton className="max-w-sm border-border bg-popover text-foreground">
         <DialogHeader>
-          <DialogTitle className="text-base font-semibold text-white">
-            New Folder
+          <DialogTitle className="text-base font-semibold text-foreground">
+            New folder
           </DialogTitle>
         </DialogHeader>
 
         <div className="flex flex-col gap-3 px-0.5 py-4">
           <div className="flex flex-col gap-1">
             <Input
+              aria-label="Folder name"
               value={name}
               onChange={(e) => setName(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === "Enter") handleSave()
               }}
               placeholder="Folder Name…"
-              className="h-9 border-white/10 bg-white/5 text-sm text-white placeholder:text-zinc-600 focus-visible:ring-1 focus-visible:ring-white/20 focus-visible:ring-offset-0"
+              className="h-9 border-border bg-muted/50 text-sm text-foreground placeholder:text-muted-foreground focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-0"
               autoFocus
             />
           </div>
@@ -104,7 +105,8 @@ export function AddFolderModal({
             <div className="grid grid-cols-2 gap-2">
               <Button
                 variant={!isPublic ? "default" : "outline"}
-                className={`h-9 w-full justify-center gap-2 ${!isPublic ? "bg-white text-black hover:bg-zinc-200" : "bg-transparent border-white/10 text-zinc-400 hover:text-white"}`}
+                className={`h-9 w-full justify-center gap-2 ${!isPublic ? "bg-primary text-primary-foreground hover:bg-primary/90" : "bg-transparent border-border text-muted-foreground hover:text-foreground"}`}
+                aria-pressed={!isPublic}
                 onClick={() => setIsPublic(false)}
               >
                 <Lock className="h-4 w-4" />
@@ -112,14 +114,15 @@ export function AddFolderModal({
               </Button>
               <Button
                 variant={isPublic ? "default" : "outline"}
-                className={`h-9 w-full justify-center gap-2 ${isPublic ? "bg-white text-black hover:bg-zinc-200" : "bg-transparent border-white/10 text-zinc-400 hover:text-white"}`}
+                className={`h-9 w-full justify-center gap-2 ${isPublic ? "bg-primary text-primary-foreground hover:bg-primary/90" : "bg-transparent border-border text-muted-foreground hover:text-foreground"}`}
+                aria-pressed={isPublic}
                 onClick={() => setIsPublic(true)}
               >
                 <Globe className="h-4 w-4" />
                 Public
               </Button>
             </div>
-            <p className="text-[11px] text-zinc-500 text-center">
+            <p className="text-[11px] text-muted-foreground text-center">
               {!isPublic
                 ? "Only you and people with password can view this folder"
                 : "Anyone with the link can view this folder"}
@@ -129,18 +132,18 @@ export function AddFolderModal({
           {error && <p className="text-xs text-red-400">{error}</p>}
         </div>
 
-        <DialogFooter className="border-t border-white/5 bg-transparent pt-3">
+        <DialogFooter className="border-t border-border bg-transparent pt-3">
           <Button
             variant="ghost"
             onClick={() => handleClose(false)}
-            className="h-8 text-xs text-zinc-400 hover:bg-white/5 hover:text-white"
+            className="h-8 text-xs text-muted-foreground hover:bg-accent hover:text-foreground"
           >
             Cancel
           </Button>
           <Button
             onClick={handleSave}
             disabled={saving}
-            className="h-8 bg-white px-5 text-xs font-semibold text-black hover:bg-zinc-200"
+            className="h-8 bg-primary px-5 text-xs font-semibold text-primary-foreground hover:bg-primary/90"
           >
             {saving ? "Saving…" : "Save"}
           </Button>

@@ -103,7 +103,7 @@ export function FavoriteButton({
       aria-pressed={saved}
       title={label}
       disabled={mutation.isPending}
-      className="inline-flex size-8 items-center justify-center rounded-md text-zinc-400 hover:text-white disabled:opacity-50"
+      className="inline-flex size-8 items-center justify-center rounded-md text-muted-foreground hover:text-foreground dark:text-zinc-400 dark:hover:text-white disabled:opacity-50"
       onClick={(event) => {
         event.stopPropagation()
         if (!workspace) toggleGuest(articleId)

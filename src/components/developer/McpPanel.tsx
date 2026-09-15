@@ -45,16 +45,16 @@ function CodeBlock({ code, label }: { code: string; label: string }) {
 
   return (
     <div className="relative">
-      <pre className="overflow-x-auto rounded-lg border border-zinc-800 bg-black/40 p-3 pr-12 text-[11px] leading-relaxed text-zinc-300">
+      <pre className="overflow-x-auto rounded-lg border border-border dark:border-zinc-800 bg-card dark:bg-black/40 p-3 pr-12 text-[11px] leading-relaxed text-foreground dark:text-zinc-300">
         <code>{code}</code>
       </pre>
       <button
         type="button"
         onClick={onCopy}
         aria-label={`Copy ${label}`}
-        className="absolute top-2 right-2 rounded-md border border-zinc-800 bg-zinc-900 p-1.5 text-zinc-400 transition-colors hover:text-zinc-100"
+        className="absolute top-2 right-2 rounded-md border border-border dark:border-zinc-800 bg-card dark:bg-zinc-900 p-1.5 text-muted-foreground dark:text-zinc-400 transition-colors hover:text-foreground dark:hover:text-zinc-100"
       >
-        {copied ? <Check className="size-3.5 text-emerald-400" /> : <Copy className="size-3.5" />}
+        {copied ? <Check className="size-3.5 text-emerald-700 dark:text-emerald-400" /> : <Copy className="size-3.5" />}
       </button>
     </div>
   )
@@ -100,7 +100,7 @@ export function McpPanel() {
       >
         <CodeBlock code={endpoint} label="Endpoint" />
         {DEMO_MODE && (
-          <p className="mt-3 rounded-lg border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-xs text-amber-300/90">
+          <p className="mt-3 rounded-lg border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300/90">
             This is the demo workspace. The endpoint is read-only, serves cached article text
             only, and is shared by everyone, so it is rate limited. Sign up for a free workspace
             to mint your own key and enable the write tools.
@@ -135,7 +135,7 @@ export function McpPanel() {
         </div>
 
         {suspicious && (
-          <p className="mt-2 flex items-start gap-1.5 text-xs text-amber-300/90">
+          <p className="mt-2 flex items-start gap-1.5 text-xs text-amber-700 dark:text-amber-300/90">
             <AlertTriangle className="mt-px size-3.5 shrink-0" />
             That does not look like a Sparkfeed key — they begin with{" "}
             <code>sfk_live_</code>.
@@ -143,9 +143,9 @@ export function McpPanel() {
         )}
 
         {result?.ok === true && (
-          <div className="mt-3 rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-300/90">
+          <div className="mt-3 rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-700 dark:text-emerald-300/90">
             <p className="font-medium">Connected.</p>
-            <p className="mt-1 text-emerald-300/70">
+            <p className="mt-1 text-emerald-700 dark:text-emerald-300/70">
               This key can call {result.tools.length}{" "}
               {result.tools.length === 1 ? "tool" : "tools"}: {result.tools.join(", ")}
             </p>
@@ -153,11 +153,11 @@ export function McpPanel() {
         )}
 
         {result?.ok === false && (
-          <div className="mt-3 rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-2 text-xs text-red-300/90">
+          <div className="mt-3 rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-2 text-xs text-red-700 dark:text-red-300/90">
             <p className="font-medium">
               Not connected{result.status ? ` (${result.status})` : ""}.
             </p>
-            <p className="mt-1 text-red-300/70">{result.message}</p>
+            <p className="mt-1 text-red-700 dark:text-red-300/70">{result.message}</p>
           </div>
         )}
       </Section>
@@ -175,10 +175,10 @@ export function McpPanel() {
         title="Claude Desktop"
         description="Add a custom connector, point it at the endpoint above, and set one request header. No bridge process, no OAuth."
       >
-        <div className="rounded-lg border border-zinc-800 bg-black/20 p-3 text-xs text-muted-foreground">
+        <div className="rounded-lg border border-border dark:border-zinc-800 bg-card dark:bg-black/20 p-3 text-xs text-muted-foreground">
           <p>
             Settings → Connectors → Add custom connector. Under request headers, set
-            <code className="mx-1 text-zinc-300">Authorization</code>
+            <code className="mx-1 text-foreground dark:text-zinc-300">Authorization</code>
             to:
           </p>
         </div>
@@ -194,10 +194,10 @@ export function McpPanel() {
       </Section>
 
       <Section title="Available tools" description="Write tools appear only if the key carries the articles:write scope.">
-        <ul className="flex flex-col divide-y divide-zinc-800/60">
+        <ul className="flex flex-col divide-y divide-border dark:divide-zinc-800/60">
           {TOOLS.map(([name, desc]) => (
             <li key={name} className="flex flex-col gap-0.5 py-2 first:pt-0 last:pb-0">
-              <code className="text-xs font-medium text-zinc-200">{name}</code>
+              <code className="text-xs font-medium text-foreground dark:text-zinc-200">{name}</code>
               <span className="text-xs text-muted-foreground">{desc}</span>
             </li>
           ))}

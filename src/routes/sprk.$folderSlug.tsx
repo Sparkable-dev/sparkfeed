@@ -150,7 +150,7 @@ function AuthenticatedSharedView({
   // articles alone beats an error page: they came here to read this folder.
   if (!workspaceData) {
     return (
-      <div className="min-h-screen bg-zinc-950 text-white">
+      <div className="min-h-screen bg-card dark:bg-zinc-950 text-foreground dark:text-white">
         <ArticleGrid
           articles={data.articles}
           title={data.folder.name}
@@ -170,20 +170,20 @@ function AuthenticatedSharedView({
       >
         <div className="flex flex-1 flex-col overflow-hidden">
           {canAdd && !addedToWorkspace && (
-            <div className="flex shrink-0 items-center justify-between border-b border-white/5 bg-zinc-900/80 px-4 py-2.5 backdrop-blur-sm">
+            <div className="flex shrink-0 items-center justify-between border-b border-border dark:border-white/5 bg-card dark:bg-zinc-900/80 px-4 py-2.5 backdrop-blur-sm">
               <div className="flex items-center gap-2">
-                <Zap className="h-3.5 w-3.5 shrink-0 text-yellow-400" fill="currentColor" />
-                <span className="text-xs text-zinc-400">
+                <Zap className="h-3.5 w-3.5 shrink-0 text-yellow-700 dark:text-yellow-400" fill="currentColor" />
+                <span className="text-xs text-muted-foreground dark:text-zinc-400">
                   You are viewing a shared {data.kind ?? "folder"}
                 </span>
-                <span className="hidden text-xs text-zinc-600 sm:block">·</span>
-                <span className="hidden text-xs font-medium text-zinc-300 sm:block">
+                <span className="hidden text-xs text-muted-foreground dark:text-zinc-600 sm:block">·</span>
+                <span className="hidden text-xs font-medium text-foreground dark:text-zinc-300 sm:block">
                   {data.folder.name}
                 </span>
               </div>
               <Button
                 size="sm"
-                className="h-7 bg-white text-xs font-semibold text-black hover:bg-zinc-200"
+                className="h-7 bg-primary dark:bg-white text-xs font-semibold text-primary-foreground dark:text-black hover:bg-primary/90 dark:hover:bg-zinc-200"
                 onClick={onAddToWorkspace}
                 disabled={addingToWorkspace || addedToWorkspace}
               >
@@ -279,26 +279,26 @@ function GuestSharedView({
 
 function LoadingSkeleton() {
   return (
-    <div className="flex min-h-screen flex-col bg-zinc-950 font-sans text-white">
-      <header className="sticky top-0 z-40 shrink-0 border-b border-white/10 bg-zinc-950/80 p-4 backdrop-blur-xl">
+    <div className="flex min-h-screen flex-col bg-card dark:bg-zinc-950 font-sans text-foreground dark:text-white">
+      <header className="sticky top-0 z-40 shrink-0 border-b border-border dark:border-white/10 bg-card dark:bg-zinc-950/80 p-4 backdrop-blur-xl">
         <div className="mx-auto max-w-6xl px-4">
-          <Skeleton className="h-8 w-32 bg-white/5" />
+          <Skeleton className="h-8 w-32 bg-muted dark:bg-white/5" />
         </div>
       </header>
       <main className="mx-auto w-full max-w-6xl grow px-8 py-8">
-        <Skeleton className="mb-8 h-10 w-64 bg-white/5" />
+        <Skeleton className="mb-8 h-10 w-64 bg-muted dark:bg-white/5" />
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {[1, 2, 3, 4, 5, 6].map((i) => (
-            <Card key={i} className="overflow-hidden border-white/5 bg-[#161616]">
+            <Card key={i} className="overflow-hidden border-border dark:border-white/5 bg-card dark:bg-[#161616]">
               <CardHeader className="gap-2">
-                <Skeleton className="h-6 w-full bg-white/5" />
-                <Skeleton className="h-4 w-1/2 bg-white/5" />
+                <Skeleton className="h-6 w-full bg-muted dark:bg-white/5" />
+                <Skeleton className="h-4 w-1/2 bg-muted dark:bg-white/5" />
               </CardHeader>
               <CardContent>
-                <Skeleton className="h-16 w-full bg-white/5" />
+                <Skeleton className="h-16 w-full bg-muted dark:bg-white/5" />
               </CardContent>
               <CardFooter>
-                <Skeleton className="h-8 w-24 bg-white/5" />
+                <Skeleton className="h-8 w-24 bg-muted dark:bg-white/5" />
               </CardFooter>
             </Card>
           ))}
@@ -409,7 +409,7 @@ function SharedFolderPage() {
       // the intent from the query string; only the staleness check is lost.
     }
     const back = encodeURIComponent(`/sprk/${folderSlug}?add=1`)
-    window.location.href = `/login?redirect=${back}`
+    window.location.href = `/sign-in?redirect=${back}`
   }, [data?.viewer?.authenticated, entityId, folderSlug, postAddToWorkspace])
 
   const handleAddWithCustomName = () => {
@@ -524,8 +524,8 @@ function SharedFolderPage() {
 
   if (error?.type === "403") {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-zinc-950 p-4 text-white">
-        <Alert variant="destructive" className="max-w-md border-red-900/50 bg-zinc-900 text-red-400">
+      <div className="flex min-h-screen items-center justify-center bg-card dark:bg-zinc-950 p-4 text-foreground dark:text-white">
+        <Alert variant="destructive" className="max-w-md border-red-900/50 bg-card dark:bg-zinc-900 text-red-700 dark:text-red-400">
           <Lock className="h-4 w-4" />
           <AlertTitle>Access Denied</AlertTitle>
           <AlertDescription>{error.message}</AlertDescription>
@@ -541,14 +541,14 @@ function SharedFolderPage() {
   */
   if (privateState) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-zinc-950 p-4 text-white">
-        <Card className="w-full max-w-sm border-zinc-800 bg-zinc-900 shadow-2xl">
+      <div className="flex min-h-screen items-center justify-center bg-card dark:bg-zinc-950 p-4 text-foreground dark:text-white">
+        <Card className="w-full max-w-sm border-border dark:border-zinc-800 bg-card dark:bg-zinc-900 shadow-2xl">
           <CardHeader className="text-center">
-            <div className="mx-auto mb-2 w-fit rounded-full bg-white/5 p-3">
-              <Lock className="h-6 w-6 text-zinc-300" />
+            <div className="mx-auto mb-2 w-fit rounded-full bg-muted dark:bg-white/5 p-3">
+              <Lock className="h-6 w-6 text-foreground dark:text-zinc-300" />
             </div>
-            <p className="text-lg font-semibold text-white">Private folder</p>
-            <p className="text-sm text-zinc-400">
+            <p className="text-lg font-semibold text-foreground dark:text-white">Private folder</p>
+            <p className="text-sm text-muted-foreground dark:text-zinc-400">
               {privateState.hasPassword
                 ? "Enter the password to view it."
                 : "This link is not shared, or sharing has been turned off."}
@@ -558,32 +558,32 @@ function SharedFolderPage() {
             {privateState.hasPassword && (
               <form onSubmit={handlePasswordSubmit} className="flex flex-col gap-3">
                 <div className="relative">
-                  <KeyRound className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-zinc-500" />
+                  <KeyRound className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground dark:text-zinc-500" />
                   <Input
                     type="password"
                     placeholder="Enter password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="border-zinc-800 bg-zinc-950 pl-9 text-white focus-visible:ring-zinc-700"
+                    className="border-input dark:border-zinc-800 bg-card dark:bg-zinc-950 pl-9 text-foreground dark:text-white focus-visible:ring-ring dark:focus-visible:ring-zinc-700"
                     autoFocus
                   />
                 </div>
                 {passwordError && (
-                  <p className="text-center text-xs text-red-400">{passwordError}</p>
+                  <p className="text-center text-xs text-red-700 dark:text-red-400">{passwordError}</p>
                 )}
-                <Button type="submit" className="w-full bg-white text-black hover:bg-zinc-200">
+                <Button type="submit" className="w-full bg-primary dark:bg-white text-primary-foreground dark:text-black hover:bg-primary/90 dark:hover:bg-zinc-200">
                   Unlock
                 </Button>
               </form>
             )}
-            {/* /login bounces straight back to / in demo mode, so offering it
+            {/* /sign-in bounces straight back to / in demo mode, so offering it
                 there would dead-end without explanation. */}
             {!DEMO_MODE && (
               <Button
                 variant="outline"
-                className="w-full border-zinc-700 text-zinc-300 hover:bg-zinc-800 hover:text-white"
+                className="w-full border-border dark:border-zinc-700 text-foreground dark:text-zinc-300 hover:bg-accent dark:hover:bg-zinc-800 hover:text-foreground dark:hover:text-white"
                 onClick={() => {
-                  window.location.href = `/login?redirect=${encodeURIComponent(`/sprk/${folderSlug}`)}`
+                  window.location.href = `/sign-in?redirect=${encodeURIComponent(`/sprk/${folderSlug}`)}`
                 }}
               >
                 Sign in to Sparkfeed
@@ -597,8 +597,8 @@ function SharedFolderPage() {
 
   if (error) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-zinc-950 p-4 text-white">
-        <Alert variant="destructive" className="max-w-md border-red-900/50 bg-zinc-900 text-red-400">
+      <div className="flex min-h-screen items-center justify-center bg-card dark:bg-zinc-950 p-4 text-foreground dark:text-white">
+        <Alert variant="destructive" className="max-w-md border-red-900/50 bg-card dark:bg-zinc-900 text-red-700 dark:text-red-400">
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>Error</AlertTitle>
           <AlertDescription>{error.message}</AlertDescription>

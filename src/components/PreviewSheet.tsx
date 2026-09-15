@@ -209,16 +209,16 @@ function ArticlePreviewSheet({ article, onClose }: PreviewSheetProps) {
         // Inline height wins over the primitive's data-[side=bottom]:h-auto,
         // which has higher specificity than a Tailwind h-* utility class.
         style={{ height: "90vh" }}
-        className="flex flex-col border-t border-white/10 bg-[#111111] p-0"
+        className="flex flex-col border-t border-border dark:border-white/10 bg-card dark:bg-[#111111] p-0"
       >
         <SheetTitle className="sr-only">
           {article?.title ?? "Article preview"}
         </SheetTitle>
 
         {/* Header bar */}
-        <div className="flex h-11 shrink-0 items-center justify-between gap-2 border-b border-white/10 px-3">
+        <div className="flex h-11 shrink-0 items-center justify-between gap-2 border-b border-border dark:border-white/10 px-3">
           <div className="flex max-w-[40%] min-w-0 shrink items-center gap-1">
-            <span className="truncate text-xs font-medium text-zinc-300">
+            <span className="truncate text-xs font-medium text-foreground dark:text-zinc-300">
               {domain}
             </span>
             <a
@@ -231,7 +231,7 @@ function ArticlePreviewSheet({ article, onClose }: PreviewSheetProps) {
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-6 w-6 text-zinc-500 hover:text-white"
+                className="h-6 w-6 text-muted-foreground dark:text-zinc-500 hover:text-foreground dark:hover:text-white"
               >
                 <ExternalLink className="h-3.5 w-3.5" />
               </Button>
@@ -239,15 +239,15 @@ function ArticlePreviewSheet({ article, onClose }: PreviewSheetProps) {
           </div>
 
           {/* Reader / Live segmented toggle */}
-          <div className="flex items-center gap-0.5 rounded-full border border-white/10 bg-white/5 p-0.5">
+          <div className="flex items-center gap-0.5 rounded-full border border-border dark:border-white/10 bg-muted dark:bg-white/5 p-0.5">
             <button
               onClick={() => returnToReader()}
               aria-pressed={mode === "reader"}
               className={cn(
                 "flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition-colors",
                 mode === "reader"
-                  ? "bg-white text-black"
-                  : "text-zinc-400 hover:text-white"
+                  ? "bg-primary dark:bg-white text-primary-foreground dark:text-black"
+                  : "text-muted-foreground dark:text-zinc-400 hover:text-foreground dark:hover:text-white"
               )}
             >
               <BookOpen className="h-3 w-3" />
@@ -267,9 +267,9 @@ function ArticlePreviewSheet({ article, onClose }: PreviewSheetProps) {
               className={cn(
                 "flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition-colors",
                 mode === "live"
-                  ? "bg-white text-black"
-                  : "text-zinc-400 hover:text-white",
-                !!guest && "cursor-not-allowed opacity-40 hover:text-zinc-400"
+                  ? "bg-primary dark:bg-white text-primary-foreground dark:text-black"
+                  : "text-muted-foreground dark:text-zinc-400 hover:text-foreground dark:hover:text-white",
+                !!guest && "cursor-not-allowed opacity-40 hover:text-muted-foreground dark:hover:text-zinc-400"
               )}
             >
               {checkingLive ? (
@@ -296,7 +296,7 @@ function ArticlePreviewSheet({ article, onClose }: PreviewSheetProps) {
               size="icon"
               onClick={onClose}
               aria-label="Close"
-              className="h-6 w-6 text-zinc-500 hover:text-white"
+              className="h-6 w-6 text-muted-foreground dark:text-zinc-500 hover:text-foreground dark:hover:text-white"
             >
               <X className="h-3.5 w-3.5" />
             </Button>
@@ -307,11 +307,11 @@ function ArticlePreviewSheet({ article, onClose }: PreviewSheetProps) {
         <div className="relative min-h-0 flex-1">
           {mode !== "live" && loading ? (
             <div className="flex h-full items-center justify-center">
-              <Loader2 className="h-5 w-5 animate-spin text-zinc-500" />
+              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground dark:text-zinc-500" />
             </div>
           ) : mode === "live" ? (
             <div className="relative h-full">
-              <div className="flex items-center justify-end gap-3 border-b border-white/10 px-3 py-1 text-xs text-zinc-400">
+              <div className="flex items-center justify-end gap-3 border-b border-border dark:border-white/10 px-3 py-1 text-xs text-muted-foreground dark:text-zinc-400">
                 {!frameLoaded && <span role="status">Loading website…</span>}
                 <button
                   className="underline underline-offset-2 focus-visible:outline"
@@ -355,7 +355,7 @@ function ArticlePreviewSheet({ article, onClose }: PreviewSheetProps) {
                   )}
                 >
                   {data?.quality === "summary" && (
-                    <p className="mb-4 text-sm text-zinc-400">
+                    <p className="mb-4 text-sm text-[var(--reader-muted)]">
                       {data.notice === "blocked"
                         ? "This publisher blocked the reader request. Showing the feed summary."
                         : "Summary only. Open the original for the complete article."}
@@ -388,7 +388,7 @@ function ArticlePreviewSheet({ article, onClose }: PreviewSheetProps) {
                   )}
 
                   {article?.image && (
-                    <div className="mb-8 overflow-hidden rounded-xl border border-white/10 bg-white/5">
+                    <div className="mb-8 overflow-hidden rounded-xl border border-[var(--reader-border)] bg-[var(--reader-soft)]">
                       <img
                         src={article.image}
                         alt={article.title}

@@ -468,15 +468,15 @@ export function RSSShell({
       <DropdownMenu>
         <DropdownMenuTrigger
           id="date-filter-btn"
-          className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg border border-zinc-700/60
-            bg-zinc-900/40 px-3 text-xs font-medium text-zinc-300 transition-all hover:bg-zinc-800 hover:text-white"
+          className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg border border-border dark:border-zinc-700/60
+            bg-card dark:bg-zinc-900/40 px-3 text-xs font-medium text-foreground dark:text-zinc-300 transition-all hover:bg-accent dark:hover:bg-zinc-800 hover:text-foreground dark:hover:text-white"
         >
           {selectedOption.label}
           <ChevronDown className="h-3 w-3 opacity-60" />
         </DropdownMenuTrigger>
         <DropdownMenuContent
           align="end"
-          className="min-w-[160px] rounded-xl border border-zinc-700/60 bg-[#0a0a0a] p-1 text-zinc-200 shadow-2xl"
+          className="min-w-[160px] rounded-xl border border-border dark:border-zinc-700/60 bg-card dark:bg-[#0a0a0a] p-1 text-foreground dark:text-zinc-200 shadow-2xl"
         >
           {DATE_FILTER_OPTIONS.map((opt) => {
             const active = dateFilter === opt.value
@@ -488,12 +488,12 @@ export function RSSShell({
                 className={[
                   "flex cursor-pointer items-center justify-between rounded-lg px-3 py-1.5 text-xs transition-colors",
                   active
-                    ? "font-medium text-blue-400 focus:bg-blue-500/10 focus:text-blue-400"
-                    : "text-zinc-400 hover:text-white focus:bg-zinc-800",
+                    ? "font-medium text-blue-700 dark:text-blue-400 focus:bg-blue-500/10 focus:text-blue-700 dark:focus:text-blue-400"
+                    : "text-muted-foreground dark:text-zinc-400 hover:text-foreground dark:hover:text-white focus:bg-accent dark:focus:bg-zinc-800",
                 ].join(" ")}
               >
                 {opt.label}
-                {active && <Check className="h-3.5 w-3.5 text-blue-400" />}
+                {active && <Check className="h-3.5 w-3.5 text-blue-700 dark:text-blue-400" />}
               </DropdownMenuItem>
             )
           })}
@@ -619,7 +619,7 @@ export function RSSShell({
         )}
 
         {degraded && (
-          <div className="mx-4 mb-2 flex items-center gap-2 rounded-md border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-xs text-amber-400">
+          <div className="mx-4 mb-2 flex items-center gap-2 rounded-md border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-400">
             <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
             <span>
               Your articles could not be loaded right now. Your feeds are safe. Try refreshing in a
@@ -642,7 +642,7 @@ export function RSSShell({
         */}
         <div className="flex min-w-0 flex-1 flex-col">
           {favoritesView && favoriteScope === "personal" && !DEMO_MODE && <RecoverFavorites />}
-          {!!scope && !children && pages.isError && <div role="alert" className="m-5 flex items-center gap-3 text-sm text-amber-400">
+          {!!scope && !children && pages.isError && <div role="alert" className="m-5 flex items-center gap-3 text-sm text-amber-700 dark:text-amber-400">
             Articles could not be loaded. Your saved favorites are safe.
             <Button variant="outline" onClick={() => void pages.refetch()}>Retry</Button>
           </div>}
@@ -728,19 +728,19 @@ export function RSSShell({
         open={renameData !== null}
         onOpenChange={() => setRenameData(null)}
       >
-        <DialogContent className="bg-zinc-900 border-zinc-800">
+        <DialogContent className="bg-card dark:bg-zinc-900 border-border dark:border-zinc-800">
           <DialogHeader>
-            <DialogTitle className="text-white">
+            <DialogTitle className="text-foreground dark:text-white">
               Rename {renameData?.type === 'feed' ? 'Feed' : 'Folder'}
             </DialogTitle>
-            <DialogDescription className="text-zinc-400">
+            <DialogDescription className="text-muted-foreground dark:text-zinc-400">
               Enter a new name for "{renameData?.name}"
             </DialogDescription>
           </DialogHeader>
           <Input
             value={newFolderName}
             onChange={(e) => setNewFolderName(e.target.value)}
-            className="bg-zinc-950 border-zinc-800 text-white"
+            className="bg-card dark:bg-zinc-950 border-input dark:border-zinc-800 text-foreground dark:text-white"
             placeholder="Folder name"
             autoFocus
             onKeyDown={(e) => {
@@ -750,13 +750,13 @@ export function RSSShell({
           <DialogFooter>
             <Button
               variant="outline"
-              className="border-zinc-700 text-zinc-300"
+              className="border-border dark:border-zinc-700 text-foreground dark:text-zinc-300"
               onClick={() => setRenameData(null)}
             >
               Cancel
             </Button>
             <Button
-              className="bg-white text-black hover:bg-zinc-200"
+              className="bg-primary dark:bg-white text-primary-foreground dark:text-black hover:bg-primary/90 dark:hover:bg-zinc-200"
               onClick={handleRenameConfirm}
             >
               Rename
@@ -777,7 +777,7 @@ export function RSSShell({
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="border-white/10 text-zinc-400 hover:bg-white/5 hover:text-white">
+            <AlertDialogCancel className="border-border dark:border-white/10 text-muted-foreground dark:text-zinc-400 hover:bg-accent dark:hover:bg-white/5 hover:text-foreground dark:hover:text-white">
               Keep {deleteData?.type}
             </AlertDialogCancel>
             <AlertDialogAction

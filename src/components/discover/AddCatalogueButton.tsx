@@ -162,11 +162,11 @@ export function AddCatalogueButton({
         title={isAdded ? "Already in your workspace" : "Add this feed"}
         className={cn(
           /* Same box as the link and RSS tags beside it — see CHIP there. */
-          "inline-flex shrink-0 items-center gap-1 rounded-md border border-white/10 bg-white/5",
+          "inline-flex shrink-0 items-center gap-1 rounded-md border border-border dark:border-white/10 bg-muted dark:bg-white/5",
           "px-1.5 py-0.5 text-[10px] font-semibold transition-colors disabled:cursor-default",
           isAdded
-            ? "text-zinc-500"
-            : "text-zinc-300 hover:bg-white/10 hover:text-white",
+            ? "text-muted-foreground dark:text-zinc-500"
+            : "text-foreground dark:text-zinc-300 hover:bg-accent dark:hover:bg-white/10 hover:text-foreground dark:hover:text-white",
           className,
         )}
       >
@@ -191,7 +191,7 @@ export function AddCatalogueButton({
         onClick={handleAdd}
         className={
           isAdded
-            ? "h-8 border-zinc-700 text-xs text-zinc-400"
+            ? "h-8 border-border dark:border-zinc-700 text-xs text-muted-foreground dark:text-zinc-400"
             : tone === "secondary"
               ? /*
                   The `dark:` duplicates are load-bearing. The outline variant
@@ -200,10 +200,10 @@ export function AddCatalogueButton({
                   bare form — so `bg-transparent` alone loses to it, leaving a
                   filled button that still read as primary.
                 */
-                "h-8 border-white/30 bg-transparent text-xs font-medium text-zinc-100 " +
-                "hover:border-white/50 hover:bg-white/10 hover:text-white " +
+                "h-8 border-border dark:border-white/30 bg-transparent text-xs font-medium text-foreground dark:text-zinc-100 " +
+                "hover:border-border dark:hover:border-white/50 hover:bg-accent dark:hover:bg-white/10 hover:text-foreground dark:hover:text-white " +
                 "dark:border-white/30 dark:bg-transparent dark:hover:border-white/50 dark:hover:bg-white/10"
-              : "h-8 bg-white text-xs font-semibold text-black hover:bg-zinc-200"
+              : "h-8 bg-primary dark:bg-white text-xs font-semibold text-primary-foreground dark:text-black hover:bg-primary/90 dark:hover:bg-zinc-200"
         }
       >
         {adding ? (
@@ -225,7 +225,7 @@ export function AddCatalogueButton({
       </Button>
 
       {progress && (
-        <span className="text-[10px] text-zinc-500 tabular-nums">
+        <span className="text-[10px] text-muted-foreground dark:text-zinc-500 tabular-nums">
           Fetching articles… {progress.done}/{progress.total}
         </span>
       )}

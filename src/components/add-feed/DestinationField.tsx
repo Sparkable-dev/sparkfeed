@@ -65,7 +65,7 @@ export function DestinationField({
 
   return (
     <div className="flex min-w-0 items-center gap-2">
-      <span className="shrink-0 text-xs text-zinc-500">Add to</span>
+      <span className="shrink-0 text-xs text-muted-foreground dark:text-zinc-500">Add to</span>
 
       {creating ? (
         <div className="flex min-w-0 flex-1 items-center gap-1.5">
@@ -77,14 +77,14 @@ export function DestinationField({
             placeholder={suggestion || "New folder name"}
             aria-label="New folder name"
             onChange={(e) => onChange({ kind: "new", name: e.target.value })}
-            className="h-8 min-w-0 flex-1 rounded-lg border-zinc-700/60 bg-zinc-900/40 text-xs"
+            className="h-8 min-w-0 flex-1 rounded-lg border-input dark:border-zinc-700/60 bg-card dark:bg-zinc-900/40 text-xs"
           />
           <button
             type="button"
             onClick={() => onChange({ kind: "none" })}
             aria-label="Cancel new folder"
-            className="flex size-7 shrink-0 items-center justify-center rounded-md text-zinc-500
-              transition-colors hover:bg-white/10 hover:text-zinc-200"
+            className="flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground dark:text-zinc-500
+              transition-colors hover:bg-accent dark:hover:bg-white/10 hover:text-foreground dark:hover:text-zinc-200"
           >
             <X className="size-3.5" />
           </button>
@@ -103,7 +103,7 @@ export function DestinationField({
           <SelectTrigger
             id="add-feed-folder"
             aria-label="Folder"
-            className="h-8 min-w-0 flex-1 rounded-lg border-zinc-700/60 bg-zinc-900/40 text-xs"
+            className="h-8 min-w-0 flex-1 rounded-lg border-input dark:border-zinc-700/60 bg-card dark:bg-zinc-900/40 text-xs"
           >
             <SelectValue placeholder={UNFILED_DESTINATION} />
           </SelectTrigger>

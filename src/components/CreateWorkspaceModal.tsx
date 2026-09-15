@@ -78,13 +78,13 @@ export function CreateWorkspaceModal({ open, onOpenChange }: CreateWorkspaceModa
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[480px] p-0 overflow-hidden bg-black border-zinc-900 shadow-[0_20px_50px_rgba(0,0,0,0.8)] rounded-xl border-white/5 flex flex-col">
+      <DialogContent className="sm:max-w-[480px] p-0 overflow-hidden bg-card dark:bg-black border-border dark:border-zinc-900 shadow-[0_20px_50px_rgba(0,0,0,0.8)] rounded-xl border-border dark:border-white/5 flex flex-col">
         <div className="p-8">
           <DialogHeader className="mb-8">
-            <DialogTitle className="text-3xl font-black text-zinc-100 tracking-tight">
+            <DialogTitle className="text-3xl font-black text-foreground dark:text-zinc-100 tracking-tight">
               Create Workspace
             </DialogTitle>
-            <DialogDescription className="text-zinc-500 mt-1">
+            <DialogDescription className="text-muted-foreground dark:text-zinc-500 mt-1">
               Set up your new team environment
             </DialogDescription>
           </DialogHeader>
@@ -92,10 +92,10 @@ export function CreateWorkspaceModal({ open, onOpenChange }: CreateWorkspaceModa
           <form onSubmit={handleCreate} className="space-y-8">
             {/* Logo Section */}
             <div className="space-y-4">
-              <Label className="text-[11px] font-bold text-zinc-500 uppercase tracking-widest">Logo</Label>
+              <Label className="text-[11px] font-bold text-muted-foreground dark:text-zinc-500 uppercase tracking-widest">Logo</Label>
               <div className="flex items-center gap-6">
                 <div className="relative group">
-                  <div className="flex h-20 w-20 items-center justify-center rounded-xl border-2 border-dashed border-zinc-800 bg-zinc-900/30 text-zinc-500 shadow-xl overflow-hidden">
+                  <div className="flex h-20 w-20 items-center justify-center rounded-xl border-2 border-dashed border-border dark:border-zinc-800 bg-card dark:bg-zinc-900/30 text-muted-foreground dark:text-zinc-500 shadow-xl overflow-hidden">
                     {logo ? (
                       <img src={logo} alt="Preview" className="h-full w-full object-cover" />
                     ) : (
@@ -116,7 +116,7 @@ export function CreateWorkspaceModal({ open, onOpenChange }: CreateWorkspaceModa
                       type="button"
                       variant="outline"
                       onClick={() => fileInputRef.current?.click()}
-                      className="h-10 px-6 rounded-xl border-zinc-800 bg-white/5 text-xs font-bold hover:bg-white/10 transition-all"
+                      className="h-10 px-6 rounded-xl border-border dark:border-zinc-800 bg-muted dark:bg-white/5 text-xs font-bold hover:bg-accent dark:hover:bg-white/10 transition-all"
                     >
                       Upload Picture
                     </Button>
@@ -125,13 +125,13 @@ export function CreateWorkspaceModal({ open, onOpenChange }: CreateWorkspaceModa
                         type="button"
                         variant="ghost"
                         onClick={() => setLogo(null)}
-                        className="h-10 px-4 rounded-xl text-xs font-bold text-red-500 hover:text-red-400 hover:bg-red-500/10 transition-all"
+                        className="h-10 px-4 rounded-xl text-xs font-bold text-red-500 hover:text-red-700 dark:hover:text-red-400 hover:bg-red-500/10 transition-all"
                       >
                         Remove
                       </Button>
                     )}
                   </div>
-                  <p className="text-[10px] text-zinc-600 font-medium">Recommended size 1:1, up to 10MB.</p>
+                  <p className="text-[10px] text-muted-foreground dark:text-zinc-600 font-medium">Recommended size 1:1, up to 10MB.</p>
                 </div>
               </div>
             </div>
@@ -139,25 +139,25 @@ export function CreateWorkspaceModal({ open, onOpenChange }: CreateWorkspaceModa
             {/* Form Fields */}
             <div className="space-y-6">
               <div className="space-y-2">
-                <Label htmlFor="name" className="text-[11px] font-bold text-zinc-500 uppercase tracking-widest">Workspace Name</Label>
+                <Label htmlFor="name" className="text-[11px] font-bold text-muted-foreground dark:text-zinc-500 uppercase tracking-widest">Workspace Name</Label>
                 <Input
                   id="name"
                   placeholder="e.g. Acme Corp"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="h-12 rounded-xl border-zinc-800 bg-zinc-950/50 px-4 text-zinc-100 placeholder:text-zinc-600 border-white/5 focus:ring-2 focus:ring-blue-500/20 transition-all"
+                  className="h-12 rounded-xl border-input dark:border-zinc-800 bg-card dark:bg-zinc-950/50 px-4 text-foreground dark:text-zinc-100 placeholder:text-muted-foreground dark:placeholder:text-zinc-600 border-input dark:border-white/5 focus:ring-2 focus:ring-blue-500/20 transition-all"
                   required
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="slug" className="text-[11px] font-bold text-zinc-500 uppercase tracking-widest">Workspace Slug</Label>
+                <Label htmlFor="slug" className="text-[11px] font-bold text-muted-foreground dark:text-zinc-500 uppercase tracking-widest">Workspace Slug</Label>
                 <Input
                   id="slug"
                   placeholder="acme-corp"
                   value={slug}
                   onChange={(e) => setSlug(e.target.value)}
-                  className="h-12 rounded-xl border-zinc-800 bg-zinc-950/50 px-4 text-zinc-100 placeholder:text-zinc-600 border-white/5 focus:ring-2 focus:ring-blue-500/20 transition-all"
+                  className="h-12 rounded-xl border-input dark:border-zinc-800 bg-card dark:bg-zinc-950/50 px-4 text-foreground dark:text-zinc-100 placeholder:text-muted-foreground dark:placeholder:text-zinc-600 border-input dark:border-white/5 focus:ring-2 focus:ring-blue-500/20 transition-all"
                   required
                 />
               </div>
@@ -181,11 +181,11 @@ export function CreateWorkspaceModal({ open, onOpenChange }: CreateWorkspaceModa
         </div>
 
         {/* Footer */}
-        <div className="mt-auto border-t border-zinc-900/50 bg-zinc-950/50 p-6 flex items-center justify-center gap-2">
-          <span className="text-[10px] font-bold text-zinc-600 uppercase tracking-widest">Powered by</span>
-          <div className="flex items-center gap-1.5 text-zinc-400">
+        <div className="mt-auto border-t border-border dark:border-zinc-900/50 bg-card dark:bg-zinc-950/50 p-6 flex items-center justify-center gap-2">
+          <span className="text-[10px] font-bold text-muted-foreground dark:text-zinc-600 uppercase tracking-widest">Powered by</span>
+          <div className="flex items-center gap-1.5 text-muted-foreground dark:text-zinc-400">
             <Sparkles className="h-3 w-3 text-blue-500 fill-blue-500" />
-            <span className="text-[11px] font-black tracking-tight text-zinc-200">SPARKFEED</span>
+            <span className="text-[11px] font-black tracking-tight text-foreground dark:text-zinc-200">SPARKFEED</span>
           </div>
         </div>
       </DialogContent>

@@ -33,7 +33,7 @@ export const ROW_GRID =
  */
 export const STATUS_STYLE: Record<SourceStatus, { dot: string; label: string }> = {
   broken: { dot: "bg-amber-400", label: "Not fetching" },
-  quiet: { dot: "bg-zinc-600", label: "Quiet" },
+  quiet: { dot: "bg-accent dark:bg-zinc-600", label: "Quiet" },
   new: { dot: "bg-blue-400/70", label: "New" },
   active: { dot: "bg-emerald-400/80", label: "Active" },
 }
@@ -64,7 +64,7 @@ export function DragHandle({
       type="button"
       aria-label={label}
       className="flex size-5 shrink-0 cursor-grab touch-none items-center justify-center rounded
-        text-zinc-700 transition-colors hover:text-zinc-300 focus-visible:text-zinc-200
+        text-muted-foreground dark:text-zinc-700 transition-colors hover:text-foreground dark:hover:text-zinc-300 focus-visible:text-foreground dark:focus-visible:text-zinc-200
         focus-visible:outline-1 focus-visible:outline-white/40 active:cursor-grabbing"
       {...props}
     >
@@ -76,8 +76,8 @@ export function DragHandle({
 export function SourcesColumnHeader() {
   return (
     <div
-      className={`${ROW_GRID} border-b border-white/[0.06] px-3 pb-2 text-[10px]
-        font-semibold tracking-wide text-zinc-600 uppercase`}
+      className={`${ROW_GRID} border-b border-border dark:border-white/[0.06] px-3 pb-2 text-[10px]
+        font-semibold tracking-wide text-muted-foreground dark:text-zinc-600 uppercase`}
     >
       <span aria-hidden="true" className="size-5" />
       <span>Source</span>
@@ -121,33 +121,33 @@ export function FolderRowView({
           onClick={onToggle}
           aria-expanded={open}
           aria-label={open ? `Collapse ${folder.name}` : `Expand ${folder.name}`}
-          className="flex size-4 shrink-0 items-center justify-center text-zinc-500 hover:text-zinc-200"
+          className="flex size-4 shrink-0 items-center justify-center text-muted-foreground dark:text-zinc-500 hover:text-foreground dark:hover:text-zinc-200"
         >
           <ChevronRight
             className={`size-3.5 transition-transform duration-200 ${open ? "rotate-90" : ""}`}
           />
         </button>
-        <Folder className="size-3.5 shrink-0 text-zinc-500" />
+        <Folder className="size-3.5 shrink-0 text-muted-foreground dark:text-zinc-500" />
         {folder.isRealFolder ? (
           <Link
             to={folder.href}
-            className="min-w-0 truncate text-sm font-semibold text-zinc-100 hover:underline"
+            className="min-w-0 truncate text-sm font-semibold text-foreground dark:text-zinc-100 hover:underline"
           >
             {folder.name}
           </Link>
         ) : (
           // Not a link to itself: the bucket is a rendering device, not a place.
-          <span className="min-w-0 truncate text-sm font-semibold text-zinc-400">
+          <span className="min-w-0 truncate text-sm font-semibold text-muted-foreground dark:text-zinc-400">
             {folder.name}
           </span>
         )}
-        <span className="shrink-0 text-xs text-zinc-600">
+        <span className="shrink-0 text-xs text-muted-foreground dark:text-zinc-600">
           {/* The count is the first thing to yield when the name has no room. */}
           <span className="hidden sm:inline">
             {folder.feeds.length} {folder.feeds.length === 1 ? "feed" : "feeds"}
           </span>
           {attentionCount > 0 && (
-            <span className="text-amber-400/80 sm:ml-1.5">
+            <span className="text-amber-700 dark:text-amber-400/80 sm:ml-1.5">
               <span className="hidden sm:inline">· </span>
               {attentionCount} {attentionCount === 1 ? "needs" : "need"} a look
             </span>
@@ -182,7 +182,7 @@ export function FeedRowView({
 
   return (
     <div
-      className={`${ROW_GRID} rounded-lg py-1.5 pr-3 pl-9 text-xs transition-colors hover:bg-white/[0.03]`}
+      className={`${ROW_GRID} rounded-lg py-1.5 pr-3 pl-9 text-xs transition-colors hover:bg-accent dark:hover:bg-white/[0.03]`}
     >
       {handle}
 
@@ -192,7 +192,7 @@ export function FeedRowView({
           title={style.label}
           className={`size-1.5 shrink-0 rounded-full ${style.dot}`}
         />
-        <Link to={feed.href} className="min-w-0 truncate font-medium text-zinc-200 hover:underline">
+        <Link to={feed.href} className="min-w-0 truncate font-medium text-foreground dark:text-zinc-200 hover:underline">
           {feed.name}
         </Link>
         {/*
@@ -208,9 +208,9 @@ export function FeedRowView({
         there is no interval to average, and a feed we have held for two days
         genuinely has nothing to report.
       */}
-      <span className="hidden text-zinc-500 tabular-nums sm:block">{gap ?? "no data"}</span>
+      <span className="hidden text-muted-foreground dark:text-zinc-500 tabular-nums sm:block">{gap ?? "no data"}</span>
 
-      <span className="flex items-center justify-end gap-1.5 text-zinc-500 tabular-nums sm:justify-start">
+      <span className="flex items-center justify-end gap-1.5 text-muted-foreground dark:text-zinc-500 tabular-nums sm:justify-start">
         {health?.lastPostAt ? timeAgo(health.lastPostAt) : "Never"}
         {status === "broken" && (
           <button
@@ -219,8 +219,8 @@ export function FeedRowView({
             disabled={retrying}
             title="Retry now"
             aria-label={`Retry ${feed.name}`}
-            className="inline-flex size-5 items-center justify-center rounded text-amber-400/90
-              transition-colors hover:bg-white/10 hover:text-amber-300 disabled:opacity-50"
+            className="inline-flex size-5 items-center justify-center rounded text-amber-700 dark:text-amber-400/90
+              transition-colors hover:bg-accent dark:hover:bg-white/10 hover:text-amber-700 dark:hover:text-amber-300 disabled:opacity-50"
           >
             <RefreshCw className={`size-3 ${retrying ? "animate-spin" : ""}`} />
           </button>

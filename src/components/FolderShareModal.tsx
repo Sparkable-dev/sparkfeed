@@ -36,13 +36,13 @@ export function FolderShareModal({
 }: FolderShareModalProps) {
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="border-white/10 bg-zinc-950 text-white sm:max-w-md">
+      <DialogContent className="border-border bg-background text-foreground sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Globe className="h-5 w-5 text-zinc-400" />
+            <Globe className="h-5 w-5 text-muted-foreground" />
             Share "{folderName}"
           </DialogTitle>
-          <DialogDescription className="text-zinc-400">
+          <DialogDescription className="text-muted-foreground">
             Share this {type} via link. You can optionally protect it with a
             password.
           </DialogDescription>
@@ -57,10 +57,10 @@ export function FolderShareModal({
           />
         )}
 
-        <div className="mt-2 flex justify-end border-t border-white/10 pt-4">
+        <div className="mt-2 flex justify-end border-t border-border pt-4">
           <Button
             variant="outline"
-            className="border-white/10 text-zinc-300 hover:bg-white/10 hover:text-white"
+            className="border-border text-foreground hover:bg-accent hover:text-foreground"
             onClick={onClose}
           >
             Done

@@ -118,7 +118,7 @@ export async function customerOperation(raw: unknown, actor: Actor) {
             429,
             "An invitation was just sent. Wait a minute before resending."
           )
-        const url = applicationUrl("/signup")
+        const url = applicationUrl("/sign-up")
         url.searchParams.set("email", input.email)
         await sendCustomerInviteEmail(
           input.email,

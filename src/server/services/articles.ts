@@ -1,6 +1,6 @@
 import { and, desc, eq, gte, lte, sql } from 'drizzle-orm'
-import { extractReadable, sanitizeArticleHtml } from '../utils/extract'
-import { safeFetchText } from '../utils/fetch'
+import { sanitizeArticleHtml } from '../utils/extract'
+import { loadReaderPreview } from '../utils/reader-preview'
 import { htmlToMarkdown, htmlToPlainText } from './markdown'
 import { decodeArticleId, decodeId, encodeId } from './ids'
 import { articleInWorkspace } from './tenancy'
@@ -181,6 +181,9 @@ export async function getArticle(principal: ApiPrincipal, args: GetArticleArgs) 
       link: articles.link,
       content: articles.content,
       contentErrorAt: articles.contentErrorAt,
+      contentSource: articles.contentSource,
+      feedUrl: feeds.url,
+      sourceKind: feeds.kind,
       description: articles.description,
       publishedAt: articles.publishedAt,
       createdAt: articles.createdAt,
@@ -196,23 +199,17 @@ export async function getArticle(principal: ApiPrincipal, args: GetArticleArgs) 
   let html = row.content ?? null
   let quality: 'extracted' | 'rss_description' | 'failed' = 'extracted'
 
-  if (!html && !principal.demo && (!row.contentErrorAt || Date.now() - Date.parse(row.contentErrorAt) > 15 * 60_000)) {
-    try {
-      const { res, text, finalUrl } = await safeFetchText(row.link, { timeoutMs: 8000 })
-      if (!res.ok) throw new Error(`Article returned ${res.status}`)
-      const extracted = extractReadable(text, finalUrl || row.link)
-      if (extracted) {
-        html = extracted.contentHtml
-        // Best-effort cache so the next reader (agent or human) is instant.
-        await db
-          .update(articles)
-          .set({ content: html, contentFetchedAt: new Date().toISOString(), contentSource: 'extracted', contentErrorAt: null })
-          .where(and(eq(articles.id, raw), articleInWorkspace(principal.workspaceId)))
-          .catch(() => {})
-      } else throw new Error('No readable article found')
-    } catch {
-      await db.update(articles).set({ contentErrorAt: new Date().toISOString() }).where(and(eq(articles.id, raw), articleInWorkspace(principal.workspaceId))).catch(() => {})
-      // Fall through to the description.
+  if (!principal.demo) {
+    const preview = await loadReaderPreview({
+      ...row,
+      feedUrl: row.sourceKind === 'page' ? null : row.feedUrl,
+    })
+    html = preview.readerHtml
+    if (preview.quality === 'summary') quality = 'rss_description'
+    if (preview.cacheUpdate) {
+      await db.update(articles).set(preview.cacheUpdate)
+        .where(and(eq(articles.id, raw), articleInWorkspace(principal.workspaceId)))
+        .catch(() => {})
     }
   }
 

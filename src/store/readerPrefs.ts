@@ -16,10 +16,12 @@ interface ReaderPrefsStore {
   fontScale: number
   width: ReaderWidth
   theme: ReaderTheme
+  zenMode: boolean
   increaseFont: () => void
   decreaseFont: () => void
   setWidth: (w: ReaderWidth) => void
   setTheme: (t: ReaderTheme) => void
+  setZenMode: (enabled: boolean) => void
 }
 
 // Persisted reader-view preferences — shared across every article the user opens.
@@ -29,10 +31,14 @@ export const useReaderPrefs = create<ReaderPrefsStore>()(
       fontScale: 1,
       width: "narrow",
       theme: "dark",
-      increaseFont: () => set({ fontScale: clampFont(get().fontScale + FONT_STEP) }),
-      decreaseFont: () => set({ fontScale: clampFont(get().fontScale - FONT_STEP) }),
+      zenMode: false,
+      increaseFont: () =>
+        set({ fontScale: clampFont(get().fontScale + FONT_STEP) }),
+      decreaseFont: () =>
+        set({ fontScale: clampFont(get().fontScale - FONT_STEP) }),
       setWidth: (width) => set({ width }),
       setTheme: (theme) => set({ theme }),
+      setZenMode: (zenMode) => set({ zenMode }),
     }),
     { name: "rss-reader-prefs" }
   )

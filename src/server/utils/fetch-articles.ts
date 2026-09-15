@@ -3,7 +3,7 @@ import { and, eq, inArray, or } from "drizzle-orm"
 import { parseSyndication } from "./parse-feed"
 import { safeFetchText } from "./fetch"
 import { safeParseDate } from "./dates"
-import { extractSocialImage, sanitizeArticleHtml } from "./extract"
+import { acceptFeedReaderContent, extractSocialImage, sanitizeArticleHtml } from "./extract"
 import { decodeEntities } from "./entities"
 import { mapWithConcurrency } from "./concurrency"
 import type { FeedItem } from "./parse-feed"
@@ -305,7 +305,7 @@ async function ingestFeed(
     seen.add(key)
     // Many feeds ship the full article body in <content:encoded>. Capture and
     // sanitize it now (free full-content) so the reader preview needs no fetch.
-    const fullHtml = item.contentEncoded
+    const feedHtml = item.contentEncoded
       ? sanitizeArticleHtml(item.contentEncoded, item.link)
       : null
 
@@ -313,6 +313,7 @@ async function ingestFeed(
       const existing =
         (item.sourceId ? bySource.get(item.sourceId) : undefined) ??
         byLink.get(item.link)
+      const fullHtml = acceptFeedReaderContent(feedHtml, existing?.content)
       const id = existing?.id ?? randomUUID()
       const values = {
         feedId,

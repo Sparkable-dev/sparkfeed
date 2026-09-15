@@ -1,6 +1,25 @@
 import sanitizeHtml from "sanitize-html"
 import { parseHTML } from "linkedom"
 import { Readability } from "@mozilla/readability"
+import { structuredArticle } from "./structured-article"
+
+const EXTRACTION_PREFIX = '<div data-reader-version="3">'
+export function hasCurrentReaderExtraction(html: string) {
+  return html.startsWith(EXTRACTION_PREFIX)
+}
+
+export function articleText(html: string) {
+  return parseHTML(`<div>${html}</div>`)
+    .document.documentElement.textContent.replace(/\s+/g, " ")
+    .trim()
+}
+
+/** Feed refreshes may regress to teasers; keep a more complete saved body. */
+export function acceptFeedReaderContent(incoming: string | null, saved?: string | null) {
+  if (!incoming?.trim()) return null
+  if (saved && (readerContentEndsAtHeading(incoming) || articleText(incoming).length < articleText(saved).length)) return null
+  return incoming
+}
 
 function resolveUrl(url: string, base?: string): string {
   if (!base) return url
@@ -18,6 +37,15 @@ function resolveUrl(url: string, base?: string): string {
  * and forces external links to open in a new tab.
  */
 export function sanitizeArticleHtml(html: string, baseUrl?: string): string {
+  const embeddedFallback = () => ({
+    tagName: "a",
+    attribs: {
+      ...(baseUrl ? { href: baseUrl } : {}),
+      target: "_blank",
+      rel: "noopener noreferrer",
+    },
+    text: "View embedded media on the original page",
+  })
   return sanitizeHtml(html, {
     allowedTags: sanitizeHtml.defaults.allowedTags.concat([
       "img",
@@ -27,6 +55,9 @@ export function sanitizeArticleHtml(html: string, baseUrl?: string): string {
       "source",
       "h1",
       "h2",
+      "video",
+      "audio",
+      "track",
     ]),
     allowedAttributes: {
       ...sanitizeHtml.defaults.allowedAttributes,
@@ -41,14 +72,28 @@ export function sanitizeArticleHtml(html: string, baseUrl?: string): string {
         "height",
         "loading",
         "referrerpolicy",
+        "data-reader-image-theme",
       ],
       source: ["src", "srcset", "type", "media", "sizes"],
+      video: [
+        "src",
+        "poster",
+        "controls",
+        "preload",
+        "playsinline",
+        "width",
+        "height",
+      ],
+      audio: ["src", "controls", "preload"],
+      track: ["src", "kind", "srclang", "label", "default"],
       "*": ["id"],
     },
     // Drop tags we never want in a reader view, and their contents.
-    exclusiveFilter: (frame) =>
-      frame.tag === "script" || frame.tag === "style" || frame.tag === "iframe",
+    exclusiveFilter: (frame) => frame.tag === "script" || frame.tag === "style",
     transformTags: {
+      iframe: embeddedFallback,
+      object: embeddedFallback,
+      embed: embeddedFallback,
       a: (tagName, attribs) => {
         const href = attribs.href
           ? resolveUrl(attribs.href, baseUrl)
@@ -64,16 +109,23 @@ export function sanitizeArticleHtml(html: string, baseUrl?: string): string {
         }
       },
       img: (tagName, attribs) => {
-        const src = attribs.src ? resolveUrl(attribs.src, baseUrl) : undefined
+        const lazySrc =
+          attribs["data-src"] ||
+          attribs["data-original"] ||
+          attribs["data-lazy-src"]
+        const rawSrc =
+          lazySrc && (!attribs.src || /^(data:|about:blank)/i.test(attribs.src))
+            ? lazySrc
+            : attribs.src
+        const src = rawSrc ? resolveUrl(rawSrc, baseUrl) : undefined
+        const srcset = attribs["data-srcset"] || attribs.srcset
         return {
           tagName,
           attribs: {
             ...attribs,
             ...(src ? { src } : {}),
             loading: "lazy",
-            ...(attribs.srcset
-              ? { srcset: resolveSrcset(attribs.srcset, baseUrl) }
-              : {}),
+            ...(srcset ? { srcset: resolveSrcset(srcset, baseUrl) } : {}),
             referrerpolicy: "no-referrer",
           },
         }
@@ -83,13 +135,152 @@ export function sanitizeArticleHtml(html: string, baseUrl?: string): string {
         attribs: {
           ...attribs,
           ...(attribs.src ? { src: resolveUrl(attribs.src, baseUrl) } : {}),
-          ...(attribs.srcset
-            ? { srcset: resolveSrcset(attribs.srcset, baseUrl) }
+          ...(attribs.srcset || attribs["data-srcset"]
+            ? {
+                srcset: resolveSrcset(
+                  attribs["data-srcset"] || attribs.srcset,
+                  baseUrl
+                ),
+              }
             : {}),
+        },
+      }),
+      video: (tagName, attribs) => ({
+        tagName,
+        attribs: {
+          ...attribs,
+          controls: "",
+          preload: "none",
+          playsinline: "",
+          ...(attribs.src ? { src: resolveUrl(attribs.src, baseUrl) } : {}),
+          ...(attribs.poster
+            ? { poster: resolveUrl(attribs.poster, baseUrl) }
+            : {}),
+        },
+      }),
+      audio: (tagName, attribs) => ({
+        tagName,
+        attribs: {
+          ...attribs,
+          controls: "",
+          preload: "none",
+          ...(attribs.src ? { src: resolveUrl(attribs.src, baseUrl) } : {}),
+        },
+      }),
+      track: (tagName, attribs) => ({
+        tagName,
+        attribs: {
+          ...attribs,
+          ...(attribs.src ? { src: resolveUrl(attribs.src, baseUrl) } : {}),
         },
       }),
     },
   })
+}
+
+/** A heading with no following body is evidence that extraction may have stopped early. */
+export function readerContentEndsAtHeading(html: string): boolean {
+  const { document } = parseHTML(html)
+  const blocks = Array.from(
+    document.querySelectorAll(
+      "h1,h2,h3,h4,h5,h6,p,li,pre,blockquote,table,img,video,audio,iframe,a"
+    )
+  ).filter(
+    (element) =>
+      !(element.tagName === "A" && element.closest("h1,h2,h3,h4,h5,h6")) &&
+      (element.textContent?.trim() ||
+        /^(IMG|VIDEO|AUDIO|IFRAME)$/.test(element.tagName))
+  )
+  return /^H[1-6]$/.test(blocks.at(-1)?.tagName ?? "")
+}
+
+function prepareReaderMedia(
+  document: ReturnType<typeof parseHTML>["document"]
+) {
+  // Readability's lazy-image heuristic misses extensionless URLs and SVGs.
+  for (const image of document.querySelectorAll("img")) {
+    const lazy =
+      image.getAttribute("data-src") ||
+      image.getAttribute("data-original") ||
+      image.getAttribute("data-lazy-src")
+    const src = image.getAttribute("src")
+    if (lazy && (!src || /^(data:|about:blank)/i.test(src)))
+      image.setAttribute("src", lazy)
+    const srcset = image.getAttribute("data-srcset")
+    if (srcset) image.setAttribute("srcset", srcset)
+  }
+  // Preserve alternate versions of the same illustration without showing it twice.
+  for (const dark of document.querySelectorAll("img.dark-mode-alternative")) {
+    const light = Array.from(
+      dark.parentElement?.querySelectorAll("img.light-mode") ?? []
+    ).find((image) => image.getAttribute("alt") === dark.getAttribute("alt"))
+    if (light) {
+      light.setAttribute("data-reader-image-theme", "light")
+      dark.setAttribute("data-reader-image-theme", "dark")
+    }
+  }
+}
+
+function recoverSplitArticle(
+  html: string,
+  originalContent: string
+): string | null {
+  const { document } = parseHTML(html)
+  const originalText =
+    parseHTML(originalContent)
+      .document.documentElement?.textContent?.replace(/\s+/g, " ")
+      .trim() ?? ""
+  const signature = Array.from(
+    parseHTML(originalContent).document.querySelectorAll("p")
+  )
+    .map((element) => element.textContent.replace(/\s+/g, " ").trim())
+    .find((text) => text.length >= 100)
+    ?.slice(0, 160)
+  const root = Array.from(
+    document.querySelectorAll('[itemprop="articleBody"],article,main')
+  ).find(
+    (element) =>
+      signature && element.textContent.replace(/\s+/g, " ").includes(signature)
+  )
+  if (!root || !signature || originalText.length < 160) return null
+  prepareReaderMedia(document)
+  // Keep semantic content and let Readability still filter menus/related links.
+  // Work inside the article, never flatten navigation or a multi-article index.
+  if (root.tagName === "MAIN" && root.querySelectorAll("article").length > 1)
+    return null
+  document.body.replaceChildren(root)
+  for (const wrapper of Array.from(root.querySelectorAll("div,section"))) {
+    if (wrapper.closest("figure,table,pre,code,nav,aside,footer,form")) continue
+    if (
+      /(comment|related|sidebar|sponsor|social|share|newsletter|promo)/i.test(
+        wrapper.className
+      )
+    )
+      continue
+    if (wrapper.id) {
+      const anchor = document.createElement("a")
+      anchor.id = wrapper.id
+      wrapper.prepend(anchor)
+    }
+    wrapper.replaceWith(...wrapper.childNodes)
+  }
+  const recovered = new Readability(document).parse()
+  if (!recovered?.content || readerContentEndsAtHeading(recovered.content))
+    return null
+  const recoveredText = recovered.textContent?.replace(/\s+/g, " ").trim() ?? ""
+  const lastParagraph = Array.from(
+    parseHTML(originalContent).document.querySelectorAll("p")
+  )
+    .map((element) => element.textContent.replace(/\s+/g, " ").trim())
+    .filter((text) => text.length >= 100)
+    .at(-1)
+    ?.slice(0, 160)
+  const requiredGain = readerContentEndsAtHeading(originalContent) ? 1 : 1.15
+  return recoveredText.includes(signature) &&
+    (!lastParagraph || recoveredText.includes(lastParagraph)) &&
+    recoveredText.length > originalText.length * requiredGain
+    ? recovered.content
+    : null
 }
 
 function resolveSrcset(value: string | undefined, base?: string): string {
@@ -137,9 +328,7 @@ export interface ReadableResult {
 
 /** The minimal DOM surface these readers need, so tests can pass a stub. */
 interface QueryableDocument {
-  querySelector: (
-    selector: string
-  ) => {
+  querySelector: (selector: string) => {
     getAttribute: (name: string) => string | null
     textContent?: string | null
   } | null
@@ -301,21 +490,46 @@ export function extractReadable(
     // published date both live.
     const image = readSocialImage(document, baseUrl)
     const publishedAt = extractPublishedAt(document)
+    const structured = structuredArticle(document, baseUrl)
+    const modular =
+      document.querySelectorAll("main section,article section").length > 1 ||
+      !!document.querySelector('[itemprop="articleBody"]')
 
+    prepareReaderMedia(document)
     const reader = new Readability(document)
-    const article = reader.parse()
-    if (!article?.content) return null
-    const contentHtml = sanitizeArticleHtml(article.content, baseUrl)
+    let article
+    try {
+      article = reader.parse()
+    } catch {
+      article = null
+    }
+    const recovered =
+      article?.content &&
+      (modular || readerContentEndsAtHeading(article.content))
+        ? recoverSplitArticle(html, article.content)
+        : null
+    let contentHtml = sanitizeArticleHtml(
+      recovered ?? article?.content ?? "",
+      baseUrl
+    )
+    const structuredHtml = structured
+      ? sanitizeArticleHtml(structured.content, baseUrl)
+      : ""
+    const useStructured =
+      !!structuredHtml &&
+      articleText(structuredHtml).length >
+        articleText(contentHtml).length * 1.15
+    if (useStructured) contentHtml = structuredHtml
     if (!contentHtml.trim()) return null
 
     return {
-      title: article.title ?? null,
-      contentHtml,
-      byline: article.byline?.trim() || null,
-      excerpt: article.excerpt?.trim() || null,
-      image,
+      title: (useStructured && structured?.title) || article?.title || structured?.title || null,
+      contentHtml: `${EXTRACTION_PREFIX}${contentHtml}</div>`,
+      byline: article?.byline?.trim() || structured?.byline || null,
+      excerpt: article?.excerpt?.trim() || structured?.excerpt || null,
+      image: image || structured?.image || null,
       publishedAt,
-      length: article.length ?? 0,
+      length: articleText(contentHtml).length,
     }
   } catch {
     return null

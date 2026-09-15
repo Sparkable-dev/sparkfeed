@@ -630,7 +630,244 @@
   text-align: left;
 }
 .reader-prose th { background: var(--reader-soft); color: var(--reader-heading); }
+.reader-prose audio { width: 100%; margin-block: 1.5em; }
+.reader-surface [data-reader-image-theme="light"] { display: none; }
+.reader-surface[data-reader-theme="light"] [data-reader-image-theme="light"],
+.reader-surface[data-reader-theme="sepia"] [data-reader-image-theme="light"] { display: block; }
+.reader-surface[data-reader-theme="light"] [data-reader-image-theme="dark"],
+.reader-surface[data-reader-theme="sepia"] [data-reader-image-theme="dark"] { display: none; }
+.reader-surface [data-reader-media-failed] { display: none !important; }
+.reader-media-fallback {
+  margin-block: 1rem;
+  padding: 1rem;
+  border: 1px solid var(--reader-border);
+  border-radius: 8px;
+  color: var(--reader-muted);
+  font-size: 0.875rem;
+  overflow-wrap: anywhere;
+}
+.reader-media-fallback a { color: var(--reader-link); text-decoration: underline; }
+
+/* Contents stay in the reader gutter without changing the article's width. */
+.reader-contents {
+  position: absolute;
+  z-index: 1;
+  top: 50%;
+  left: clamp(0px, calc((var(--contents-gutter) - 32px) / 2), 32px);
+  width: 32px;
+  transform: translateY(-50%);
+  font-size: 14px;
+  color: var(--reader-muted);
+}
+.reader-contents[data-layout="expanded"] {
+  left: 24px;
+  width: min(224px, calc(var(--contents-gutter) - 48px));
+}
+.reader-contents-label-window {
+  position: relative;
+  height: 240px;
+  overflow: clip;
+}
+.reader-contents-label-track {
+  position: absolute;
+  top: 50%;
+  width: 100%;
+  transition: transform 180ms ease-out;
+}
+.reader-contents-label {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  height: 48px;
+  padding: 4px;
+  border: 0;
+  border-radius: 3px;
+  background: transparent;
+  color: var(--reader-muted);
+  text-align: left;
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 500;
+  cursor: pointer;
+  visibility: hidden;
+  transition: color 180ms ease, opacity 180ms ease;
+}
+.reader-contents-label[data-visible] { visibility: visible; }
+.reader-contents-label-text {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+.reader-contents-mark {
+  display: block;
+  flex: none;
+  width: 10px;
+  height: 2px;
+  border-radius: 2px;
+  background: currentColor;
+  opacity: 0.6;
+  transition: opacity 180ms ease, transform 180ms ease;
+  transform-origin: left;
+}
+[data-current] > .reader-contents-mark { opacity: 1; transform: scaleX(1.4); }
+.reader-contents-label[data-current],
+.reader-contents-mark-row[data-current] { color: var(--reader-heading); font-weight: 700; }
+.reader-contents-label:hover, .reader-contents-mark-row:hover { color: var(--reader-heading); }
+.reader-contents :focus-visible,
+.reader-contents-dialog :focus-visible { outline: 2px solid var(--reader-link); outline-offset: -2px; }
+.reader-contents-marks {
+  height: var(--contents-window);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+  padding-block: calc(var(--contents-window) / 2 - 8px);
+}
+.reader-contents-mark-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 16px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--reader-muted);
+  cursor: pointer;
+}
+.reader-contents-tooltip {
+  position: absolute;
+  top: 50%;
+  left: calc(100% + 12px);
+  transform: translateY(-50%);
+  width: max-content;
+  max-width: min(280px, 50vw);
+  padding: 8px 12px;
+  border: 1px solid var(--reader-border);
+  border-radius: 8px;
+  background: var(--reader-bg);
+  color: var(--reader-heading);
+  font-size: 13px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+  pointer-events: none;
+}
+.reader-contents[data-layout="mobile"] { left: 0; width: 24px; }
+.reader-contents-mobile-trigger {
+  display: block;
+  width: 24px;
+  min-height: 80px;
+  border: 0;
+  padding: 0;
+  border-radius: 3px;
+  background: transparent;
+  cursor: pointer;
+}
+.reader-contents-mobile-window {
+  display: block;
+  position: relative;
+  overflow: hidden;
+  height: var(--contents-window);
+}
+.reader-contents-mobile-track {
+  position: absolute;
+  display: block;
+  top: 50%;
+  width: 100%;
+  transition: transform 180ms ease-out;
+}
+.reader-contents-backdrop {
+  background: rgb(0 0 0 / 55%);
+  backdrop-filter: blur(12px);
+}
+.reader-contents-backdrop[data-reader-theme="light"],
+.reader-contents-backdrop[data-reader-theme="sepia"] {
+  background: rgb(0 0 0 / 72%);
+}
+.reader-contents-dialog {
+  position: fixed;
+  z-index: 50;
+  left: 32px;
+  right: 32px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  outline: none;
+}
+.reader-contents-dialog[data-reader-theme="light"],
+.reader-contents-dialog[data-reader-theme="sepia"] {
+  /* The underlying light paper is dimmed by the backdrop. */
+  --reader-heading: #ffffff;
+  --reader-muted: #d4d4d8;
+}
+.reader-contents-dialog-list {
+  height: var(--contents-window);
+  padding-block: calc(var(--contents-window) / 2 - 24px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+  mask-image: linear-gradient(transparent, black 15%, black 85%, transparent);
+}
+.reader-contents-close {
+  position: absolute;
+  top: -48px;
+  right: -8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 50%;
+  color: var(--reader-heading);
+  background: transparent;
+  cursor: pointer;
+}
+.reader-contents-dialog[data-closed] { pointer-events: none; }
+@media (prefers-reduced-motion: reduce) {
+  .reader-contents *, .reader-contents-dialog * { transition: none; }
+}
 
 @custom-variant data-open (&:where([data-state="open"], [data-open]:not([data-open="false"])));
 
 @custom-variant data-closed (&:where([data-state="closed"], [data-closed]:not([data-closed="false"])));
+
+/* Zen maps a fixed scale to scroll distance, independently of section count. */
+.reader-zen-progress {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  height: min(210px, 55dvh);
+}
+.reader-zen-progress .reader-contents-mark-row { height: 10px; }
+.reader-zen-progress .reader-contents-mark-row:not([data-read]):not([data-current]) {
+  color: var(--reader-muted);
+  opacity: 0.4;
+}
+.reader-zen-progress .reader-contents-mark-row[data-read] {
+  color: var(--reader-muted);
+  opacity: 1;
+}
+
+.reader-copy-button {
+  transition-property: color, background-color, opacity;
+  width: 32px;
+  height: 32px;
+  color: #a1a1aa;
+}
+.reader-copy-button[aria-disabled="true"] { opacity: .4; cursor: default; }
+.reader-copy-button:focus-visible { outline: 2px solid #6ea8ff; outline-offset: 2px; }
+.reader-copy-gutter {
+  position: absolute;
+  z-index: 2;
+  right: 24px;
+  transform: translateY(-50%);
+}
+.reader-copy-gutter:hover { background: rgba(128,128,128,.12); }
+@media (max-width: 767px) {
+  .reader-copy-button { width: 40px; height: 40px; }
+}

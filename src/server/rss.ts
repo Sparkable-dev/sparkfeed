@@ -2,14 +2,11 @@ import { randomUUID } from "node:crypto"
 import { and, count, eq, inArray, isNull } from "drizzle-orm"
 import { z } from "zod"
 import { createServerFn } from "@tanstack/react-start"
+import { loadReaderPreview } from "./utils/reader-preview"
 import { fetchAndInsertArticles } from "./utils/fetch-articles"
 import { ingestSource } from "./utils/fetch-page-articles"
-import { safeFetch, safeFetchText } from "./utils/fetch"
-import {
-  checkCanEmbed,
-  extractReadable,
-  sanitizeArticleHtml,
-} from "./utils/extract"
+import { safeFetchText } from "./utils/fetch"
+import { inspectEmbedAvailability } from "./utils/embed-availability"
 import { resolveFeed } from "./utils/detectRSS"
 import { discoverMoreFeeds } from "./utils/discover"
 import { feedError, toFeedError } from "./utils/feed-errors"
@@ -1048,8 +1045,11 @@ export const getArticlePreview = createServerFn({ method: "POST" })
         description: articles.description,
         contentSource: articles.contentSource,
         contentErrorAt: articles.contentErrorAt,
+        feedUrl: feeds.url,
+        sourceKind: feeds.kind,
       })
       .from(articles)
+      .innerJoin(feeds, eq(feeds.id, articles.feedId))
       .where(
         and(
           eq(articles.id, articleRowId(data.id)),
@@ -1064,57 +1064,16 @@ export const getArticlePreview = createServerFn({ method: "POST" })
     const link = article.link
     const domain = previewDomain(link)
 
-    let readerHtml: string | null = article.content ?? null
-    let canEmbed = false
-
-    let quality = readerHtml ? (article.contentSource ?? "saved") : "summary"
-    const retryAllowed = !article.contentErrorAt || Date.now() - Date.parse(article.contentErrorAt) > 15 * 60_000
-    if (!readerHtml && retryAllowed) {
-      // No cached content: one fetch serves both extraction and the header check.
-      try {
-        const { res, text: html, finalUrl } = await safeFetchText(link, {
-          timeoutMs: 8000,
-        })
-        if (!res.ok) throw new Error(`Article returned ${res.status}`)
-        canEmbed = checkCanEmbed(res.headers)
-        const extracted = extractReadable(html, finalUrl || link)
-        if (extracted) {
-          readerHtml = extracted.contentHtml
-          quality = "extracted"
-          try {
-            await db
-              .update(articles)
-              // `article.id` rather than the requested one: the caller may have
-              // passed a prefixed id, and the row we just read is the truth.
-              .set({
-                content: readerHtml,
-                contentFetchedAt: new Date().toISOString(),
-                contentSource: "extracted",
-                contentErrorAt: null,
-              })
-              .where(
-                and(
-                  eq(articles.id, article.id),
-                  articleInWorkspace(workspaceId)
-                )
-              )
-          } catch {
-            // Caching is best-effort; ignore write failures.
-          }
-        } else throw new Error("No readable article found")
-      } catch {
-        readerHtml = null
-        canEmbed = false
-        await db.update(articles).set({ contentErrorAt: new Date().toISOString() }).where(and(eq(articles.id, article.id), articleInWorkspace(workspaceId))).catch(() => {})
-      }
+    const { cacheUpdate, ...preview } = await loadReaderPreview({
+      ...article,
+      feedUrl: article.sourceKind === "page" ? null : article.feedUrl,
+    })
+    if (cacheUpdate) {
+      await db.update(articles).set(cacheUpdate).where(
+        and(eq(articles.id, article.id), articleInWorkspace(workspaceId))
+      ).catch(() => {})
     }
-
-    // Last resort: show the (sanitized) RSS snippet rather than nothing.
-    if (!readerHtml && article.description) {
-      readerHtml = sanitizeArticleHtml(article.description, link)
-    }
-
-    return { readerHtml, canEmbed, link, domain, quality: readerHtml ? quality : "unavailable" }
+    return { ...preview, link, domain }
   })
 
 /** Live mode is optional and must never delay a saved reader article. */
@@ -1125,10 +1084,8 @@ export const getArticleEmbedAvailability = createServerFn({ method: "POST" })
     if (context.workspaceId !== data.workspaceId || context.userId !== data.userId) throw new Error("Workspace changed. Reload this page.")
     const [article] = await db.select({ link: articles.link }).from(articles).where(and(eq(articles.id, articleRowId(data.id)), articleInWorkspace(context.workspaceId))).limit(1)
     if (!article) throw new Error(NOT_FOUND_MSG)
-    try {
-      const res = await safeFetch(article.link, { method: "HEAD", timeoutMs: 5000 })
-      return { canEmbed: res.ok && checkCanEmbed(res.headers) }
-    } catch { return { canEmbed: false } }
+    const { getRequestUrl } = await import("@tanstack/react-start/server")
+    return inspectEmbedAvailability(article.link, getRequestUrl().origin)
   })
 
 export const deleteFeed = createServerFn({ method: "POST" }).middleware([workspaceWriteMiddleware])

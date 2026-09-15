@@ -1,5 +1,5 @@
 import { eq, inArray } from "drizzle-orm"
-import { fetchAndInsertArticles } from "./utils/fetch-articles"
+import { refreshDemoFeeds } from "./demo-refresh"
 import { db } from "@/db/index"
 import { articles, feeds, folders } from "@/db/schema"
 import { DEMO_WORKSPACE_ID } from "@/lib/demo"
@@ -319,23 +319,8 @@ export async function seedDemoData(): Promise<void> {
       .onConflictDoNothing()
   }
 
-  // Fetch articles for all feeds — failures are isolated and logged
-  const results = await Promise.allSettled(
-    allFeeds.map((feed) => fetchAndInsertArticles(feed.id, feed.url))
-  )
-
-  results.forEach((result, i) => {
-    if (result.status === "fulfilled") {
-      console.log(
-        `[demo] ${allFeeds[i].name}: ${result.value} articles inserted`
-      )
-    } else {
-      console.warn(
-        `[demo] ${allFeeds[i].name}: fetch failed —`,
-        result.reason?.message ?? result.reason
-      )
-    }
-  })
+  // Initial fill shares the daily schedule with subsequent background refreshes.
+  await refreshDemoFeeds()
 
   // Pre-seed favorites — pick the top article from one feed per folder so the
   // favorites page is populated even before the user interacts with anything.

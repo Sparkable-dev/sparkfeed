@@ -1,7 +1,12 @@
 import { ALargeSmall, Minus, Plus } from "lucide-react"
 import type { ReaderTheme, ReaderWidth } from "@/store/readerPrefs"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
 import { Button } from "@/components/ui/button"
+import { Switch } from "@/components/ui/switch"
 import { cn } from "@/lib/utils"
 import { FONT_MAX, FONT_MIN, useReaderPrefs } from "@/store/readerPrefs"
 
@@ -22,6 +27,8 @@ export function ReaderControls() {
   const fontScale = useReaderPrefs((s) => s.fontScale)
   const width = useReaderPrefs((s) => s.width)
   const theme = useReaderPrefs((s) => s.theme)
+  const zenMode = useReaderPrefs((s) => s.zenMode)
+  const setZenMode = useReaderPrefs((s) => s.setZenMode)
   const increaseFont = useReaderPrefs((s) => s.increaseFont)
   const decreaseFont = useReaderPrefs((s) => s.decreaseFont)
   const setWidth = useReaderPrefs((s) => s.setWidth)
@@ -58,7 +65,7 @@ export function ReaderControls() {
             >
               <Minus className="h-3.5 w-3.5" />
             </button>
-            <span className="w-10 text-center text-xs tabular-nums text-zinc-300">
+            <span className="w-10 text-center text-xs text-zinc-300 tabular-nums">
               {Math.round(fontScale * 100)}%
             </span>
             <button
@@ -84,7 +91,9 @@ export function ReaderControls() {
                 onClick={() => setWidth(w.key)}
                 className={cn(
                   "rounded px-2.5 py-1 text-xs transition-colors",
-                  width === w.key ? "bg-white text-black" : "text-zinc-400 hover:text-white"
+                  width === w.key
+                    ? "bg-white text-black"
+                    : "text-zinc-400 hover:text-white"
                 )}
               >
                 {w.label}
@@ -117,6 +126,15 @@ export function ReaderControls() {
               </button>
             ))}
           </div>
+        </div>
+        <div className="h-px bg-white/10" />
+        <div className="flex items-center justify-between text-xs font-medium text-zinc-400">
+          <span>Zen mode</span>
+          <Switch
+            checked={zenMode}
+            onCheckedChange={setZenMode}
+            aria-label="Zen mode"
+          />
         </div>
       </PopoverContent>
     </Popover>

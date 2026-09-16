@@ -70,6 +70,8 @@ export async function deleteHostedUsers(ids: Array<string>) {
 }
 
 export async function deleteHostedOrganizations(ids: Array<string>) {
+  const { assertTeamDeletionAllowed } = await import("@/server/billing/team-subscriptions")
+  for (const id of [...new Set(ids)].sort()) await assertTeamDeletionAllowed(id)
   return db.transaction(async (tx) => {
     for (const id of [...new Set(ids)].sort()) {
       const [org] = await tx
@@ -89,7 +91,7 @@ export async function deleteHostedOrganizations(ids: Array<string>) {
           )
         )
         .limit(1)
-      if (billing && billing.subscriptionStatus !== "canceled")
+      if (billing && (billing.subscriptionStatus !== "canceled" || (billing.dodoCustomerId && billing.accessState !== "read_only")))
         throw new APIError("FORBIDDEN", {
           message: "End this workspace plan before deleting the workspace.",
         })

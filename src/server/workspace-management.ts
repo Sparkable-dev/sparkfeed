@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto"
 import { createServerFn } from "@tanstack/react-start"
 import { and, desc, eq, gt, ne, or, sql } from "drizzle-orm"
 import { z } from "zod"
+import { readTeamProducts } from "./billing/dodo-config"
 import type {
   EntitlementPlan,
   PlanKey,
@@ -81,6 +82,7 @@ export interface WorkspacePerson {
 }
 
 export interface WorkspaceDetail {
+  teamCheckoutAvailable?: boolean
   id: string
   slug: string
   name: string
@@ -257,6 +259,7 @@ export const getWorkspaceOverview = createServerFn({ method: "GET" }).handler(
         ...teams,
       ],
       edition,
+      teamCheckoutAvailable: edition === "cloud" && Boolean(readTeamProducts()),
       canCreateWorkspace:
         edition === "community"
           ? await canUserCreateWorkspace(current.user.id)
@@ -425,6 +428,7 @@ export const getWorkspaceDetail = createServerFn({ method: "GET" })
       accessState: entitlements.accessState,
       billingStatus: entitlements.billingStatus,
       billingSource: subscription?.billingSource ?? null,
+      teamCheckoutAvailable: sparkfeedEdition() === "cloud" && Boolean(readTeamProducts()),
       seatCapacity: entitlements.seatCapacity,
       usedSeats:
         members.length +
@@ -819,23 +823,23 @@ export const deleteWorkspace = createServerFn({ method: "POST" })
     })
   )
   .handler(async ({ data }) => {
-    const { membership } = await managedOrganizationContext(data.organizationId)
+    const { membership, current } = await managedOrganizationContext(data.organizationId)
     if (!canManageBilling(membership.role)) {
       throw new Error("Only the Owner can delete this workspace.")
     }
-    const [org] = await db
-      .select({ name: organization.name })
-      .from(organization)
-      .where(eq(organization.id, data.organizationId))
-      .limit(1)
-    if (!org) throw new Error("Workspace not found.")
+    const { assertTeamDeletionAllowed, lockTeam } = await import("./billing/team-subscriptions")
+    await assertTeamDeletionAllowed(data.organizationId)
+    return db.transaction(async (tx) => {
+    const org = await lockTeam(tx, data.organizationId, current.user.id)
     if (data.confirmation !== org.name) {
       throw new Error("Enter the workspace name exactly.")
     }
-    const [subscription] = await db
+    const [subscription] = await tx
       .select({
         plan: workspaceSubscriptions.planKey,
         status: workspaceSubscriptions.subscriptionStatus,
+        customerId: workspaceSubscriptions.dodoCustomerId,
+        access: workspaceSubscriptions.accessState,
       })
       .from(workspaceSubscriptions)
       .where(
@@ -848,10 +852,13 @@ export const deleteWorkspace = createServerFn({ method: "POST" })
     if (
       subscription &&
       (subscription.plan === "pro" || subscription.plan === "enterprise") &&
-      subscription.status !== "canceled"
+      subscription.status !== "canceled" && subscription.status !== "checkout_pending"
     ) {
       throw new Error("Cancel the team plan before deleting this workspace.")
     }
-    await deleteOrganizationWorkspaceData(db, data.organizationId)
+    if (subscription?.customerId && (subscription.status !== "canceled" || subscription.access !== "read_only"))
+      throw new Error("Wait until your subscription and checkout have ended before deleting this workspace.")
+    await deleteOrganizationWorkspaceData(tx, data.organizationId)
     return { success: true }
+    })
   })

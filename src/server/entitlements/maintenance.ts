@@ -38,6 +38,22 @@ export async function refreshWorkspaceAllowances() {
         await refreshPersonalSubscriptionLifecycle(workspace.id)
         await grantWorkspaceAllowance(workspace, workspace.id)
       } else {
+        if (process.env.SPARKFEED_EDITION === "cloud") {
+          const { refreshTeamLifecycle, reconcileTeam, applyQueuedTeamReduction } = await import("../billing/team-subscriptions")
+          await refreshTeamLifecycle(workspace.id)
+          try {
+            const { readDodoBillingConfig, readTeamProducts } = await import("../billing/dodo-config")
+            if (readTeamProducts()) {
+              const { dodoClient } = await import("../billing/dodo-client")
+              const config = readDodoBillingConfig()!
+              await applyQueuedTeamReduction(workspace.id, dodoClient(), config)
+              await reconcileTeam(workspace.id, dodoClient(), config)
+            }
+          } catch (error) {
+            console.error("[team-billing] Scheduled reconciliation failed", workspace.id, error instanceof Error ? error.message : "Unknown error")
+          }
+          await refreshTeamLifecycle(workspace.id)
+        }
         const people = await db
           .select({ id: member.userId })
           .from(member)

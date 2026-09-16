@@ -1,6 +1,7 @@
 import { useState } from "react"
 import { CalendarClock, Loader2, Mail, Users } from "lucide-react"
 import { toast } from "sonner"
+import { OnlineTeamBillingPanel } from "./OnlineTeamBillingPanel"
 import type { WorkspaceDetail } from "@/server/workspace-management"
 import { DEMO_MODE } from "@/lib/demo"
 import { submitWorkspacePlanRequest } from "@/server/workspace-management"
@@ -34,6 +35,7 @@ export function TeamBillingPanel({
   onChanged: () => Promise<void> | void
 }) {
   const [changeOpen, setChangeOpen] = useState(false)
+  const [onlineOpen, setOnlineOpen] = useState(false)
   const [cancelOpen, setCancelOpen] = useState(false)
   const [expectedSeats, setExpectedSeats] = useState(
     String(workspace.seatCapacity ?? Math.max(2, workspace.usedSeats))
@@ -41,6 +43,9 @@ export function TeamBillingPanel({
   const [message, setMessage] = useState("")
   const [busy, setBusy] = useState(false)
   const periodEnd = dateLabel(workspace.currentPeriodEnd)
+
+  if ((workspace.billingSource === "dodo" || onlineOpen) && workspace.role === "owner" && !DEMO_MODE)
+    return <OnlineTeamBillingPanel workspace={workspace} onChanged={onChanged} />
 
   const submit = async (requestType: "change_plan" | "cancel_plan") => {
     setBusy(true)
@@ -85,6 +90,7 @@ export function TeamBillingPanel({
 
   return (
     <div className="space-y-6">
+      {workspace.teamCheckoutAvailable && workspace.plan === "pro" && workspace.billingSource === "manual" && workspace.role === "owner" && !DEMO_MODE && <section className="rounded-xl border bg-card p-5"><h2 className="font-semibold">Move to online billing</h2><p className="mt-1 text-sm text-muted-foreground">Choose monthly or annual payments with Dodo. Your current team access stays in place until payment succeeds.</p><Button className="mt-3" variant="outline" onClick={() => setOnlineOpen(true)}>Set up online payments</Button></section>}
       <section className="overflow-hidden rounded-xl border bg-card">
         <div className="flex flex-col gap-4 border-b px-5 py-5 sm:flex-row sm:items-start sm:justify-between sm:px-6">
           <div>

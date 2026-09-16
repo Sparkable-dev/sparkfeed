@@ -13,6 +13,7 @@ import {
   Users,
 } from "lucide-react"
 import { toast } from "sonner"
+import { TeamCheckoutDialog } from "./TeamCheckoutDialog"
 import type {
   TeamRequestSummary,
   WorkspaceSummary,
@@ -53,6 +54,7 @@ interface WorkspaceOverview {
   canCreateWorkspace: boolean
   activeRequest: TeamRequestSummary | null
   latestRequest: TeamRequestSummary | null
+  teamCheckoutAvailable?: boolean
 }
 
 const demoOverview: WorkspaceOverview = {
@@ -262,7 +264,12 @@ export function WorkspaceHub() {
         </div>
 
         {overview.edition === "cloud" ? (
-          <Dialog open={requestOpen} onOpenChange={setRequestOpen}>
+          <div className="flex flex-wrap gap-2">
+          {overview.teamCheckoutAvailable && !DEMO_MODE ? <TeamCheckoutDialog /> : null}
+          <Dialog open={requestOpen} onOpenChange={(open) => {
+            if (open && overview.teamCheckoutAvailable) setExpectedSeats("11")
+            setRequestOpen(open)
+          }}>
             <DialogTrigger
               render={
                 <Button
@@ -270,13 +277,13 @@ export function WorkspaceHub() {
                   className="w-full sm:w-auto"
                 >
                   <Send className="size-4" />
-                  Request team workspace
+                  {overview.teamCheckoutAvailable ? "Request Enterprise" : "Request team workspace"}
                 </Button>
               }
             />
             <DialogContent className="sm:max-w-md">
               <DialogHeader>
-                <DialogTitle>Request a team workspace</DialogTitle>
+                <DialogTitle>{overview.teamCheckoutAvailable ? "Request Enterprise" : "Request a team workspace"}</DialogTitle>
                 <DialogDescription>
                   Tell us the size of your team. Sparkable will review and set
                   up the workspace.
@@ -297,7 +304,7 @@ export function WorkspaceHub() {
                   <Input
                     id="team-workspace-seats"
                     type="number"
-                    min={2}
+                    min={overview.teamCheckoutAvailable ? 11 : 2}
                     max={500}
                     value={expectedSeats}
                     onChange={(event) => setExpectedSeats(event.target.value)}
@@ -320,7 +327,7 @@ export function WorkspaceHub() {
                   disabled={
                     busy !== null ||
                     workspaceName.trim().length < 2 ||
-                    Number(expectedSeats) < 2
+                    Number(expectedSeats) < (overview.teamCheckoutAvailable ? 11 : 2)
                   }
                 >
                   {busy === "request" && (
@@ -331,6 +338,7 @@ export function WorkspaceHub() {
               </DialogFooter>
             </DialogContent>
           </Dialog>
+          </div>
         ) : overview.canCreateWorkspace ? (
           <Dialog open={createOpen} onOpenChange={setCreateOpen}>
             <DialogTrigger

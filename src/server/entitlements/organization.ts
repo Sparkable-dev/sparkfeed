@@ -32,6 +32,14 @@ export async function assertOrganizationManagementAllowed(
   }
 }
 
+/** Billing restrictions must not prevent owners from cleaning up their data. */
+export async function assertOrganizationCleanupAllowed(organizationId: string, actor: OrganizationActor) {
+  const entitlements = await resolveEntitlements(organizationWorkspaceRef(organizationId), {
+    type: "session", userId: actor.id, emailVerified: actor.emailVerified, workspaceId: organizationId, demo: false,
+  })
+  if (entitlements.accessState === "suspended") throw new APIError("FORBIDDEN", { message: "This workspace is suspended. Contact Sparkable." })
+}
+
 export async function clearRemovedOrganizationSessions(
   userId: string,
   organizationId: string

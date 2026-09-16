@@ -358,10 +358,11 @@ async function reconcileSubscription(
   workspaceId: string
 ) {
   if (workspaceType !== "personal") {
-    throw new PlatformRequestError(
-      400,
-      "Organization subscription reconciliation starts in Phase 5."
-    )
+    const config = readDodoBillingConfig()
+    if (!config?.teamProducts) throw new PlatformRequestError(400, "Team billing configuration is unavailable.")
+    const { reconcileTeam } = await import("@/server/billing/team-subscriptions")
+    await reconcileTeam(workspaceId, dodoClient(), config)
+    return getPlatformWorkspace(workspaceType, workspaceId)
   }
   const [local] = await db
     .select()

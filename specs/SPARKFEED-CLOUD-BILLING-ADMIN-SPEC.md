@@ -190,7 +190,7 @@ Use Better Auth Organization as the only invitation system. Remove the custom in
 
 Require a verified email before invitation acceptance. Use owner, admin, and editor organization roles. The owner controls billing, transfer, and deletion. Admins manage workspace identity, invitations, and editors. Editors collaborate on workspace content without administration access.
 
-As of 2026-09-01, Cloud team workspaces use a tracked request and audited manual provisioning flow. Self-service Pro checkout remains deferred to Phase 5. The customer application must not expose Pro pricing or a team checkout action before that payment lifecycle is implemented and tested.
+As of 2026-09-16, Pro has a self-service checkout implementation, enabled when all four Pro product/add-on variables are configured. Enterprise remains a tracked request with audited manual provisioning. Existing manual Pro workspaces can opt into online billing without losing access before payment succeeds. Railway acceptance testing is still required before launch; see `docs/team-billing-release.md`.
 
 The organization owner is a paid seat. Every accepted member is a paid seat. Every pending invitation reserves a seat.
 
@@ -246,7 +246,7 @@ When a user starts a Pro workspace:
 7. Start hosted checkout.
 8. Activate the organization only after a verified webhook or reconciliation confirms payment.
 
-The user can resume or delete an abandoned pending organization. Do not create customer content in that workspace before activation.
+The user can resume a pending organization's existing checkout. A pending organization without an issued checkout can be deleted. Once a checkout has been issued, deletion requires provider-confirmed termination or support review; do not delete its billing identity while an outstanding payment can still arrive. Do not create customer content in that workspace before activation.
 
 Use short-lived Dodo portal sessions for the organization owner. Do not use the user-centric adapter portal for an organization subscription.
 
@@ -262,6 +262,8 @@ pro-seat-annual
 ```
 
 Map these keys to Dodo test or live product IDs through server configuration. Product IDs are identifiers, but they must not be client-controlled.
+
+Each Pro product includes one seat. Extra seats use its interval-specific add-on at the same unit price. Checkout sends product quantity 1 and add-on quantity `seats - 1`; local paid capacity is reconstructed from this allowlisted combination. Monthly and annual changes are scheduled for renewal. The owner reviews Dodo's actual charge and billing-date preview before confirming immediate seat increases.
 
 ### Webhooks and reconciliation
 

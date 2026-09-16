@@ -391,7 +391,15 @@ export async function ingestVerifiedDodoWebhook(input: {
     .where(eq(dodoWebhookInbox.webhookId, input.webhookId))
 
   try {
-    await applyPersonalSubscriptionEvent(input.event, config)
+    if (subject.subjectType === "organization" && subject.dodoSubscriptionId) {
+      const { dodoClient } = await import("./dodo-client")
+      const { syncTeamSubscription } = await import("./team-subscriptions")
+      const observedAt = new Date()
+      const remote = await dodoClient().subscriptions.retrieve(subject.dodoSubscriptionId)
+      await syncTeamSubscription(remote, config, observedAt)
+    } else {
+      await applyPersonalSubscriptionEvent(input.event, config)
+    }
     await db
       .update(dodoWebhookInbox)
       .set({

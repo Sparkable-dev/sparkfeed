@@ -8,7 +8,7 @@ import {
   timestamp,
   uniqueIndex,
 } from "drizzle-orm/pg-core"
-import { user } from "./auth-schema.pg"
+import { organization, user } from "./auth-schema.pg"
 import type {
   BillingInterval,
   BillingSource,
@@ -524,6 +524,20 @@ export const workspaceSubscriptions = pgTable(
     ),
   ]
 )
+
+/** Durable checkout attempts; retries always reuse the same provider request. */
+export const teamBillingState = pgTable("team_billing_state", {
+  workspaceId: text("workspace_id").primaryKey().references(() => organization.id, { onDelete: "cascade" }),
+  attemptId: text("attempt_id").notNull(),
+  checkoutSessionId: text("checkout_session_id"),
+  checkoutUrl: text("checkout_url"),
+  interval: text("interval").$type<BillingInterval>().notNull(),
+  seats: integer("seats").notNull(),
+  lastSyncedAt: text("last_synced_at"),
+  scheduledInterval: text("scheduled_interval").$type<BillingInterval>(),
+  pendingSeatReduction: integer("pending_seat_reduction"),
+  createdAt: text("created_at").notNull().$defaultFn(() => new Date().toISOString()),
+})
 
 /** Append-only Spark AI credit history. Balances are derived from these entries. */
 export const creditLedger = pgTable(

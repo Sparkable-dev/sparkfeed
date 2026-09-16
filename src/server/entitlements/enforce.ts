@@ -1,6 +1,7 @@
 import { and, count, eq, isNull, sql } from "drizzle-orm"
 import { resolveEntitlements } from "./resolve"
 import { workspaceRefFromId } from "./workspace"
+import { readEffectiveSubscription } from "./effective"
 import type { Principal, ResolvedEntitlements } from "./types"
 import type { Database } from "@/db/client"
 import { feeds, organization, user } from "@/db/schema"
@@ -94,11 +95,19 @@ export async function withNoRssSourceCapacity<T>(
             .where(eq(organization.id, workspaceId))
             .returning({ id: organization.id })
     if (!locked.length) throw new EntitlementError("Workspace not found.")
+    // Team billing can change while this writer waits for the organization lock.
+    let current = effective
+    if (workspace.type === "organization") {
+      const subscription = await readEffectiveSubscription(tx, workspace)
+      if (!subscription || subscription.accessState !== "active" || !["pro", "enterprise"].includes(subscription.planKey))
+        throw new EntitlementError("This workspace is not writable.")
+      current = { ...effective, sourceUnitCapacity: subscription.overrideSourceUnitLimit ?? (subscription.planKey === "pro" ? subscription.paidSeatQuantity * 50 : null) }
+    }
     await assertNoRssSourceCapacity(
       workspaceId,
       additionalSources,
       tx,
-      effective
+      current
     )
     return write(tx)
   })

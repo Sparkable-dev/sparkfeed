@@ -12,6 +12,7 @@ export interface DodoBillingConfig {
   environment: DodoEnvironment
   appUrl: string
   personalProducts: Record<PersonalBillingInterval, string>
+  teamProducts?: Record<PersonalBillingInterval, { productId: string; addonId: string }>
 }
 
 function required(
@@ -51,6 +52,18 @@ export function readDodoBillingConfig(
       monthly: required(env, "DODO_PERSONAL_MONTHLY_PRODUCT_ID"),
       annual: required(env, "DODO_PERSONAL_ANNUAL_PRODUCT_ID"),
     },
+    teamProducts: readTeamProducts(env),
+  }
+}
+
+export function readTeamProducts(env: Record<string, string | undefined> = process.env) {
+  const keys = ["DODO_PRO_MONTHLY_PRODUCT_ID", "DODO_PRO_MONTHLY_SEAT_ADDON_ID", "DODO_PRO_ANNUAL_PRODUCT_ID", "DODO_PRO_ANNUAL_SEAT_ADDON_ID"] as const
+  if (!keys.every((key) => env[key]?.trim())) return undefined
+  const values = keys.map((key) => env[key]!.trim())
+  if (new Set(values).size !== values.length) return undefined
+  return {
+    monthly: { productId: values[0], addonId: values[1] },
+    annual: { productId: values[2], addonId: values[3] },
   }
 }
 

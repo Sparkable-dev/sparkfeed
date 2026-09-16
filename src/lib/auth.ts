@@ -27,6 +27,7 @@ import {
   assertInvitationRoleAllowed,
   assertMemberRemovalAllowed,
   assertMemberRoleChangeAllowed,
+  assertOrganizationCleanupAllowed,
   assertOrganizationInvitationCapacity,
   assertOrganizationManagementAllowed,
   clearRemovedOrganizationSessions,
@@ -214,7 +215,11 @@ export const auth = betterAuth({
           await assertOrganizationManagementAllowed(org.id, user)
         },
         beforeDeleteOrganization: async ({ organization: org, user }) => {
-          await assertOrganizationManagementAllowed(org.id, user)
+          await assertOrganizationCleanupAllowed(org.id, user)
+          if (cloudAuth) {
+            const { assertTeamDeletionAllowed } = await import("@/server/billing/team-subscriptions")
+            await assertTeamDeletionAllowed(org.id)
+          }
         },
         beforeAddMember: async ({ member, user }) => {
           await assertOrganizationManagementAllowed(member.organizationId, user)
@@ -234,6 +239,10 @@ export const auth = betterAuth({
             actorUserId: inviter.id,
             invitedRole: invitation.role,
           })
+          if (cloudAuth) {
+            const { reserveTeamSeat } = await import("@/server/billing/team-subscriptions")
+            await reserveTeamSeat(invitation.organizationId)
+          }
         },
         beforeAcceptInvitation: async ({ invitation, user }) => {
           await assertOrganizationManagementAllowed(
@@ -242,13 +251,13 @@ export const auth = betterAuth({
           )
         },
         beforeCancelInvitation: async ({ invitation, cancelledBy }) => {
-          await assertOrganizationManagementAllowed(
+          await assertOrganizationCleanupAllowed(
             invitation.organizationId,
             cancelledBy
           )
         },
         beforeRemoveMember: async ({ member, user }) => {
-          await assertOrganizationManagementAllowed(member.organizationId, user)
+          await assertOrganizationCleanupAllowed(member.organizationId, user)
           await assertMemberRemovalAllowed({
             organizationId: member.organizationId,
             actorUserId: user.id,
@@ -269,6 +278,16 @@ export const auth = betterAuth({
             member.userId,
             member.organizationId
           )
+          if (cloudAuth) {
+            const { queueTeamSeatReduction } = await import("@/server/billing/team-subscriptions")
+            await queueTeamSeatReduction(member.organizationId)
+          }
+        },
+        afterCancelInvitation: async ({ invitation }) => {
+          if (cloudAuth) {
+            const { queueTeamSeatReduction } = await import("@/server/billing/team-subscriptions")
+            await queueTeamSeatReduction(invitation.organizationId)
+          }
         },
       },
       sendInvitationEmail: async ({ email, invitation }) => {

@@ -71,6 +71,9 @@ export async function resolveEntitlements(
 
   if (workspace.type === "personal") {
     await refreshPersonalSubscriptionLifecycle(workspace.id)
+  } else {
+    const { refreshTeamLifecycle } = await import("../billing/team-subscriptions")
+    await refreshTeamLifecycle(workspace.id)
   }
 
   const row = await readEffectiveSubscription(db, workspace)

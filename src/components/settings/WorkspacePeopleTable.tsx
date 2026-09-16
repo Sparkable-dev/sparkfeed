@@ -300,8 +300,10 @@ export function WorkspacePeopleTable({
   return (
     <div className="space-y-5">
       <section className="rounded-xl border bg-card p-4 sm:p-5">
-        <div className="flex flex-col gap-3 md:flex-row md:items-end">
-          <div className="min-w-0 flex-1 space-y-2">
+        <div
+          className={`grid grid-cols-1 items-end gap-3 ${workspace.role === "owner" ? "md:grid-cols-[minmax(0,1fr)_9rem_auto]" : "md:grid-cols-[minmax(0,1fr)_auto]"}`}
+        >
+          <div className="flex min-w-0 flex-col gap-2">
             <Label htmlFor="invite-email">Invite by email</Label>
             <Input
               id="invite-email"
@@ -313,8 +315,8 @@ export function WorkspacePeopleTable({
             />
           </div>
           {workspace.role === "owner" ? (
-            <div className="space-y-2 md:w-36">
-              <Label>Role</Label>
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="invite-role">Role</Label>
               <Select
                 value={inviteRole}
                 disabled={DEMO_MODE}
@@ -322,7 +324,7 @@ export function WorkspacePeopleTable({
                   setInviteRole(value === "admin" ? "admin" : "editor")
                 }
               >
-                <SelectTrigger className="w-full">
+                <SelectTrigger id="invite-role" className="h-8 w-full">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -334,8 +336,15 @@ export function WorkspacePeopleTable({
           ) : null}
           <Button
             onClick={() => void invite()}
-            disabled={DEMO_MODE || busy !== null || !inviteEmail.includes("@")}
-            className="w-full md:w-auto"
+            disabled={
+              DEMO_MODE ||
+              busy !== null ||
+              workspace.accessState !== "active" ||
+              (workspace.seatCapacity !== null &&
+                workspace.usedSeats >= workspace.seatCapacity) ||
+              !inviteEmail.includes("@")
+            }
+            className="h-8 w-full md:w-auto"
           >
             {busy === "invite" ? (
               <Loader2 className="size-4 animate-spin" />

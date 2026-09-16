@@ -1,6 +1,10 @@
 import { createHash, randomUUID } from "node:crypto"
 import { and, asc, eq, gt, inArray } from "drizzle-orm"
 import {
+  canReplaceUnusedCheckout,
+  isDefinitiveProviderRejection,
+} from "./request-safety"
+import {
   teamCart,
   teamLifecycle,
   teamPurchaseFromProvider,
@@ -14,10 +18,14 @@ import type { TeamPurchase } from "./team-policy"
 import { db } from "@/db/index"
 import { readEffectiveSubscription } from "@/server/entitlements/effective"
 import {
+  chatThreads,
   feeds,
+  folders,
   invitation,
   member,
   organization,
+  scrapedArticles,
+  scrapedFeeds,
   teamBillingState,
   user,
   workspaceSubscriptions,
@@ -94,12 +102,50 @@ export async function createPendingTeam(
   ownerId: string,
   name: string,
   purchase: TeamPurchase,
-  requestId: string
+  requestId: string,
+  upgradePersonal = false
 ) {
   const parsed = teamPurchaseInput.parse(purchase)
   // Client UUID is only an idempotency token. It cannot select another owner's workspace.
   const id = `team-${createHash("sha256").update(`${ownerId}:${requestId}`).digest("hex").slice(0, 32)}`
   return db.transaction(async (tx) => {
+    let personalSubscriptionId: string | null = null
+    if (upgradePersonal) {
+      await tx
+        .select({ id: user.id })
+        .from(user)
+        .where(eq(user.id, ownerId))
+        .for("update")
+      const [prior] = await tx
+        .select()
+        .from(teamBillingState)
+        .where(eq(teamBillingState.upgradeUserId, ownerId))
+        .limit(1)
+      if (prior) {
+        const org = await lockTeam(tx, prior.workspaceId, ownerId)
+        return { id: org.id, slug: org.slug }
+      }
+      const personal = await readEffectiveSubscription(tx, {
+        type: "personal",
+        id: ownerId,
+      })
+      if (
+        personal?.planKey !== "personal_plus" ||
+        personal.accessState !== "active"
+      )
+        throw new Error("An active Personal+ workspace is required to upgrade.")
+      const [base] = await tx
+        .select()
+        .from(workspaceSubscriptions)
+        .where(
+          and(
+            eq(workspaceSubscriptions.workspaceType, "personal"),
+            eq(workspaceSubscriptions.workspaceId, ownerId)
+          )
+        )
+        .limit(1)
+      personalSubscriptionId = base?.dodoSubscriptionId ?? null
+    }
     await tx
       .insert(organization)
       .values({ id, name, slug: id })
@@ -126,9 +172,13 @@ export async function createPendingTeam(
         userId: ownerId,
         role: "owner",
       })
-      await tx
-        .insert(teamBillingState)
-        .values({ workspaceId: id, attemptId: randomUUID(), ...parsed })
+      await tx.insert(teamBillingState).values({
+        workspaceId: id,
+        attemptId: randomUUID(),
+        ...parsed,
+        upgradeUserId: upgradePersonal ? ownerId : null,
+        personalSubscriptionId,
+      })
     }
     await lockTeam(tx, id, ownerId)
     return { id, slug: id }
@@ -268,7 +318,23 @@ export async function syncTeamSubscription(
       .update(teamBillingState)
       .set({
         lastSyncedAt: observedAt.toISOString(),
+        providerStatus: remote.status,
         scheduledInterval: scheduled?.interval ?? null,
+        ...(state.pendingPlanChange &&
+        (() => {
+          const intended = teamPurchaseInput.parse(
+            JSON.parse(state.pendingPlanChange)
+          )
+          return (
+            (remote.status === "active" &&
+              purchase.seats === intended.seats &&
+              purchase.interval === intended.interval) ||
+            (scheduled?.seats === intended.seats &&
+              scheduled.interval === intended.interval)
+          )
+        })()
+          ? { pendingPlanChange: null }
+          : {}),
       })
       .where(eq(teamBillingState.workspaceId, id))
   })
@@ -306,7 +372,132 @@ export async function reconcileTeam(
   const observedAt = new Date()
   const remote = await client.subscriptions.retrieve(subscriptionId)
   await syncTeamSubscription(remote, config, observedAt)
+  await completePersonalUpgrade(id, client, config)
   return true
+}
+
+/** Retried by billing refresh and maintenance. Never move content before confirmed Pro payment. */
+export async function completePersonalUpgrade(
+  id: string,
+  client: DodoPayments,
+  config: DodoBillingConfig
+) {
+  return db.transaction(async (tx) => {
+    await lockTeam(tx, id)
+    const [state] = await tx
+      .select()
+      .from(teamBillingState)
+      .where(eq(teamBillingState.workspaceId, id))
+      .limit(1)
+    if (!state?.upgradeUserId || state.contentMovedAt) return
+    const local = await readTeamSubscription(tx, id)
+    if (state.providerStatus !== "active" || !local.currentPeriodStart) return
+    const effective = await readEffectiveSubscription(tx, {
+      type: "organization",
+      id,
+    })
+    if (effective?.accessState !== "active") return
+    await lockTeam(tx, id, state.upgradeUserId)
+    const now = new Date().toISOString()
+    if (state.personalSubscriptionId && !state.personalRenewalStoppedAt) {
+      const [personal] = await tx
+        .select()
+        .from(workspaceSubscriptions)
+        .where(
+          and(
+            eq(workspaceSubscriptions.workspaceType, "personal"),
+            eq(workspaceSubscriptions.workspaceId, state.upgradeUserId)
+          )
+        )
+        .limit(1)
+      if (personal?.dodoSubscriptionId !== state.personalSubscriptionId)
+        throw new Error(
+          "Personal billing changed during upgrade. Contact support before transferring content."
+        )
+      const old = await client.subscriptions.retrieve(
+        state.personalSubscriptionId
+      )
+      if (
+        old.customer.customer_id !== personal.dodoCustomerId ||
+        !Object.values(config.personalProducts).includes(old.product_id)
+      )
+        throw new Error("Personal subscription does not match the upgrade.")
+      if (
+        !["cancelled", "expired", "failed"].includes(old.status) &&
+        !old.cancel_at_next_billing_date
+      ) {
+        await client.subscriptions.update(
+          old.subscription_id,
+          { cancel_at_next_billing_date: true },
+          {
+            maxRetries: 0,
+          }
+        )
+        const confirmed = await client.subscriptions.retrieve(
+          old.subscription_id
+        )
+        if (
+          !confirmed.cancel_at_next_billing_date &&
+          !["cancelled", "expired"].includes(confirmed.status)
+        )
+          throw new Error(
+            "Personal+ renewal cancellation is still processing. Refresh billing to retry."
+          )
+      }
+    }
+    // Keep IDs: articles, shares, folder hierarchy, and personal favorites retain their references.
+    await tx
+      .update(folders)
+      .set({ workspaceId: id })
+      .where(eq(folders.workspaceId, state.upgradeUserId))
+    await tx
+      .update(feeds)
+      .set({ workspaceId: id })
+      .where(eq(feeds.workspaceId, state.upgradeUserId))
+    await tx
+      .update(scrapedFeeds)
+      .set({ workspaceId: id })
+      .where(eq(scrapedFeeds.workspaceId, state.upgradeUserId))
+    await tx
+      .update(scrapedArticles)
+      .set({ workspaceId: id })
+      .where(eq(scrapedArticles.workspaceId, state.upgradeUserId))
+    // Chat ownership stays private; only its workspace context changes. API keys and credit history do not move.
+    await tx
+      .update(chatThreads)
+      .set({ workspaceId: id })
+      .where(
+        and(
+          eq(chatThreads.workspaceId, state.upgradeUserId),
+          eq(chatThreads.userId, state.upgradeUserId)
+        )
+      )
+    const capacity =
+      effective.overrideSourceUnitLimit ??
+      (effective.planKey === "pro" ? effective.paidSeatQuantity * 50 : null)
+    const pages = await tx
+      .select({ id: feeds.id })
+      .from(feeds)
+      .where(and(eq(feeds.workspaceId, id), eq(feeds.kind, "page")))
+      .orderBy(asc(feeds.createdAt), asc(feeds.id))
+    const allowed = pages.slice(0, capacity ?? pages.length).map((p) => p.id)
+    const excess =
+      capacity === null ? [] : pages.slice(capacity).map((p) => p.id)
+    if (allowed.length)
+      await tx
+        .update(feeds)
+        .set({ entitlementPausedAt: null })
+        .where(inArray(feeds.id, allowed))
+    if (excess.length)
+      await tx
+        .update(feeds)
+        .set({ entitlementPausedAt: now })
+        .where(inArray(feeds.id, excess))
+    await tx
+      .update(teamBillingState)
+      .set({ contentMovedAt: now, personalRenewalStoppedAt: now })
+      .where(eq(teamBillingState.workspaceId, id))
+  })
 }
 
 export async function startTeamCheckout(
@@ -349,27 +540,54 @@ export async function startTeamCheckout(
       throw new Error(
         "Contact Sparkable to migrate this workspace to online billing."
       )
+    if (
+      !local.dodoSubscriptionId &&
+      (await canReplaceUnusedCheckout(
+        client,
+        state.checkoutSessionId,
+        state.checkoutRequestedAt ?? state.createdAt
+      ))
+    ) {
+      const reset = {
+        attemptId: randomUUID(),
+        checkoutSessionId: null,
+        checkoutUrl: null,
+        checkoutRequestedAt: null,
+        providerStatus: null,
+        ...purchase,
+      }
+      await tx
+        .update(teamBillingState)
+        .set(reset)
+        .where(eq(teamBillingState.workspaceId, id))
+      state = { ...state, ...reset }
+    }
     if (local.dodoSubscriptionId) {
       const remote = await client.subscriptions.retrieve(
         local.dodoSubscriptionId
       )
-      const unpaid =
-        !local.currentPeriodStart &&
-        (remote.status === "failed" || remote.status === "on_hold")
-      if (!["cancelled", "expired"].includes(remote.status) && !unpaid)
+      const unpaid = !local.currentPeriodStart && remote.status === "failed"
+      if (
+        remote.status === "on_hold" ||
+        (remote.status as string) === "past_due"
+      )
+        throw new Error(
+          "Recover this subscription through Manage billing. Do not start another subscription while Dodo is retrying payment."
+        )
+      if (remote.status !== "cancelled" && !unpaid)
         throw new Error(
           "This team already has a subscription. Use Manage billing or change its seats."
         )
-      if (unpaid)
-        await client.subscriptions.update(remote.subscription_id, {
-          status: "cancelled",
-        })
+      // Only failed first-time mandate setup or confirmed cancellation permits a fresh checkout.
+      // Never replace on-hold/expired subscriptions: outstanding renewal invoices may still be retried.
       await tx
         .update(teamBillingState)
         .set({
           attemptId: randomUUID(),
           checkoutSessionId: null,
           checkoutUrl: null,
+          providerStatus: null,
+          checkoutRequestedAt: null,
           ...purchase,
         })
         .where(eq(teamBillingState.workspaceId, id))
@@ -410,7 +628,7 @@ export async function startTeamCheckout(
             environment: config.environment,
           },
         },
-        { idempotencyKey: `organization:${config.environment}:${id}` }
+        { maxRetries: 0 }
       )
       await tx
         .update(workspaceSubscriptions)
@@ -418,7 +636,7 @@ export async function startTeamCheckout(
         .where(whereTeam(id))
     }
   })
-  return db.transaction(async (tx) => {
+  const prepared = await db.transaction(async (tx) => {
     const org = await lockTeam(tx, id, ownerId)
     const local = await readTeamSubscription(tx, id)
     const [state] = await tx
@@ -434,13 +652,37 @@ export async function startTeamCheckout(
     )
       throw new Error("Subscription already activated. Refresh billing.")
     if (state.checkoutUrl)
-      return { checkoutUrl: state.checkoutUrl, slug: org.slug }
-    const result = await client.checkoutSessions.create(
+      return {
+        kind: "ready" as const,
+        checkoutUrl: state.checkoutUrl,
+        slug: org.slug,
+      }
+    if (state.checkoutRequestedAt)
+      throw new Error(
+        "A checkout request is already processing or its response was lost. Refresh billing; if no checkout appears, contact support. A second checkout is blocked to prevent duplicate subscriptions."
+      )
+    // Commit before contacting Dodo. Its SDK's idempotencyKey option does not send a header.
+    await tx
+      .update(teamBillingState)
+      .set({ checkoutRequestedAt: new Date().toISOString() })
+      .where(eq(teamBillingState.workspaceId, id))
+    return {
+      kind: "create" as const,
+      state,
+      org,
+      customerId: local.dodoCustomerId,
+    }
+  })
+  if (prepared.kind === "ready")
+    return { checkoutUrl: prepared.checkoutUrl, slug: prepared.slug }
+  const { state, org, customerId } = prepared
+  const result = await client.checkoutSessions
+    .create(
       {
         product_cart: [
           teamCart(config, { interval: state.interval, seats: state.seats }),
         ],
-        customer: { customer_id: local.dodoCustomerId },
+        customer: { customer_id: customerId },
         return_url: `${config.appUrl}/settings/workspaces/${encodeURIComponent(org.slug)}?section=billing`,
         cancel_url: `${config.appUrl}/settings/workspaces/${encodeURIComponent(org.slug)}?section=billing`,
         billing_currency: "USD",
@@ -457,19 +699,38 @@ export async function startTeamCheckout(
           redirect_immediately: true,
         },
       },
-      { idempotencyKey: `team-checkout:${state.attemptId}` }
+      { maxRetries: 0 }
     )
-    if (!result.checkout_url)
-      throw new Error("Dodo did not return a checkout link. Please retry.")
-    await tx
-      .update(teamBillingState)
-      .set({
-        checkoutSessionId: result.session_id,
-        checkoutUrl: result.checkout_url,
-      })
-      .where(eq(teamBillingState.workspaceId, id))
-    return { checkoutUrl: result.checkout_url, slug: org.slug }
-  })
+    .catch(async (error: unknown) => {
+      if (isDefinitiveProviderRejection(error))
+        await db
+          .update(teamBillingState)
+          .set({ checkoutRequestedAt: null })
+          .where(
+            and(
+              eq(teamBillingState.workspaceId, id),
+              eq(teamBillingState.attemptId, state.attemptId)
+            )
+          )
+      throw error
+    })
+  if (!result.checkout_url)
+    throw new Error(
+      "Dodo did not return a checkout link. Refresh billing or contact support before retrying."
+    )
+  await db
+    .update(teamBillingState)
+    .set({
+      checkoutSessionId: result.session_id,
+      checkoutUrl: result.checkout_url,
+    })
+    .where(
+      and(
+        eq(teamBillingState.workspaceId, id),
+        eq(teamBillingState.attemptId, state.attemptId)
+      )
+    )
+  return { checkoutUrl: result.checkout_url, slug: org.slug }
 }
 
 export function teamChangeParams(
@@ -505,6 +766,15 @@ export async function changeTeamPlan(
   const result = await db.transaction(async (tx) => {
     await lockTeam(tx, id, ownerId)
     const local = await readTeamSubscription(tx, id)
+    const [state] = await tx
+      .select()
+      .from(teamBillingState)
+      .where(eq(teamBillingState.workspaceId, id))
+      .limit(1)
+    if (state?.pendingPlanChange)
+      throw new Error(
+        "A plan change is still processing or its response was lost. Refresh billing or contact support before submitting another change."
+      )
     if (local.billingSource !== "dodo" || !local.dodoSubscriptionId)
       throw new Error("No online team subscription exists.")
     if (purchase.seats < (await teamOccupiedSeats(tx, id)))
@@ -515,6 +785,13 @@ export async function changeTeamPlan(
     if (remote.status !== "active" || remote.cancel_at_next_billing_date)
       throw new Error("Restore your subscription before changing its plan.")
     const current = teamPurchaseFromProvider(config, remote)
+    if (
+      purchase.interval !== current.interval &&
+      purchase.seats !== current.seats
+    )
+      throw new Error(
+        "Change the seat count and billing interval separately. Add seats first, then schedule the interval change."
+      )
     if (
       current.seats === purchase.seats &&
       current.interval === purchase.interval &&
@@ -536,6 +813,13 @@ export async function changeTeamPlan(
           current,
           period: remote.next_billing_date,
           summary,
+          // The confirmation displays calendar dates, not moving second-level timestamps.
+          nextBillingDate: new Date(preview.new_plan.next_billing_date)
+            .toISOString()
+            .slice(0, 10),
+          effectiveAt: new Date(preview.immediate_charge.effective_at)
+            .toISOString()
+            .slice(0, 10),
         })
       )
       .digest("hex")
@@ -550,6 +834,7 @@ export async function changeTeamPlan(
     }
     if (previewOnly)
       return {
+        request: null,
         quote,
         token,
         scheduled: params.effective_at === "next_billing_date",
@@ -558,21 +843,47 @@ export async function changeTeamPlan(
       throw new Error(
         "The billing estimate changed. Review the updated price before confirming."
       )
-    await client.subscriptions.changePlan(remote.subscription_id, params, {
-      idempotencyKey: `team-change:${token}`,
-    })
     await tx
       .update(teamBillingState)
-      .set({ pendingSeatReduction: null })
+      .set({
+        pendingSeatReduction: null,
+        pendingPlanChange: JSON.stringify(purchase),
+      })
       .where(eq(teamBillingState.workspaceId, id))
     return {
+      request: { subscriptionId: remote.subscription_id, params },
       quote,
       token,
       scheduled: params.effective_at === "next_billing_date",
     }
   })
-  if (!previewOnly) await reconcileTeam(id, client, config)
-  return result
+  if (result.request) {
+    try {
+      await client.subscriptions.changePlan(
+        result.request.subscriptionId,
+        result.request.params,
+        { maxRetries: 0 }
+      )
+    } catch (error) {
+      if (isDefinitiveProviderRejection(error))
+        await db
+          .update(teamBillingState)
+          .set({ pendingPlanChange: null })
+          .where(
+            and(
+              eq(teamBillingState.workspaceId, id),
+              eq(teamBillingState.pendingPlanChange, JSON.stringify(purchase))
+            )
+          )
+      throw error
+    }
+    await reconcileTeam(id, client, config)
+  }
+  return {
+    quote: result.quote,
+    token: result.token,
+    scheduled: result.scheduled,
+  }
 }
 
 /** Grace/cancellation enforcement also works during a provider outage. */
@@ -704,7 +1015,7 @@ export async function applyQueuedTeamReduction(
       .from(teamBillingState)
       .where(eq(teamBillingState.workspaceId, id))
       .limit(1)
-    if (!state?.pendingSeatReduction) return
+    if (!state?.pendingSeatReduction || state.pendingPlanChange) return
     const remote = await client.subscriptions.retrieve(local.dodoSubscriptionId)
     if (remote.status !== "active" || remote.cancel_at_next_billing_date) return
     const target = Math.max(
@@ -726,7 +1037,7 @@ export async function applyQueuedTeamReduction(
           cancel_scheduled_change_plan: Boolean(remote.scheduled_change),
         },
         {
-          idempotencyKey: `team-reduce:${remote.subscription_id}:${remote.next_billing_date}:${target}:${interval}`,
+          maxRetries: 0,
         }
       )
     }
@@ -749,6 +1060,10 @@ export async function reserveTeamSeat(id: string) {
     .where(eq(teamBillingState.workspaceId, id))
     .limit(1)
   const target = state?.pendingSeatReduction ?? local.scheduledSeatQuantity
+  if (state?.pendingPlanChange)
+    throw new Error(
+      "A billing change is processing. Refresh billing before inviting new members."
+    )
   if (
     target === null ||
     target === undefined ||

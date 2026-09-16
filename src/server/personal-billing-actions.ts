@@ -6,6 +6,7 @@ import {
   currentDodoBillingConfig,
 } from "./billing/personal-checkout"
 import { dodoClient } from "./billing/dodo-client"
+import { readTeamProducts } from "./billing/dodo-config"
 import {
   repairFailedInitialPersonalCheckout,
   selectFreePersonalSources,
@@ -19,7 +20,7 @@ import type {
   WorkspaceAccessState,
 } from "@/server/entitlements/types"
 import { db } from "@/db/index"
-import { feeds, user, workspaceSubscriptions } from "@/db/schema"
+import { feeds, organization, teamBillingState, user, workspaceSubscriptions } from "@/db/schema"
 import {
   creditBalance,
   ensureCloudFreeAccount,
@@ -52,6 +53,8 @@ export interface PersonalBillingSummary {
   sourceLimit: number | null
   sources: Array<PersonalBillingSource>
   portalAvailable: boolean
+  teamUpgradeAvailable?: boolean
+  proUpgrade?: { slug: string; complete: boolean } | null
 }
 
 async function billingSession() {
@@ -154,6 +157,9 @@ export const getPersonalBillingSummary = createServerFn({
 
   const freeCredits = await creditBalance(workspace, session.user.id, "free")
   const paidCredits = await creditBalance(workspace, session.user.id, "paid")
+  const [upgrade] = await db.select({ slug: organization.slug, movedAt: teamBillingState.contentMovedAt })
+    .from(teamBillingState).innerJoin(organization, eq(organization.id, teamBillingState.workspaceId))
+    .where(eq(teamBillingState.upgradeUserId, session.user.id)).limit(1)
 
   return {
     plan: entitlements.plan,
@@ -175,6 +181,8 @@ export const getPersonalBillingSummary = createServerFn({
       url: source.url,
       active: source.pausedAt === null,
     })),
+    teamUpgradeAvailable: Boolean(readTeamProducts()),
+    proUpgrade: upgrade ? { slug: upgrade.slug, complete: Boolean(upgrade.movedAt) } : null,
     portalAvailable: Boolean(
       account?.customerId && subscription?.dodoSubscriptionId
     ),

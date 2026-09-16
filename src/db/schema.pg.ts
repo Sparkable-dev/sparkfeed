@@ -526,6 +526,14 @@ export const workspaceSubscriptions = pgTable(
 )
 
 /** Durable checkout attempts; retries always reuse the same provider request. */
+export const personalCheckoutState = pgTable("personal_checkout_state", {
+  userId: text("user_id").primaryKey().references(() => user.id, { onDelete: "cascade" }),
+  attemptId: text("attempt_id").notNull(),
+  checkoutSessionId: text("checkout_session_id"),
+  checkoutUrl: text("checkout_url"),
+  createdAt: text("created_at").notNull().$defaultFn(() => new Date().toISOString()),
+})
+
 export const teamBillingState = pgTable("team_billing_state", {
   workspaceId: text("workspace_id").primaryKey().references(() => organization.id, { onDelete: "cascade" }),
   attemptId: text("attempt_id").notNull(),
@@ -536,6 +544,13 @@ export const teamBillingState = pgTable("team_billing_state", {
   lastSyncedAt: text("last_synced_at"),
   scheduledInterval: text("scheduled_interval").$type<BillingInterval>(),
   pendingSeatReduction: integer("pending_seat_reduction"),
+  upgradeUserId: text("upgrade_user_id").unique().references(() => user.id),
+  personalSubscriptionId: text("personal_subscription_id"),
+  personalRenewalStoppedAt: text("personal_renewal_stopped_at"),
+  contentMovedAt: text("content_moved_at"),
+  providerStatus: text("provider_status"),
+  checkoutRequestedAt: text("checkout_requested_at"),
+  pendingPlanChange: text("pending_plan_change"),
   createdAt: text("created_at").notNull().$defaultFn(() => new Date().toISOString()),
 })
 

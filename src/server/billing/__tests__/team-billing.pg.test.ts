@@ -15,9 +15,12 @@ import type { Database } from "@/db/client"
 import type { DodoBillingConfig } from "../dodo-config"
 import { createDb } from "@/db/client"
 import {
+  articles,
+  chatThreads,
   creditLedger,
   dodoWebhookInbox,
   feeds,
+  folders,
   invitation,
   member,
   organization,
@@ -272,16 +275,80 @@ describe.runIf(process.env.RUN_TEAM_POSTGRES_TESTS === "true")(
         (await service.readTeamSubscription(database, id)).accessState
       ).toBe("read_only")
     })
-    it("uses the same idempotency key after a lost checkout response", async () => {
+    it("blocks another provider checkout after a lost response", async () => {
       const id = await pending()
       checkout.mockRejectedValueOnce(new Error("response lost"))
       await expect(
         service.startTeamCheckout(id, actor, purchase, client, config)
       ).rejects.toThrow("response lost")
-      await service.startTeamCheckout(id, actor, purchase, client, config)
-      expect(checkout.mock.calls[0][1].idempotencyKey).toBe(
-        checkout.mock.calls[1][1].idempotencyKey
+      await expect(
+        service.startTeamCheckout(id, actor, purchase, client, config)
+      ).rejects.toThrow("second checkout is blocked")
+      expect(checkout).toHaveBeenCalledTimes(1)
+      expect(checkout.mock.calls[0][1].maxRetries).toBe(0)
+    })
+    it("concurrent checkout clicks reuse one provider session", async () => {
+      const id = await pending()
+      checkout.mockRejectedValueOnce(
+        Object.assign(new Error("Invalid checkout"), { status: 422 })
       )
+      await expect(
+        service.startTeamCheckout(id, actor, purchase, client, config)
+      ).rejects.toThrow("Invalid checkout")
+      await expect(
+        service.startTeamCheckout(id, actor, purchase, client, config)
+      ).resolves.toHaveProperty("checkoutUrl")
+      expect(checkout).toHaveBeenCalledTimes(2)
+    })
+    it("replaces a provider-confirmed expired unused checkout with a fresh attempt", async () => {
+      const id = await pending()
+      await service.startTeamCheckout(id, actor, purchase, client, config)
+      const old = new Date(Date.now() - 26 * 3600000).toISOString()
+      const [before] = await database
+        .select()
+        .from(teamBillingState)
+        .where(eq(teamBillingState.workspaceId, id))
+      await database
+        .update(teamBillingState)
+        .set({ checkoutRequestedAt: old })
+        .where(eq(teamBillingState.workspaceId, id))
+      Object.assign(client.checkoutSessions, {
+        retrieve: vi
+          .fn()
+          .mockResolvedValue({
+            id: before.checkoutSessionId,
+            created_at: old,
+            payment_id: null,
+            payment_status: null,
+          }),
+      })
+      await service.startTeamCheckout(id, actor, purchase, client, config)
+      const [after] = await database
+        .select()
+        .from(teamBillingState)
+        .where(eq(teamBillingState.workspaceId, id))
+      expect(after.attemptId).not.toBe(before.attemptId)
+      expect(checkout).toHaveBeenCalledTimes(2)
+    })
+    it("concurrent checkout clicks reuse one provider session", async () => {
+      const id = await pending()
+      const results = await Promise.allSettled([
+        service.startTeamCheckout(id, actor, purchase, client, config),
+        service.startTeamCheckout(id, actor, purchase, client, config),
+      ])
+      expect(results.some((result) => result.status === "fulfilled")).toBe(true)
+      expect(checkout).toHaveBeenCalledTimes(1)
+    })
+    it("never replaces a subscription that Dodo can still recover", async () => {
+      const id = await subscribed()
+      for (const status of ["active", "on_hold", "expired"] as const) {
+        remote.status = status
+        await expect(
+          service.startTeamCheckout(id, actor, purchase, client, config)
+        ).rejects.toThrow()
+      }
+      expect(checkout).toHaveBeenCalledTimes(1)
+      expect(client.subscriptions.update).not.toHaveBeenCalled()
     })
     it("rejects non-owner checkout and portal access before contacting Dodo", async () => {
       const id = await pending()
@@ -293,6 +360,58 @@ describe.runIf(process.env.RUN_TEAM_POSTGRES_TESTS === "true")(
       )
       expect(checkout).not.toHaveBeenCalled()
       expect(portal).not.toHaveBeenCalled()
+    })
+    it("blocks a repeated seat charge after a lost response until Dodo confirms the change", async () => {
+      const id = await subscribed()
+      const target = { seats: 4, interval: "monthly" as const }
+      const quote = await service.changeTeamPlan(
+        id,
+        actor,
+        target,
+        true,
+        client,
+        config
+      )
+      change.mockRejectedValueOnce(new Error("response lost"))
+      await expect(
+        service.changeTeamPlan(
+          id,
+          actor,
+          target,
+          false,
+          client,
+          config,
+          quote.token
+        )
+      ).rejects.toThrow("response lost")
+      await expect(
+        service.changeTeamPlan(
+          id,
+          actor,
+          target,
+          false,
+          client,
+          config,
+          quote.token
+        )
+      ).rejects.toThrow("still processing")
+      expect(change).toHaveBeenCalledTimes(1)
+      expect(change.mock.calls[0][2]).toEqual({ maxRetries: 0 })
+      expect(
+        (await service.readTeamSubscription(database, id)).paidSeatQuantity
+      ).toBe(3)
+      remote.addons = [
+        { addon_id: "seat-monthly", quantity: 3 },
+      ] as Subscription["addons"]
+      await service.syncTeamSubscription(remote, config)
+      const [state] = await database
+        .select()
+        .from(teamBillingState)
+        .where(eq(teamBillingState.workspaceId, id))
+      expect(state.pendingPlanChange).toBeNull()
+      expect(
+        (await service.readTeamSubscription(database, id)).paidSeatQuantity
+      ).toBe(4)
     })
     it("activates only the paid Team and grants credits once", async () => {
       const id = await subscribed()
@@ -364,6 +483,175 @@ describe.runIf(process.env.RUN_TEAM_POSTGRES_TESTS === "true")(
       expect(row.accessState).toBe("read_only")
       expect(row.currentPeriodStart).toBeNull()
     })
+    it("retries a failed initial payment without trying to cancel the failed subscription", async () => {
+      const id = await subscribed()
+      await database
+        .update(workspaceSubscriptions)
+        .set({ currentPeriodStart: null, currentPeriodEnd: null })
+        .where(eq(workspaceSubscriptions.workspaceId, id))
+      remote.status = "failed"
+      vi.mocked(client.subscriptions.update).mockRejectedValue(
+        new Error("Failed subscriptions cannot be cancelled")
+      )
+      const result = await service.startTeamCheckout(
+        id,
+        actor,
+        purchase,
+        client,
+        config
+      )
+      expect(result.checkoutUrl).toContain("test.checkout")
+      expect(client.subscriptions.update).not.toHaveBeenCalled()
+      expect(checkout).toHaveBeenCalledTimes(2)
+      expect(
+        (await service.readTeamSubscription(database, id)).accessState
+      ).toBe("read_only")
+    })
+    it("converts personal content once after payment and confirmed renewal cancellation, retrying outages safely", async () => {
+      const suffix = randomUUID()
+      const folderId = `folder-${suffix}`,
+        feedId = `feed-${suffix}`,
+        articleId = `article-${suffix}`,
+        chatId = `chat-${suffix}`
+      await database.insert(workspaceSubscriptions).values({
+        workspaceType: "personal",
+        workspaceId: actor,
+        planKey: "personal_plus",
+        billingSource: "dodo",
+        subscriptionStatus: "active",
+        accessState: "active",
+        dodoSubscriptionId: `personal-${suffix}`,
+        dodoCustomerId: `personal-customer-${suffix}`,
+      })
+      await database
+        .insert(folders)
+        .values({ id: folderId, name: "Personal folder", workspaceId: actor })
+      await database.insert(feeds).values({
+        id: feedId,
+        name: "Personal source",
+        url: "https://example.test/feed",
+        folderId,
+        workspaceId: actor,
+      })
+      await database.insert(articles).values({
+        id: articleId,
+        feedId,
+        title: "Saved article",
+        link: "https://example.test/article",
+      })
+      await database.insert(chatThreads).values({
+        id: chatId,
+        title: "Private chat",
+        workspaceId: actor,
+        userId: actor,
+      })
+      const teams = await Promise.all([
+        service.createPendingTeam(
+          actor,
+          "Converted",
+          purchase,
+          randomUUID(),
+          true
+        ),
+        service.createPendingTeam(
+          actor,
+          "Converted",
+          purchase,
+          randomUUID(),
+          true
+        ),
+      ])
+      const id = teams[0].id
+      created.push(id)
+      expect(teams[1].id).toBe(id)
+      try {
+        await service.startTeamCheckout(id, actor, purchase, client, config)
+        const [state] = await database
+          .select()
+          .from(teamBillingState)
+          .where(eq(teamBillingState.workspaceId, id))
+        remote = {
+          subscription_id: `sub-${id}`,
+          product_id: "pro-monthly",
+          quantity: 1,
+          addons: [{ addon_id: "seat-monthly", quantity: 2 }],
+          status: "failed",
+          currency: "USD",
+          customer: { customer_id: `customer-${id}` },
+          metadata: {
+            billingSubjectType: "organization",
+            billingSubjectId: id,
+            environment: "test_mode",
+            checkoutAttemptId: state.attemptId,
+          },
+          previous_billing_date: at.toISOString(),
+          next_billing_date: future,
+          cancel_at_next_billing_date: false,
+        } as unknown as Subscription
+        await service.syncTeamSubscription(remote, config)
+        await service.completePersonalUpgrade(id, client, config)
+        const readFeed = async () =>
+          (await database.select().from(feeds).where(eq(feeds.id, feedId)))[0]
+        expect((await readFeed()).workspaceId).toBe(actor)
+        expect(client.subscriptions.update).not.toHaveBeenCalled()
+        remote.status = "active"
+        await service.syncTeamSubscription(remote, config)
+        const personal = {
+          ...remote,
+          subscription_id: `personal-${suffix}`,
+          product_id: "personal-monthly",
+          customer: { customer_id: `personal-customer-${suffix}` },
+        } as Subscription
+        vi.mocked(client.subscriptions.retrieve).mockImplementation(((
+          subId: string
+        ) =>
+          Promise.resolve(
+            subId === personal.subscription_id ? personal : remote
+          )) as typeof client.subscriptions.retrieve)
+        vi.mocked(client.subscriptions.update).mockRejectedValueOnce(
+          new Error("Provider offline")
+        )
+        await expect(
+          service.completePersonalUpgrade(id, client, config)
+        ).rejects.toThrow("Provider offline")
+        expect((await readFeed()).workspaceId).toBe(actor)
+        vi.mocked(client.subscriptions.update).mockImplementation((() => {
+          personal.cancel_at_next_billing_date = true
+          return Promise.resolve(personal)
+        }) as unknown as typeof client.subscriptions.update)
+        await service.completePersonalUpgrade(id, client, config)
+        expect((await readFeed()).workspaceId).toBe(id)
+        expect((await readFeed()).folderId).toBe(folderId)
+        expect(
+          (
+            await database
+              .select()
+              .from(articles)
+              .where(eq(articles.id, articleId))
+          )[0].feedId
+        ).toBe(feedId)
+        const [chat] = await database
+          .select()
+          .from(chatThreads)
+          .where(eq(chatThreads.id, chatId))
+        expect(chat).toMatchObject({ workspaceId: id, userId: actor })
+        await service.completePersonalUpgrade(id, client, config)
+        expect(client.subscriptions.update).toHaveBeenCalledTimes(2)
+      } finally {
+        await database.delete(chatThreads).where(eq(chatThreads.id, chatId))
+        await database.delete(articles).where(eq(articles.id, articleId))
+        await database.delete(feeds).where(eq(feeds.id, feedId))
+        await database.delete(folders).where(eq(folders.id, folderId))
+        await database
+          .delete(workspaceSubscriptions)
+          .where(
+            and(
+              eq(workspaceSubscriptions.workspaceType, "personal"),
+              eq(workspaceSubscriptions.workspaceId, actor)
+            )
+          )
+      }
+    })
     it("does not extend the grace period on repeated failure events", async () => {
       const id = await subscribed()
       remote.status = "on_hold"
@@ -405,6 +693,143 @@ describe.runIf(process.env.RUN_TEAM_POSTGRES_TESTS === "true")(
       ).toBe("read_only")
     })
     it("rejects changed quotes and schedules reductions without granting unpaid seats", async () => {
+      const id = await subscribed()
+      const target = { interval: "monthly" as const, seats: 4 }
+      const quote = await service.changeTeamPlan(
+        id,
+        actor,
+        target,
+        true,
+        client,
+        config
+      )
+      preview.mockImplementationOnce(() => ({
+        immediate_charge: {
+          effective_at: at.toISOString(),
+          summary: {
+            total_amount: 1200,
+            currency: "USD",
+            customer_credits: 0,
+            settlement_amount: 1200,
+            settlement_currency: "USD",
+          },
+        },
+        new_plan: {
+          next_billing_date: new Date(
+            Date.parse(future) + 86400000
+          ).toISOString(),
+        },
+      }))
+      await expect(
+        service.changeTeamPlan(
+          id,
+          actor,
+          target,
+          false,
+          client,
+          config,
+          quote.token
+        )
+      ).rejects.toThrow("estimate changed")
+      expect(change).not.toHaveBeenCalled()
+    })
+    it("uses annual proration and retains three seats until the fourth is paid", async () => {
+      const id = await subscribed()
+      remote.product_id = "pro-annual"
+      remote.addons = [
+        { addon_id: "seat-annual", quantity: 2 },
+      ] as Subscription["addons"]
+      await service.syncTeamSubscription(remote, config)
+      const target = { interval: "annual" as const, seats: 4 }
+      const quote = await service.changeTeamPlan(
+        id,
+        actor,
+        target,
+        true,
+        client,
+        config
+      )
+      await service.changeTeamPlan(
+        id,
+        actor,
+        target,
+        false,
+        client,
+        config,
+        quote.token
+      )
+      expect(change.mock.calls[0][1]).toMatchObject({
+        product_id: "pro-annual",
+        addons: [{ addon_id: "seat-annual", quantity: 3 }],
+        proration_billing_mode: "prorated_immediately",
+        on_payment_failure: "prevent_change",
+      })
+      expect(
+        (await service.readTeamSubscription(database, id)).paidSeatQuantity
+      ).toBe(3)
+    })
+    it("blocks invitation inserts during a pending billing change even if hooks already passed", async () => {
+      const id = await subscribed()
+      await database
+        .update(teamBillingState)
+        .set({
+          pendingPlanChange: JSON.stringify({ interval: "monthly", seats: 2 }),
+        })
+        .where(eq(teamBillingState.workspaceId, id))
+      await expect(service.reserveTeamSeat(id)).rejects.toThrow(
+        "billing change is processing"
+      )
+      await expect(
+        database.insert(invitation).values({
+          id: randomUUID(),
+          organizationId: id,
+          email: "late@example.test",
+          role: "editor",
+          status: "pending",
+          inviterId: actor,
+          expiresAt: new Date(future),
+        })
+      ).rejects.toThrow()
+      expect(await service.teamOccupiedSeats(database, id)).toBe(1)
+    })
+    it("allows correcting a request explicitly rejected by Dodo without unlocking unpaid seats", async () => {
+      const id = await subscribed()
+      const target = { interval: "monthly" as const, seats: 4 }
+      const quote = await service.changeTeamPlan(
+        id,
+        actor,
+        target,
+        true,
+        client,
+        config
+      )
+      change.mockRejectedValueOnce(
+        Object.assign(new Error("Invalid request"), { status: 422 })
+      )
+      await expect(
+        service.changeTeamPlan(
+          id,
+          actor,
+          target,
+          false,
+          client,
+          config,
+          quote.token
+        )
+      ).rejects.toThrow("Invalid request")
+      const [state] = await database
+        .select()
+        .from(teamBillingState)
+        .where(eq(teamBillingState.workspaceId, id))
+      expect(state.pendingPlanChange).toBeNull()
+      expect(
+        (await service.readTeamSubscription(database, id)).paidSeatQuantity
+      ).toBe(3)
+      await expect(
+        service.changeTeamPlan(id, actor, target, true, client, config)
+      ).resolves.toHaveProperty("quote")
+    })
+    it("schedules reductions without granting unpaid seats", async () => {
       const id = await subscribed()
       const next = { interval: "monthly" as const, seats: 2 }
       const quote = await service.changeTeamPlan(
@@ -633,30 +1058,57 @@ describe.runIf(process.env.RUN_TEAM_POSTGRES_TESTS === "true")(
     it("blocks deletion of an issued checkout", async () => {
       const id = await pending()
       await service.startTeamCheckout(id, actor, purchase, client, config)
-      await expect(service.assertTeamDeletionAllowed(id)).rejects.toThrow("checkout is still open")
+      await expect(service.assertTeamDeletionAllowed(id)).rejects.toThrow(
+        "checkout is still open"
+      )
     })
     it("pauses excess website sources after a seat reduction and restores them on upgrade", async () => {
       const id = await subscribed()
-      await database.insert(feeds).values(Array.from({ length: 51 }, (_, n) => ({ id: `${id}-source-${String(n).padStart(3, "0")}`, name: `Source ${n}`, url: `https://example.test/${n}`, workspaceId: id, kind: "page" as const })))
+      await database.insert(feeds).values(
+        Array.from({ length: 51 }, (_, n) => ({
+          id: `${id}-source-${String(n).padStart(3, "0")}`,
+          name: `Source ${n}`,
+          url: `https://example.test/${n}`,
+          workspaceId: id,
+          kind: "page" as const,
+        }))
+      )
       remote.addons = []
       await service.syncTeamSubscription(remote, config)
-      let rows = await database.select().from(feeds).where(eq(feeds.workspaceId, id))
+      let rows = await database
+        .select()
+        .from(feeds)
+        .where(eq(feeds.workspaceId, id))
       expect(rows).toHaveLength(51)
       expect(rows.filter((row) => !row.entitlementPausedAt)).toHaveLength(50)
       remote.addons = [{ addon_id: "seat-monthly", quantity: 1 }]
       await service.syncTeamSubscription(remote, config)
-      rows = await database.select().from(feeds).where(eq(feeds.workspaceId, id))
+      rows = await database
+        .select()
+        .from(feeds)
+        .where(eq(feeds.workspaceId, id))
       expect(rows.filter((row) => !row.entitlementPausedAt)).toHaveLength(51)
     })
     it("requires provider-confirmed termination before operator deletion", async () => {
       const id = await subscribed()
-      const { deleteHostedOrganizations } = await import("@/server/platform/hosted-operations")
+      const { deleteHostedOrganizations } =
+        await import("@/server/platform/hosted-operations")
       remote.cancel_at_next_billing_date = true
       await service.syncTeamSubscription(remote, config)
-      await expect(deleteHostedOrganizations([id])).rejects.toThrow("subscription ends")
+      await expect(deleteHostedOrganizations([id])).rejects.toThrow(
+        "subscription ends"
+      )
       remote.status = "cancelled"
-      await expect(deleteHostedOrganizations([id])).resolves.toHaveProperty("success", true)
-      expect(await database.select().from(organization).where(eq(organization.id, id))).toHaveLength(0)
+      await expect(deleteHostedOrganizations([id])).resolves.toHaveProperty(
+        "success",
+        true
+      )
+      expect(
+        await database
+          .select()
+          .from(organization)
+          .where(eq(organization.id, id))
+      ).toHaveLength(0)
     })
   }
 )

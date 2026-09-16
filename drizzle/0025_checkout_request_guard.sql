@@ -1,0 +1,1 @@
+ALTER TABLE "team_billing_state" ADD COLUMN "checkout_requested_at" text;

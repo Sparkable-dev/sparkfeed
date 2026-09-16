@@ -95,13 +95,20 @@ export const createPaidTeam = createServerFn({ method: "POST" })
     teamPurchaseInput.extend({
       name: z.string().trim().min(2).max(80),
       requestId: z.uuid(),
+      upgradePersonal: z.boolean().default(false),
     })
   )
   .handler(async ({ data }) =>
     billingCall(async () => {
       const actor = await billingActor()
       config()
-      return createPendingTeam(actor, data.name, data, data.requestId)
+      return createPendingTeam(
+        actor,
+        data.name,
+        data,
+        data.requestId,
+        data.upgradePersonal
+      )
     })
   )
 
@@ -155,11 +162,28 @@ export const getTeamBillingSummary = createServerFn({ method: "GET" })
         pendingSeatReduction: state?.pendingSeatReduction ?? null,
         portalAvailable: Boolean(row.dodoCustomerId),
         canCheckout:
-          row.billingSource === "manual" ||
-          row.subscriptionStatus === "checkout_pending" ||
-          (row.subscriptionStatus === "canceled" &&
-            row.accessState === "read_only"),
+          !["on_hold", "past_due", "expired"].includes(
+            state?.providerStatus ?? ""
+          ) &&
+          (row.billingSource === "manual" ||
+            row.subscriptionStatus === "checkout_pending" ||
+            (row.subscriptionStatus === "canceled" &&
+              row.accessState === "read_only")),
         syncWarning,
+        paymentFailed: state?.providerStatus === "failed",
+        pendingPlanChange: Boolean(state?.pendingPlanChange),
+        checkoutUncertain: Boolean(
+          state?.checkoutRequestedAt &&
+          !state.checkoutUrl &&
+          !row.dodoSubscriptionId
+        ),
+        upgradeStatus: state?.upgradeUserId
+          ? state.contentMovedAt
+            ? "complete"
+            : row.currentPeriodStart
+              ? "processing"
+              : "awaiting_payment"
+          : null,
       }
     })
   )

@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from "react"
 import { Check, ExternalLink, Loader2 } from "lucide-react"
 import { toast } from "sonner"
+import { Link } from "@tanstack/react-router"
+import { TeamCheckoutDialog } from "./TeamCheckoutDialog"
 import type { PersonalBillingSummary } from "@/server/personal-billing-actions"
 import { authClient } from "@/lib/auth-client"
 import { DEMO_MODE } from "@/lib/demo"
@@ -171,6 +173,17 @@ export function PersonalBillingTab() {
 
   return (
     <div className="space-y-8">
+      {(summary.proUpgrade || (isPersonalPlus && summary.teamUpgradeAvailable)) && (
+        <Card>
+          <CardHeader>
+            <CardTitle>{summary.proUpgrade?.complete ? "Your workspace is now Pro" : "Share this workspace with your team"}</CardTitle>
+            <CardDescription>{summary.proUpgrade?.complete ? "Your sources and articles moved to your shared Pro workspace. Personal+ renewal has been stopped." : "Upgrade to Pro to share your existing folders, sources, and articles with invited members."}</CardDescription>
+          </CardHeader>
+          <CardContent>{summary.proUpgrade ? <Button render={<Link to="/settings/workspaces/$slug" params={{ slug: summary.proUpgrade.slug }} search={{ section: "billing" }} />}>
+            {summary.proUpgrade.complete ? "View Pro workspace" : "Continue Pro upgrade"}
+          </Button> : <TeamCheckoutDialog upgradePersonal />}</CardContent>
+        </Card>
+      )}
       <Card>
         <CardHeader>
           <CardTitle>{isPersonalPlus ? "Personal+" : "Free"}</CardTitle>

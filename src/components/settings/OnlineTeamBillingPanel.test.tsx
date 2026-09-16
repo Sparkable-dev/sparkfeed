@@ -73,6 +73,40 @@ beforeEach(() => {
 })
 afterEach(cleanup)
 describe("Team billing feedback", () => {
+  it("announces confirmed recovery without submitting another payment", async () => {
+    mock.summary
+      .mockResolvedValueOnce({ ...active, status: "past_due" })
+      .mockResolvedValue(active)
+    render(<OnlineTeamBillingPanel workspace={workspace} onChanged={vi.fn()} />)
+    await screen.findByText(/Payment needs attention/)
+    fireEvent.click(screen.getByRole("button", { name: "Refresh billing" }))
+    await waitFor(() =>
+      expect(mock.success).toHaveBeenCalledWith(
+        "Payment recovered. Your Pro workspace access is restored."
+      )
+    )
+    expect(mock.checkout).not.toHaveBeenCalled()
+    expect(mock.confirm).not.toHaveBeenCalled()
+  })
+  it("explains an occupied-seat reduction with Sonner before contacting billing", async () => {
+    render(
+      <OnlineTeamBillingPanel
+        workspace={{ ...workspace, usedSeats: 3 }}
+        onChanged={vi.fn()}
+      />
+    )
+    await screen.findByText("Seats and billing interval")
+    fireEvent.change(screen.getByLabelText("Paid seats, including the Owner"), {
+      target: { value: "2" },
+    })
+    fireEvent.click(screen.getByRole("button", { name: "Review plan change" }))
+    await waitFor(() =>
+      expect(mock.error).toHaveBeenCalledWith(
+        "Remove 1 member or cancel pending invitations before reducing to 2 seats."
+      )
+    )
+    expect(mock.preview).not.toHaveBeenCalled()
+  })
   it("waits for explicit price confirmation and reports a submitted change, not paid access", async () => {
     render(<OnlineTeamBillingPanel workspace={workspace} onChanged={vi.fn()} />)
     await screen.findByText("Seats and billing interval")

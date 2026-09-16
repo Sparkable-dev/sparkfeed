@@ -25,6 +25,7 @@ const PERSONAL_SUBSCRIPTION_EVENTS = new Set([
   "subscription.plan_changed",
   "subscription.unpaused",
   "subscription.on_hold",
+  "subscription.past_due",
   "subscription.failed",
   "subscription.cancelled",
   "subscription.expired",
@@ -208,6 +209,7 @@ async function applyPersonalSubscriptionEvent(
 
   if (
     event.type === "subscription.on_hold" ||
+    (event.type as string) === "subscription.past_due" ||
     event.type === "subscription.failed"
   ) {
     // A declined first payment is not a paid-plan renewal failure. Keep the
@@ -317,6 +319,7 @@ function reconciliationEventType(
   // activate the plan without issuing the paid period allowance.
   if (status === "active") return "subscription.active"
   if (status === "on_hold") return "subscription.on_hold"
+  if ((status as string) === "past_due") return "subscription.on_hold"
   if (status === "paused") return "subscription.paused"
   if (status === "cancelled") return "subscription.cancelled"
   if (status === "expired") return "subscription.expired"
@@ -393,10 +396,11 @@ export async function ingestVerifiedDodoWebhook(input: {
   try {
     if (subject.subjectType === "organization" && subject.dodoSubscriptionId) {
       const { dodoClient } = await import("./dodo-client")
-      const { syncTeamSubscription } = await import("./team-subscriptions")
+      const { syncTeamSubscription, completePersonalUpgrade } = await import("./team-subscriptions")
       const observedAt = new Date()
       const remote = await dodoClient().subscriptions.retrieve(subject.dodoSubscriptionId)
       await syncTeamSubscription(remote, config, observedAt)
+      if (subject.subjectId) await completePersonalUpgrade(subject.subjectId, dodoClient(), config)
     } else {
       await applyPersonalSubscriptionEvent(input.event, config)
     }

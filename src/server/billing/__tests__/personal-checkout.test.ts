@@ -1,10 +1,14 @@
-import { beforeEach, describe, expect, it, vi } from "vitest"
+import { mkdtempSync, rmSync } from "node:fs"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import type { createClient } from "@libsql/client"
 import type DodoPayments from "dodopayments"
 import type { Database } from "@/db/client"
 import { createDb } from "@/db/client"
 
 let db: Database
+let fixtureDir: string
 
 vi.mock("@/db/index", () => ({
   get db() {
@@ -15,9 +19,13 @@ vi.mock("@/db/index", () => ({
 const { createPersonalCheckout } = await import("../personal-checkout")
 
 beforeEach(async () => {
-  db = createDb(":memory:", { sqlite: true })
+  fixtureDir = mkdtempSync(join(tmpdir(), "sparkfeed-personal-checkout-"))
+  db = createDb(`file:${join(fixtureDir, "test.db")}`, { sqlite: true })
   const raw = (db as unknown as { $client: ReturnType<typeof createClient> })
     .$client
+  await raw.execute(
+    `CREATE TABLE personal_checkout_state (user_id TEXT PRIMARY KEY, attempt_id TEXT NOT NULL, checkout_session_id TEXT, checkout_url TEXT, created_at TEXT NOT NULL)`
+  )
   await raw.execute(`CREATE TABLE user (last_active_at TEXT,
     id TEXT PRIMARY KEY, name TEXT NOT NULL, email TEXT NOT NULL,
     email_verified INTEGER NOT NULL, image TEXT, dodo_customer_id TEXT,
@@ -61,7 +69,61 @@ beforeEach(async () => {
   })
 })
 
+afterEach(() => {
+  ;(
+    db as unknown as { $client: ReturnType<typeof createClient> }
+  ).$client.close()
+  rmSync(fixtureDir, { recursive: true, force: true })
+})
+
 describe("Personal+ checkout", () => {
+  const config = {
+    apiKey: "test-key",
+    webhookSecret: "test-secret",
+    environment: "test_mode" as const,
+    appUrl: "https://app.sparkfeed.dev",
+    personalProducts: { monthly: "product-monthly", annual: "product-annual" },
+  }
+  it("does not issue a second checkout after a lost response", async () => {
+    const create = vi.fn().mockRejectedValue(new Error("response lost"))
+    const client = {
+      customers: {
+        create: vi.fn().mockResolvedValue({ customer_id: "cus-1" }),
+      },
+      subscriptions: { list: () => ({ async *[Symbol.asyncIterator]() {} }) },
+      checkoutSessions: { create },
+    } as unknown as DodoPayments
+    await expect(
+      createPersonalCheckout("user-1", "monthly", client, config)
+    ).rejects.toThrow("response lost")
+    await expect(
+      createPersonalCheckout("user-1", "monthly", client, config)
+    ).rejects.toThrow("second checkout is blocked")
+    expect(create).toHaveBeenCalledTimes(1)
+  })
+  it("recovers an existing subscription through the portal instead of replacing it", async () => {
+    const create = vi.fn()
+    const client = {
+      customers: {
+        create: vi.fn().mockResolvedValue({ customer_id: "cus-1" }),
+      },
+      subscriptions: {
+        list: () => ({
+          async *[Symbol.asyncIterator]() {
+            yield await Promise.resolve({
+              product_id: "product-monthly",
+              status: "on_hold",
+            })
+          },
+        }),
+      },
+      checkoutSessions: { create },
+    } as unknown as DodoPayments
+    await expect(
+      createPersonalCheckout("user-1", "monthly", client, config)
+    ).rejects.toThrow("Manage billing")
+    expect(create).not.toHaveBeenCalled()
+  })
   it("binds checkout to the server product and stable customer ID", async () => {
     const createCustomer = vi.fn().mockResolvedValue({ customer_id: "cus-1" })
     const createCheckout = vi.fn().mockResolvedValue({
@@ -69,20 +131,10 @@ describe("Personal+ checkout", () => {
       checkout_url: "https://checkout.example/cks-1",
     })
     const client = {
+      subscriptions: { list: () => ({ async *[Symbol.asyncIterator]() {} }) },
       customers: { create: createCustomer },
       checkoutSessions: { create: createCheckout },
     } as unknown as DodoPayments
-    const config = {
-      apiKey: "test-key",
-      webhookSecret: "test-secret",
-      environment: "test_mode" as const,
-      appUrl: "https://app.sparkfeed.dev",
-      personalProducts: {
-        monthly: "product-monthly",
-        annual: "product-annual",
-      },
-    }
-
     const result = await createPersonalCheckout(
       "user-1",
       "annual",
@@ -94,12 +146,16 @@ describe("Personal+ checkout", () => {
       checkoutUrl: "https://checkout.example/cks-1",
       checkoutSessionId: "cks-1",
     })
+    expect(
+      await createPersonalCheckout("user-1", "annual", client, config)
+    ).toEqual(result)
+    expect(createCheckout).toHaveBeenCalledTimes(1)
     expect(createCustomer).toHaveBeenCalledWith(
       expect.objectContaining({
         email: "sudu@example.com",
         metadata: expect.objectContaining({ billingSubjectId: "user-1" }),
       }),
-      { idempotencyKey: "personal:user-1" }
+      { maxRetries: 0 }
     )
     expect(createCheckout).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -111,7 +167,7 @@ describe("Personal+ checkout", () => {
           productKey: "personal-annual",
         }),
       }),
-      expect.objectContaining({ idempotencyKey: expect.any(String) })
+      expect.objectContaining({ maxRetries: 0 })
     )
 
     const raw = (db as unknown as { $client: ReturnType<typeof createClient> })

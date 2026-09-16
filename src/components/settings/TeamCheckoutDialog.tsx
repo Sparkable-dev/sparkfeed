@@ -16,7 +16,11 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 
-export function TeamCheckoutDialog() {
+export function TeamCheckoutDialog({
+  upgradePersonal = false,
+}: {
+  upgradePersonal?: boolean
+}) {
   const navigate = useNavigate()
   const [open, setOpen] = useState(false)
   const [name, setName] = useState("")
@@ -37,7 +41,13 @@ export function TeamCheckoutDialog() {
     let team: { id: string; slug: string } | null = null
     try {
       team = await createPaidTeam({
-        data: { name, seats: Number(seats), interval, requestId: key },
+        data: {
+          name,
+          seats: Number(seats),
+          interval,
+          requestId: key,
+          upgradePersonal,
+        },
       })
       const result = await checkoutTeam({
         data: { workspaceId: team.id, seats: Number(seats), interval },
@@ -73,16 +83,21 @@ export function TeamCheckoutDialog() {
         render={
           <Button>
             <Plus className="size-4" />
-            Create Pro workspace
+            {upgradePersonal ? "Upgrade to Pro" : "Create Pro workspace"}
           </Button>
         }
       />
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Create a Pro workspace</DialogTitle>
+          <DialogTitle>
+            {upgradePersonal
+              ? "Upgrade Personal+ to Pro"
+              : "Create a Pro workspace"}
+          </DialogTitle>
           <DialogDescription>
-            Choose your seats, then pay securely with Dodo Payments. Your team
-            activates after payment.
+            {upgradePersonal
+              ? "After payment, your folders, sources, and saved articles move into this shared workspace. Invited members will have access. A failed payment leaves your personal content unchanged."
+              : "Choose your seats, then pay securely with Dodo Payments. Your team activates after payment."}
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-2">
@@ -116,7 +131,7 @@ export function TeamCheckoutDialog() {
             <Label htmlFor="pro-interval">Billing interval</Label>
             <select
               id="pro-interval"
-              className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+              className="h-8 w-full rounded-md border bg-background px-3 text-sm"
               value={interval}
               onChange={(e) => setInterval(e.target.value as typeof interval)}
               disabled={busy}
@@ -129,6 +144,15 @@ export function TeamCheckoutDialog() {
             ${(Number(seats) || 0) * (interval === "monthly" ? 12 : 96)} /{" "}
             {interval === "monthly" ? "month" : "year"}, tax included
           </p>
+          {upgradePersonal && (
+            <p className="text-sm text-muted-foreground">
+              Pro is charged now. Personal+ renewal stops after successful
+              payment; unused Personal+ time is not automatically refunded or
+              credited. Your chats and personal favorites stay private. Existing
+              API keys and AI credits stay with your personal account; create
+              new keys for Pro.
+            </p>
+          )}
         </div>
         <DialogFooter>
           <Button onClick={() => void submit()} disabled={!valid || busy}>

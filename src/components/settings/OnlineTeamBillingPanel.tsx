@@ -62,6 +62,11 @@ export function OnlineTeamBillingPanel({
       toast.success(
         "Your Pro workspace is active. You can now invite your team."
       )
+    else if (
+      previous.current?.status === "past_due" &&
+      value.status === "active"
+    )
+      toast.success("Payment recovered. Your Pro workspace access is restored.")
     previous.current = value
     setSummary(value)
     setError(null)
@@ -119,9 +124,7 @@ export function OnlineTeamBillingPanel({
   }
   const purchase = { workspaceId: workspace.id, interval, seats: Number(seats) }
   const valid =
-    Number.isInteger(Number(seats)) &&
-    Number(seats) >= Math.max(1, workspace.usedSeats) &&
-    Number(seats) <= 10
+    Number.isInteger(Number(seats)) && Number(seats) >= 1 && Number(seats) <= 10
   return (
     <div className="space-y-5" aria-busy={busy}>
       <section className="space-y-4 rounded-xl border bg-card p-5">
@@ -133,7 +136,9 @@ export function OnlineTeamBillingPanel({
             </p>
           </div>
           <Badge variant="secondary">
-            {(summary?.status ?? "loading").replaceAll("_", " ")}
+            {summary?.paymentFailed
+              ? "Payment failed"
+              : (summary?.status ?? "loading").replaceAll("_", " ")}
           </Badge>
         </div>
         {error && (
@@ -147,6 +152,31 @@ export function OnlineTeamBillingPanel({
             className="text-sm text-amber-600 dark:text-amber-400"
           >
             {summary.syncWarning}
+          </p>
+        )}
+        {summary?.paymentFailed && (
+          <p role="alert" className="text-sm text-destructive">
+            Payment was not completed. Retry payment below and complete any bank
+            verification shown at checkout, or use another card.
+          </p>
+        )}
+        {(summary?.pendingPlanChange || summary?.checkoutUncertain) && (
+          <p
+            role="status"
+            className="text-sm text-amber-600 dark:text-amber-400"
+          >
+            A billing request is still processing or its response was lost.
+            Another request is blocked to avoid duplicate billing. Refresh
+            billing; if this persists, contact support.
+          </p>
+        )}
+        {summary?.upgradeStatus && (
+          <p role="status" className="text-sm">
+            {summary.upgradeStatus === "complete"
+              ? "Your personal sources and articles are now shared in this Pro workspace. Personal+ renewal has been stopped."
+              : summary.upgradeStatus === "processing"
+                ? "Pro payment is confirmed. Your personal upgrade is still processing; content stays personal until renewal cancellation is confirmed. Refresh billing to retry, or contact support."
+                : "Your personal content stays private until payment succeeds. It will then move here for your team to share."}
           </p>
         )}
         {summary?.pendingSeatReduction && (
@@ -165,9 +195,16 @@ export function OnlineTeamBillingPanel({
           <>
             <dl className="grid gap-4 text-sm sm:grid-cols-3">
               <div>
-                <dt className="text-muted-foreground">Seats in use</dt>
+                <dt className="text-muted-foreground">
+                  {summary.canCheckout
+                    ? "Members / requested seats"
+                    : "Seats in use"}
+                </dt>
                 <dd className="font-medium">
-                  {workspace.usedSeats} / {summary.paidSeats}
+                  {workspace.usedSeats} /{" "}
+                  {summary.canCheckout
+                    ? summary.checkoutSeats
+                    : summary.paidSeats}
                 </dd>
               </div>
               <div>
@@ -283,7 +320,7 @@ export function OnlineTeamBillingPanel({
               <Input
                 id="team-paid-seats"
                 type="number"
-                min={Math.max(1, workspace.usedSeats)}
+                min={1}
                 max={10}
                 value={seats}
                 disabled={busy || summary.checkoutLocked}
@@ -297,7 +334,7 @@ export function OnlineTeamBillingPanel({
               <Label htmlFor="team-billing-interval">Billing interval</Label>
               <select
                 id="team-billing-interval"
-                className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+                className="h-8 w-full rounded-md border bg-background px-3 text-sm"
                 value={interval}
                 disabled={busy || summary.checkoutLocked}
                 onChange={(e) => {
@@ -320,7 +357,7 @@ export function OnlineTeamBillingPanel({
           </p>
           {summary.canCheckout ? (
             <Button
-              disabled={!valid || busy}
+              disabled={!valid || busy || summary.checkoutUncertain}
               onClick={() =>
                 void run(async () => {
                   const result = await checkoutTeam({ data: purchase })
@@ -328,16 +365,25 @@ export function OnlineTeamBillingPanel({
                 })
               }
             >
-              {busy && <Loader2 className="size-4 animate-spin" />}Continue to
-              payment
+              {busy && <Loader2 className="size-4 animate-spin" />}
+              {summary.paymentFailed ? "Retry payment" : "Continue to payment"}
             </Button>
           ) : (
             <Button
-              disabled={!valid || busy || summary.status !== "active"}
+              disabled={
+                !valid ||
+                busy ||
+                summary.status !== "active" ||
+                summary.pendingPlanChange
+              }
               onClick={() =>
-                void run(async () =>
+                void run(async () => {
+                  if (purchase.seats < workspace.usedSeats)
+                    throw new Error(
+                      `Remove ${workspace.usedSeats - purchase.seats} ${workspace.usedSeats - purchase.seats === 1 ? "member" : "members"} or cancel pending invitations before reducing to ${purchase.seats} seats.`
+                    )
                   setPreview(await previewTeamChange({ data: purchase }))
-                )
+                })
               }
             >
               Review plan change

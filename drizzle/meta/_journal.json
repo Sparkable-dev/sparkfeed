@@ -169,6 +169,41 @@
       "when": 1789573974849,
       "tag": "0023_team_seat_reductions",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1789578227409,
+      "tag": "0024_personal_to_pro_upgrade",
+      "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1789578683631,
+      "tag": "0025_checkout_request_guard",
+      "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1789578740392,
+      "tag": "0026_plan_change_request_guard",
+      "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1789582179314,
+      "tag": "0027_personal_checkout_guard",
+      "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1789582955287,
+      "tag": "0028_pending_billing_seat_guard",
+      "breakpoints": true
     }
   ]
 }

@@ -71,7 +71,11 @@ export function teamLifecycle(
       accessState: "active" as const,
       failedPaymentGraceDeadline: null,
     }
-  if (remote.status === "on_hold" || remote.status === "failed")
+  if (
+    remote.status === "on_hold" ||
+    remote.status === "failed" ||
+    (remote.status as string) === "past_due"
+  )
     return {
       subscriptionStatus: paidBefore
         ? ("past_due" as const)

@@ -746,8 +746,9 @@ export function teamChangeParams(
         ? ("next_billing_date" as const)
         : ("immediately" as const),
     proration_billing_mode:
+      // Dodo rejects do_not_bill with next_billing_date. Scheduling defers this full charge to renewal.
       purchase.seats < current.seats || purchase.interval !== current.interval
-        ? ("do_not_bill" as const)
+        ? ("full_immediately" as const)
         : ("prorated_immediately" as const),
     on_payment_failure: "prevent_change" as const,
     cancel_scheduled_change_plan: Boolean(remote.scheduled_change),
@@ -814,7 +815,11 @@ export async function changeTeamPlan(
           period: remote.next_billing_date,
           summary,
           // The confirmation displays calendar dates, not moving second-level timestamps.
-          nextBillingDate: new Date(preview.new_plan.next_billing_date)
+          nextBillingDate: new Date(
+            params.effective_at === "next_billing_date"
+              ? remote.next_billing_date
+              : preview.new_plan.next_billing_date
+          )
             .toISOString()
             .slice(0, 10),
           effectiveAt: new Date(preview.immediate_charge.effective_at)
@@ -826,7 +831,10 @@ export async function changeTeamPlan(
     const quote = {
       amount: summary.total_amount,
       currency: summary.currency,
-      nextBillingDate: preview.new_plan.next_billing_date,
+      nextBillingDate:
+        params.effective_at === "next_billing_date"
+          ? remote.next_billing_date
+          : preview.new_plan.next_billing_date,
       effectiveAt:
         params.effective_at === "next_billing_date"
           ? remote.next_billing_date
@@ -1032,7 +1040,8 @@ export async function applyQueuedTeamReduction(
         {
           ...teamCart(config, { seats: target, interval }),
           effective_at: "next_billing_date",
-          proration_billing_mode: "do_not_bill",
+          // Dodo requires this mode for scheduled changes; effective_at defers the charge.
+          proration_billing_mode: "full_immediately",
           on_payment_failure: "prevent_change",
           cancel_scheduled_change_plan: Boolean(remote.scheduled_change),
         },

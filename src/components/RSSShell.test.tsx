@@ -6,13 +6,14 @@ import { RSSShell } from "./RSSShell"
 import type { ReactNode } from "react"
 import type { ArticleRow } from "./ArticleGrid"
 
-const mocks = vi.hoisted(() => ({ invalidate: vi.fn(), refresh: vi.fn() }))
+const mocks = vi.hoisted(() => ({ invalidate: vi.fn(), refresh: vi.fn(), refreshing: false, loading: vi.fn(() => "refresh-toast"), dismiss: vi.fn() }))
+vi.mock("sonner", () => ({ toast: { loading: mocks.loading, dismiss: mocks.dismiss, error: vi.fn(), warning: vi.fn(), success: vi.fn() } }))
 vi.mock("@tanstack/react-router", () => ({
   useRouter: () => ({ invalidate: mocks.invalidate }),
   useNavigate: () => vi.fn(),
 }))
 vi.mock("@/hooks/useFeedRefresh", () => ({
-  useFeedRefresh: () => ({ refreshing: false, refresh: mocks.refresh }),
+  useFeedRefresh: () => ({ refreshing: mocks.refreshing, refresh: mocks.refresh }),
 }))
 vi.mock("@/server/rss", () => ({}))
 vi.mock("@/components/app-sidebar", () => ({
@@ -60,7 +61,7 @@ vi.mock("@/components/ArticleGrid", () => ({
       (emptyState ?? <p>Empty</p>)
     ),
 }))
-afterEach(cleanup)
+afterEach(() => { cleanup(); mocks.refreshing = false; vi.clearAllMocks() })
 
 function TestQueries({ children }: { children: ReactNode }) {
   return <QueryClientProvider client={new QueryClient()}>{children}</QueryClientProvider>
@@ -94,6 +95,15 @@ const data = {
   articles: [article],
 }
 describe("RSSShell loader data", () => {
+  it("uses a dismissible loading toast without inserting a page-shifting status row", () => {
+    mocks.refreshing = true
+    const { unmount } = render(<RSSShell initialData={data} title="Home" showRefreshControls><p>Briefing</p></RSSShell>, { wrapper: TestQueries })
+    expect(mocks.loading).toHaveBeenCalledWith("Checking sources for new articles…", { description: "You can keep reading." })
+    expect(screen.queryByText(/Checking sources for new articles/)).toBeNull()
+    expect(screen.getByText("Briefing")).toBeTruthy()
+    unmount()
+    expect(mocks.dismiss).toHaveBeenCalledWith("refresh-toast")
+  })
   it("renders new loader data without a remount or a second fetch", () => {
     const { rerender } = render(
       <RSSShell initialData={data} title="All articles" skipDateFilter />,

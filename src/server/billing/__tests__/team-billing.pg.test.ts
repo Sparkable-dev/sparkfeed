@@ -149,20 +149,39 @@ describe.runIf(process.env.RUN_TEAM_POSTGRES_TESTS === "true")(
         session_id: "checkout-1",
         checkout_url: "https://test.checkout.dodopayments.com/test",
       })
-      change = vi.fn().mockResolvedValue({})
-      preview = vi.fn().mockImplementation(() => ({
-        immediate_charge: {
-          effective_at: at.toISOString(),
-          summary: {
-            total_amount: 1200,
-            currency: "USD",
-            customer_credits: 0,
-            settlement_amount: 1200,
-            settlement_currency: "USD",
+      const validateScheduledMode = (params: {
+        effective_at?: string
+        proration_billing_mode?: string
+      }) => {
+        if (
+          params.effective_at === "next_billing_date" &&
+          params.proration_billing_mode !== "full_immediately"
+        )
+          throw Object.assign(
+            new Error("INVALID_PRORATION_MODE_WITH_NEXT_BILLING_DATE"),
+            { status: 422 }
+          )
+      }
+      change = vi.fn().mockImplementation((_id, params) => {
+        validateScheduledMode(params)
+        return {}
+      })
+      preview = vi.fn().mockImplementation((_id, params) => {
+        validateScheduledMode(params)
+        return {
+          immediate_charge: {
+            effective_at: at.toISOString(),
+            summary: {
+              total_amount: 1200,
+              currency: "USD",
+              customer_credits: 0,
+              settlement_amount: 1200,
+              settlement_currency: "USD",
+            },
           },
-        },
-        new_plan: { ...remote, next_billing_date: future },
-      }))
+          new_plan: { ...remote, next_billing_date: future },
+        }
+      })
       portal = vi.fn().mockResolvedValue({
         link: "https://test.customer.dodopayments.com/test",
       })
@@ -313,14 +332,12 @@ describe.runIf(process.env.RUN_TEAM_POSTGRES_TESTS === "true")(
         .set({ checkoutRequestedAt: old })
         .where(eq(teamBillingState.workspaceId, id))
       Object.assign(client.checkoutSessions, {
-        retrieve: vi
-          .fn()
-          .mockResolvedValue({
-            id: before.checkoutSessionId,
-            created_at: old,
-            payment_id: null,
-            payment_status: null,
-          }),
+        retrieve: vi.fn().mockResolvedValue({
+          id: before.checkoutSessionId,
+          created_at: old,
+          payment_id: null,
+          payment_status: null,
+        }),
       })
       await service.startTeamCheckout(id, actor, purchase, client, config)
       const [after] = await database
@@ -855,7 +872,7 @@ describe.runIf(process.env.RUN_TEAM_POSTGRES_TESTS === "true")(
       )
       expect(change.mock.calls[0][1]).toMatchObject({
         effective_at: "next_billing_date",
-        proration_billing_mode: "do_not_bill",
+        proration_billing_mode: "full_immediately",
         on_payment_failure: "prevent_change",
       })
       expect(

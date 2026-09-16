@@ -9,7 +9,7 @@ Allowed SDK methods: `subscriptions.previewChangePlan`, `changePlan`, `cancelCha
 Verify these rules in Test Mode before release:
 
 - Approved: `prorated_immediately` charges for remaining time and resets the renewal date. Show the exact provider preview, including dates. Require a fresh confirmation if the quoted amount or displayed renewal date changes.
-- `effective_at: next_billing_date` with `do_not_bill` schedules reductions without an immediate credit or charge.
+- `effective_at: next_billing_date` requires `proration_billing_mode: full_immediately`. The change and charge occur at renewal, not today. The Test Mode API rejected `do_not_bill` with `INVALID_PRORATION_MODE_WITH_NEXT_BILLING_DATE`; the corrected preview succeeded on 2026-09-17.
 - `on_payment_failure: prevent_change` keeps additional seats unavailable until payment succeeds.
 - Automatic payment retries cover renewals, not initial payments or plan-change charges.
 

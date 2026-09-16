@@ -7,7 +7,7 @@ import type { EntitlementPlan } from "@/server/entitlements/types"
 import { authClient } from "@/lib/auth-client"
 import { DEMO_MODE } from "@/lib/demo"
 import { useWorkspaceCreationPermission } from "@/hooks/use-workspace-creation-permission"
-import { getPersonalBillingSummary } from "@/server/personal-billing-actions"
+import { getWorkspaceOverview } from "@/server/workspace-management"
 import { personalWorkspaceName, workspacePlanLabel } from "@/lib/workspaces"
 import {
   DropdownMenu,
@@ -61,23 +61,33 @@ function AuthenticatedTeamSwitcher() {
   const workspaceCreation = useWorkspaceCreationPermission()
   const [personalPlan, setPersonalPlan] =
     React.useState<EntitlementPlan | null>(null)
+  const [teamPlans, setTeamPlans] = React.useState<
+    Record<string, EntitlementPlan>
+  >({})
+  const loadPlans = React.useCallback(async () => {
+    if (DEMO_MODE || !user?.id) return
+    try {
+      const summary = await getWorkspaceOverview()
+      setPersonalPlan(
+        summary.workspaces.find((w) => w.type === "personal")?.plan ?? null
+      )
+      setTeamPlans(
+        Object.fromEntries(
+          summary.workspaces
+            .filter((w) => w.type === "organization")
+            .map((w) => [w.id, w.plan])
+        )
+      )
+    } catch {
+      /* Keep the last confirmed labels when offline. */
+    }
+  }, [user?.id])
 
   React.useEffect(() => {
     if (DEMO_MODE || !user?.id) return
 
-    let active = true
-    void getPersonalBillingSummary()
-      .then((summary) => {
-        if (active) setPersonalPlan(summary.plan)
-      })
-      .catch(() => {
-        if (active) setPersonalPlan(null)
-      })
-
-    return () => {
-      active = false
-    }
-  }, [user?.id])
+    void loadPlans()
+  }, [user?.id, loadPlans])
 
   const handleSwitch = async (id: string | null) => {
     if (DEMO_MODE) {
@@ -98,7 +108,11 @@ function AuthenticatedTeamSwitcher() {
   return (
     <SidebarMenu>
       <SidebarMenuItem>
-        <DropdownMenu>
+        <DropdownMenu
+          onOpenChange={(open) => {
+            if (open) void loadPlans()
+          }}
+        >
           <DropdownMenuTrigger
             aria-label="Switch workspace"
             render={
@@ -108,7 +122,7 @@ function AuthenticatedTeamSwitcher() {
               />
             }
           >
-            <div className="flex aspect-square size-8 items-center justify-center overflow-hidden rounded-full bg-primary text-primary-foreground ">
+            <div className="flex aspect-square size-8 items-center justify-center overflow-hidden rounded-full bg-primary text-primary-foreground">
               {activeOrg?.logo ? (
                 <img
                   src={activeOrg.logo}
@@ -132,13 +146,16 @@ function AuthenticatedTeamSwitcher() {
                 {activeOrg?.name || personalWorkspaceName(user?.name)}
               </span>
               <span className="w-full truncate text-[10px] font-medium text-muted-foreground">
-                {workspacePlanLabel(personalPlan, Boolean(activeOrg))}
+                {workspacePlanLabel(
+                  activeOrg ? (teamPlans[activeOrg.id] ?? null) : personalPlan,
+                  Boolean(activeOrg)
+                )}
               </span>
             </div>
             <ChevronDownIcon className="ml-auto size-3.5 text-muted-foreground group-data-[collapsible=icon]:hidden" />
           </DropdownMenuTrigger>
           <DropdownMenuContent
-            className="w-64 rounded-xl border-border bg-popover p-2 shadow-2xl"
+            className="w-72 max-w-[calc(100vw-1rem)] rounded-xl border-border bg-popover p-2 shadow-2xl"
             align="start"
             side="bottom"
             sideOffset={8}
@@ -154,7 +171,7 @@ function AuthenticatedTeamSwitcher() {
                 onClick={() => handleSwitch(null)}
                 className={`cursor-pointer gap-3 rounded-lg p-2 transition-colors ${!activeOrg ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:bg-accent"}`}
               >
-                <div className="flex size-7 items-center justify-center overflow-hidden rounded-full border border-border bg-muted shadow-sm">
+                <div className="flex size-7 shrink-0 items-center justify-center overflow-hidden rounded-full border border-border bg-muted shadow-sm">
                   {user?.image ? (
                     <img
                       src={user.image}
@@ -165,14 +182,16 @@ function AuthenticatedTeamSwitcher() {
                     <User className="size-4" />
                   )}
                 </div>
-                <div className="flex-1 text-left">
-                  <p className="text-sm font-semibold">
+                <div className="min-w-0 flex-1 text-left">
+                  <p className="truncate text-sm font-semibold">
                     {personalWorkspaceName(user?.name)}
                   </p>
-                  <p className="text-[10px] opacity-60">Personal account</p>
+                  <p className="truncate text-[10px] opacity-60">
+                    {workspacePlanLabel(personalPlan, false)}
+                  </p>
                 </div>
                 {!activeOrg ? (
-                  <div className="flex items-center gap-2">
+                  <div className="flex shrink-0 items-center gap-2">
                     <Button
                       variant="outline"
                       size="sm"
@@ -194,7 +213,7 @@ function AuthenticatedTeamSwitcher() {
                   onClick={() => handleSwitch(org.id)}
                   className={`mt-1 cursor-pointer gap-3 rounded-lg p-2 transition-colors ${activeOrg?.id === org.id ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:bg-accent"}`}
                 >
-                  <div className="flex size-7 items-center justify-center overflow-hidden rounded-full border border-border bg-muted shadow-sm">
+                  <div className="flex size-7 shrink-0 items-center justify-center overflow-hidden rounded-full border border-border bg-muted shadow-sm">
                     {org.logo ? (
                       <img
                         src={org.logo}
@@ -207,12 +226,14 @@ function AuthenticatedTeamSwitcher() {
                       </span>
                     )}
                   </div>
-                  <div className="flex-1 text-left">
-                    <p className="text-sm font-semibold">{org.name}</p>
-                    <p className="text-[10px] opacity-60">{org.slug}</p>
+                  <div className="min-w-0 flex-1 text-left">
+                    <p className="truncate text-sm font-semibold">{org.name}</p>
+                    <p className="truncate text-[10px] opacity-60">
+                      {workspacePlanLabel(teamPlans[org.id] ?? null, true)}
+                    </p>
                   </div>
                   {activeOrg?.id === org.id && (
-                    <div className="flex items-center gap-2">
+                    <div className="flex shrink-0 items-center gap-2">
                       <Button
                         variant="outline"
                         size="sm"

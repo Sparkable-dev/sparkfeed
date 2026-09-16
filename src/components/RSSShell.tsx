@@ -289,6 +289,14 @@ export function RSSShell({
     onRefreshed: reload,
   })
 
+  useEffect(() => {
+    if (!refreshing) return
+    const id = toast.loading("Checking sources for new articles…", {
+      description: "You can keep reading.",
+    })
+    return () => { toast.dismiss(id) }
+  }, [refreshing])
+
   const handleEditFeed = (feed: FeedRow) => {
     setEditingFeed(feed)
     setEditFeedOpen(true)
@@ -611,12 +619,6 @@ export function RSSShell({
           crumbMenu={headerMenu}
           actions={headerActions}
         />
-
-        {refreshing && (
-          <p role="status" className="mx-4 mb-2 text-xs text-muted-foreground">
-            Checking sources for new articles. You can keep reading.
-          </p>
-        )}
 
         {degraded && (
           <div className="mx-4 mb-2 flex items-center gap-2 rounded-md border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-400">

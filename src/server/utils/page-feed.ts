@@ -15,7 +15,7 @@ import { safeParseDate } from "./dates"
  *
  *   1. **What the site says about itself.** A surprising number of blog indexes
  *      ship JSON-LD describing their own posts. When that is present it is
- *      exact, and no heuristic can beat it.
+ *      useful, but it can describe a stale archive rather than the visible list.
  *
  *   2. **URL shape.** Posts on a listing page share a path template —
  *      `/blog/<slug>`, `/2026/05/<slug>`, `/insights/<slug>` — and navigation
@@ -34,6 +34,7 @@ export interface PageLink {
   title: string
   /** From a `<time datetime>` in the same card, when the page has one. */
   publishedAt: string | null
+  image?: string | null
   /** How the title was found. Useful when a site produces poor results. */
   from: "jsonld" | "link-text" | "heading" | "slug"
 }
@@ -411,7 +412,7 @@ function titleFor(
   element: Element,
   slug: string
 ): { title: string; from: PageLink["from"] } {
-  const inner = textOf(element.querySelector("h1, h2, h3, h4"))
+  const inner = headlineIn(element)
   if (inner.length >= 3) return { title: inner, from: "heading" }
 
   const leaf = longestLeafText(element)
@@ -436,7 +437,14 @@ function titleFor(
     node && depth < CARD_DEPTH;
     depth++, node = node.parentElement
   ) {
-    const heading = textOf(node.querySelector("h1, h2, h3, h4"))
+    // Stop before an ancestor containing several different articles.
+    const urls = new Set(
+      Array.from(node.querySelectorAll("a[href]")).map((a) =>
+        a.getAttribute("href")
+      )
+    )
+    if (urls.size > 1) break
+    const heading = headlineIn(node)
     if (heading.length >= 3) return { title: heading, from: "heading" }
   }
 
@@ -451,6 +459,83 @@ function titleFor(
   // Last resort. A slug is a worse title than a headline but a far better one
   // than "Read more", and it is never empty.
   return { title: titleFromSlug(slug), from: "slug" }
+}
+
+/** Prefer the substantive heading over a category heading in the same card. */
+function headlineIn(element: Element): string {
+  return (
+    Array.from(element.querySelectorAll("h1,h2,h3,h4"))
+      .map(textOf)
+      .filter((t) => t.length >= 3 && !CONTROL_TEXT.test(t))
+      .sort((a, b) => b.length - a.length)[0] ?? ""
+  )
+}
+
+function imageNear(element: Element, base: URL): string | null {
+  let node: Element | null = element
+  for (
+    let depth = 0;
+    node && depth <= CARD_DEPTH;
+    depth++, node = node.parentElement
+  ) {
+    if (
+      new Set(
+        Array.from(node.querySelectorAll("a[href]")).map((a) =>
+          a.getAttribute("href")
+        )
+      ).size > 1
+    )
+      break
+    const img = node.querySelector("img")
+    const raw = img?.getAttribute("data-src") || img?.getAttribute("src")
+    if (!raw) continue
+    try {
+      const url = new URL(raw, base)
+      if (/^https?:$/.test(url.protocol) && !url.username && !url.password)
+        return url.href
+    } catch {
+      /* Try the containing card. */
+    }
+  }
+  return null
+}
+
+/** Only follow a publisher-provided next link within the same site and section. */
+export function nextListingPage(html: string, pageUrl: string): string | null {
+  const base = new URL(pageUrl)
+  const { document } = parseHTML(html)
+  for (const a of document.querySelectorAll("a[href],link[rel=next][href]")) {
+    if (
+      a.getAttribute("rel") !== "next" &&
+      !/^(next(?:\s|$)|older(?:\s|$)|load more(?:\s|$)|show more(?:\s|$))/i.test(
+        textOf(a)
+      )
+    )
+      continue
+    try {
+      const url = new URL(a.getAttribute("href")!, base)
+      url.hash = ""
+      const section = base.pathname
+        .replace(/\/page\/\d+\/?$/, "")
+        .replace(/\/+$/, "")
+      if (
+        url.origin !== base.origin ||
+        url.username ||
+        url.password ||
+        url.href === base.href
+      )
+        continue
+      if (
+        url.pathname.replace(/\/+$/, "") !== section &&
+        !url.pathname.startsWith(`${section}/page/`)
+      )
+        continue
+      return url.href
+    } catch {
+      /* Ignore malformed navigation. */
+    }
+  }
+  return null
 }
 
 /** A `<time datetime>` in the anchor or its card. */
@@ -480,9 +565,9 @@ function dateNear(element: Element): string | null {
     depth++, node = node.parentElement
   ) {
     const found = node.querySelector("time[datetime]")?.getAttribute("datetime")
-    if (found) return found
     // Do not borrow another card's publication date from a whole listing container.
     if (node.querySelectorAll("a[href]").length > 3) break
+    if (found) return found
     const nearby = textDate(node)
     if (nearby) return nearby
   }
@@ -575,12 +660,19 @@ export function extractPageLinks(
   }
 
   const declared = fromJsonLd(document, base)
-  if (declared.length >= MIN_PAGE_LINKS)
-    return declared.slice(0, MAX_PAGE_LINKS)
 
-  const group = bestGroup(collectAnchors(document, base), base)
-  if (!group)
-    return declared.length > 0 ? declared.slice(0, MAX_PAGE_LINKS) : []
+  const anchors = collectAnchors(document, base)
+  const group = bestGroup(anchors, base)
+  if (!group) {
+    // Schema-only documents are supported, but do not ignore a visible listing
+    // merely because it has fewer than three links of a shared shape.
+    const visible = new Set(anchors.map((a) => a.url.replace(/\/+$/, "")))
+    return declared
+      .filter(
+        (item) => !anchors.length || visible.has(item.url.replace(/\/+$/, ""))
+      )
+      .slice(0, MAX_PAGE_LINKS)
+  }
 
   /*
     One entry per URL, keeping the anchor with the most text. A card links the
@@ -604,10 +696,27 @@ export function extractPageLinks(
       title,
       publishedAt: dateNear(anchor.element),
       from,
+      image: imageNear(anchor.element, base),
     })
   }
 
-  return out.slice(0, MAX_PAGE_LINKS)
+  // Visible cards establish membership/order. JSON-LD enriches matching cards;
+  // unrelated schema archive entries must not displace what the page shows.
+  const key = (url: string) => url.replace(/\/+$/, "")
+  const metadata = new Map(declared.map((item) => [key(item.url), item]))
+  return out
+    .map((item) => {
+      const meta = metadata.get(key(item.url))
+      return meta
+        ? {
+            ...item,
+            title:
+              meta.title.length > item.title.length ? meta.title : item.title,
+            publishedAt: meta.publishedAt ?? item.publishedAt,
+          }
+        : item
+    })
+    .slice(0, MAX_PAGE_LINKS)
 }
 
 /** Whether a page can usefully be read as a feed. */

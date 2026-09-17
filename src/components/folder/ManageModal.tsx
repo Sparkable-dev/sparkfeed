@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react"
 import { useNavigate } from "@tanstack/react-router"
 import { toast } from "sonner"
 import { ExternalLink, Loader2, Pencil, Trash2, TriangleAlert } from "lucide-react"
+import { WebsiteArchive } from "./WebsiteArchive"
 import type { FeedRow, FolderRow } from "@/lib/rss-types"
 import type {ManagedSource} from "@/server/rss";
 import { timeAgo } from "@/lib/time-ago"
@@ -10,7 +11,8 @@ import {
 
   deleteFeed,
   deleteFolder,
-  getFolderManageData
+  getFolderManageData,
+  getSourceReadStatus
 } from "@/server/rss"
 import {
   Dialog,
@@ -113,22 +115,24 @@ export function ManageModal({
       : target.id
     : null
 
+  const selectedFeedId = isFeed ? target?.id : undefined
   const load = useCallback(async () => {
-    if (!scopeFolderId) {
-      setSources([])
-      return
-    }
     setLoading(true)
     try {
-      const next = await getFolderManageData({ data: { folderId: scopeFolderId } })
-      setSources(next.sources)
+      if (selectedFeedId) {
+        const next = await getSourceReadStatus({ data: { feedId: selectedFeedId } })
+        setSources([next.source])
+      } else if (scopeFolderId) {
+        const next = await getFolderManageData({ data: { folderId: scopeFolderId } })
+        setSources(next.sources)
+      } else setSources([])
     } catch (err) {
       console.error(err)
       toast.error("Could not load this folder")
     } finally {
       setLoading(false)
     }
-  }, [scopeFolderId])
+  }, [scopeFolderId, selectedFeedId])
 
   // The dialog is mounted permanently by its host, so the fetch hangs off
   // `open` rather than mount — otherwise every sidebar render would load every
@@ -254,8 +258,8 @@ export function ManageModal({
                       </a>
                     </DetailRow>
                     <DetailRow label="Type">
-                      {feedHealth?.type === "scraped"
-                        ? "Scraped — no feed on this site, so we read the page"
+                      {feedRow?.kind === "page"
+                        ? "Website: articles are read from the page"
                         : "RSS — read directly from the site's feed"}
                     </DetailRow>
                     <DetailRow label="Articles">
@@ -271,13 +275,14 @@ export function ManageModal({
                           {feedHealth.lastError}
                         </span>
                       ) : feedHealth?.lastFetchedAt ? (
-                        <span className="text-emerald-400">OK</span>
+                        <span className="text-emerald-400">{feedRow?.kind === "page" ? "Listing checked" : "OK"}</span>
                       ) : (
                         <span className="text-muted-foreground">Not checked yet</span>
                       )}
                     </DetailRow>
                   </div>
 
+                  {feedRow?.kind === "page" && !DEMO_MODE && open && <WebsiteArchive key={feedRow.id} feedId={feedRow.id} onChanged={() => { void load(); onChanged?.() }} />}
                   <Button
                     variant="outline"
                     className="mt-5 border-border text-foreground hover:bg-accent hover:text-foreground"

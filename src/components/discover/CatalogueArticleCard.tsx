@@ -57,7 +57,8 @@ export function CatalogueArticleRow({ article }: { article: PreviewArticle }) {
         <span className="line-clamp-2 text-[13px] leading-snug font-medium text-foreground dark:text-zinc-200 transition-colors group-hover:text-foreground dark:group-hover:text-white">
           {article.title}
         </span>
-        <span className="text-[11px] text-muted-foreground dark:text-zinc-600">{date}</span>
+        <span className="text-[11px] text-muted-foreground dark:text-zinc-600">{date || "Publication date unknown"}</span>
+        {article.notice && <span className="text-[11px] text-amber-600 dark:text-amber-400">{article.notice}</span>}
       </div>
 
       <ExternalLink className="mt-1 size-3 shrink-0 text-muted-foreground dark:text-zinc-700 opacity-0 transition-opacity group-hover:opacity-100" />
@@ -100,6 +101,7 @@ export function CatalogueArticleCard({ article }: { article: PreviewArticle }) {
         <span className="text-[10px] font-medium tracking-wide text-muted-foreground dark:text-zinc-500 uppercase">
           {date || domainOf(article.link)}
         </span>
+        {article.notice && <span className="text-[10px] text-amber-600 dark:text-amber-400">{article.notice}</span>}
         <span className="line-clamp-3 text-xs leading-snug font-semibold text-foreground dark:text-zinc-100">
           {article.title}
         </span>

@@ -42,6 +42,8 @@ export interface IngestTask {
    * than `page` is read as a feed, which is the safe default.
    */
   kind?: string | null
+  archive?: boolean
+  startUrl?: string
 }
 
 /** Feed ids currently queued or running, so the same feed is never fetched twice at once. */
@@ -107,7 +109,10 @@ function drain(): void {
 async function runTask(task: QueuedTask): Promise<void> {
   let outcome: Outcome = null
   try {
-    outcome = await ingestSource(task.feedId, task.url, task.kind ?? null)
+    outcome = await ingestSource(task.feedId, task.url, task.kind ?? null, {
+      archive: task.archive,
+      startUrl: task.startUrl,
+    })
   } catch (err) {
     // `ingestSource` already records the failure on the feed row via
     // recordFeedHealth, so this is only about not crashing.
@@ -137,4 +142,66 @@ export async function waitForIngestIdle(timeoutMs = 5_000): Promise<void> {
       throw new Error("ingest queue did not drain")
     await new Promise((r) => setTimeout(r, 10))
   }
+}
+
+export interface ArchiveStatus {
+  state: "running" | "complete" | "error"
+  inserted: number
+  message: string
+  hasMore: boolean
+}
+const archives = new Map<
+  string,
+  { status: ArchiveStatus; nextUrl?: string; at: number }
+>()
+
+export function archiveStatus(feedId: string): ArchiveStatus | null {
+  return archives.get(feedId)?.status ?? null
+}
+
+/** Uses the same per-feed lock and worker budget as normal refreshes. Restarting is safe. */
+export function enqueueArchive(task: IngestTask): ArchiveStatus {
+  const previous = archives.get(task.feedId)
+  if (previous?.status.state === "running") return previous.status
+  if (inFlight.has(task.feedId))
+    throw new Error("This source is refreshing. Try again after it finishes.")
+  for (const [id, entry] of archives) {
+    if (entry.status.state !== "running" && Date.now() - entry.at > 60 * 60_000)
+      archives.delete(id)
+  }
+  if (archives.size >= 1000 && !archives.has(task.feedId))
+    throw new Error("Archive queue is busy. Try again later.")
+  const status: ArchiveStatus = {
+    state: "running",
+    inserted: 0,
+    hasMore: false,
+    message: "Fetching older articles in the background.",
+  }
+  archives.set(task.feedId, { status, at: Date.now() })
+  void queueTask({ ...task, archive: true, startUrl: previous?.nextUrl }).then(
+    (result) => {
+      archives.set(task.feedId, {
+        at: Date.now(),
+        nextUrl: result?.archive?.nextUrl ?? undefined,
+        status: result
+          ? {
+              state: result.failed ? "error" : "complete",
+              inserted: result.inserted,
+              hasMore: !!result.archive?.nextUrl,
+              message: result.failed
+                ? "Some articles could not be saved. Try again later."
+                : (result.archive?.reason ??
+                  "No archive was fetched. Check the source access and try again."),
+            }
+          : {
+              state: "error",
+              inserted: 0,
+              hasMore: false,
+              message:
+                "Could not read the archive. Saved articles are unchanged. Try again later.",
+            },
+      })
+    }
+  )
+  return status
 }

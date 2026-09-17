@@ -60,6 +60,8 @@ export function FeedDiscovery({
                     </p>
                     <p className="truncate text-[10px] text-muted-foreground">
                       {domainOf(feed.site_url ?? feed.url)}
+                      {feed.source_kind === "page" ? " · Website" : " · RSS"}
+                      {feed.verification === "cached" ? " · Catalogue suggestion, not checked live" : ""}
                       {feed.category ? ` · ${feed.category}` : ""}
                       {feed.item_count ? ` · ${feed.item_count} items` : ""}
                     </p>
@@ -88,6 +90,7 @@ export function FeedDiscovery({
                     size="sm"
                     url={feed.url}
                     name={feed.title}
+                    sourceKind={feed.source_kind}
                     alreadyAdded={feed.already_subscribed}
                   />
                 </li>

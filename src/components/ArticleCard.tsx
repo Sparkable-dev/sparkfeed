@@ -71,7 +71,7 @@ export function ArticleCard({ article }: ArticleCardProps) {
           <div className="flex flex-col gap-1 mb-2">
             {/* Published date */}
             <p className="text-[10px] text-muted-foreground dark:text-zinc-500 leading-none">
-              {formatDate(article.publishedAt)}
+              {article.publishedAt ? formatDate(article.publishedAt) : article.createdAt ? `Added ${formatDate(article.createdAt)}` : "Publication date unknown"}
             </p>
 
             {/* Title — max 2 lines */}

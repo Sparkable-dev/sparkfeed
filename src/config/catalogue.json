@@ -1049,12 +1049,12 @@
         },
         {
           "kind": "feed",
-          "sourceKind": "page",
+          "sourceKind": "rss",
           "slug": "a16z-crypto-website",
           "name": "a16z Crypto",
           "description": "Research and analysis on crypto technology and applications.",
           "siteUrl": "https://a16zcrypto.com/posts/",
-          "url": "https://a16zcrypto.com/posts/"
+          "url": "https://a16zcrypto.com/feed.xml"
         },
         {
           "kind": "feed",

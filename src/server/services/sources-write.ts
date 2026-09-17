@@ -1,5 +1,8 @@
 import { randomUUID } from "node:crypto"
 import { and, eq } from "drizzle-orm"
+import { inspectWebsite } from "../utils/website-preview"
+import { ingestSource } from "../utils/fetch-page-articles"
+import { withNoRssSourceCapacity } from "../entitlements/enforce"
 import { fetchAndInsertArticles } from "../utils/fetch-articles"
 import { resolveFeed } from "../utils/detectRSS"
 import { decodeId, encodeId } from "./ids"
@@ -103,7 +106,7 @@ export async function createFolder(
  */
 export async function addFeed(
   principal: ApiPrincipal,
-  args: { url: string; folderId?: string; name?: string }
+  args: { url: string; folderId?: string; name?: string; allowScrape?: boolean }
 ) {
   assertWritable(principal)
 
@@ -119,7 +122,10 @@ export async function addFeed(
       err instanceof Error ? err.message : "Could not reach that URL."
     )
   }
-  if (!resolved) {
+  const website =
+    !resolved && args.allowScrape ? await inspectWebsite(args.url) : null
+  const source = resolved ?? website
+  if (!source) {
     throw upstreamFailed(`No RSS or Atom feed found at ${args.url}.`)
   }
 
@@ -129,27 +135,35 @@ export async function addFeed(
     subscribed and then let this path add it again under a trailing slash.
   */
   const existing = await existingFeedKeys(principal.workspaceId)
-  if (existing.has(feedUrlKey(resolved.url))) {
+  if (existing.has(feedUrlKey(source.url))) {
     // Not a failure the model should retry — say so plainly.
     throw invalidArgument("That feed is already in this workspace.")
   }
 
   const id = randomUUID()
-  const name = args.name?.trim() || resolved.title || resolved.url
+  const name = args.name?.trim() || source.title || source.url
 
-  await db.insert(feeds).values({
+  const values = {
     id,
     name,
-    url: resolved.url,
+    url: source.url,
+    kind: website ? "page" : "rss",
     folderId: folderRaw,
     workspaceId: principal.workspaceId,
     includeKeywords: JSON.stringify([]),
     excludeKeywords: JSON.stringify([]),
-  })
+  }
+  if (website)
+    await withNoRssSourceCapacity(principal.workspaceId, 1, async (tx) => {
+      await tx.insert(feeds).values(values)
+    })
+  else await db.insert(feeds).values(values)
 
   let imported = 0
   try {
-    const result = await fetchAndInsertArticles(id, resolved.url)
+    const result = website
+      ? await ingestSource(id, source.url, "page")
+      : await fetchAndInsertArticles(id, source.url)
     // Every row rejected means the feed parsed but we could not store it —
     // our problem, not the user's. Roll back rather than leaving behind a
     // subscription that will never show anything.
@@ -176,7 +190,7 @@ export async function addFeed(
     feed: {
       id: encodeId("feed", id),
       name,
-      url: resolved.url,
+      url: source.url,
       folder_id: folderRaw ? encodeId("folder", folderRaw) : null,
     },
     articles_imported: imported,

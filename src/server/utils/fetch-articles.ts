@@ -3,7 +3,11 @@ import { and, eq, inArray, or } from "drizzle-orm"
 import { parseSyndication } from "./parse-feed"
 import { safeFetchText } from "./fetch"
 import { safeParseDate } from "./dates"
-import { acceptFeedReaderContent, extractSocialImage, sanitizeArticleHtml } from "./extract"
+import {
+  acceptFeedReaderContent,
+  extractSocialImage,
+  sanitizeArticleHtml,
+} from "./extract"
 import { decodeEntities } from "./entities"
 import { mapWithConcurrency } from "./concurrency"
 import type { FeedItem } from "./parse-feed"
@@ -17,6 +21,7 @@ export type LinkedFeedItem = FeedItem & { link: string }
 
 export type IngestResult = {
   inserted: number
+  archive?: { pages: number; nextUrl: string | null; reason: string }
   /** Already in the database. */
   skipped: number
   /** Individually rejected by the database; the rest of the batch still landed. */

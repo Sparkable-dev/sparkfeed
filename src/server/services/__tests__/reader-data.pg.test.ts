@@ -114,43 +114,39 @@ describe.runIf(process.env.RUN_READER_POSTGRES_TESTS === "true")(
           url: "https://example.test/team",
         },
       ])
-      await database
-        .insert(workspaceSubscriptions)
-        .values({
-          workspaceType: "organization",
-          workspaceId: team,
-          planKey: "pro",
-          billingSource: "manual",
-          subscriptionStatus: "active",
-          accessState: "active",
-        })
-      await database
-        .insert(articles)
-        .values([
-          {
-            id: oldId,
-            feedId: personalFeed,
-            title: "Archived favorite",
-            link: "https://example.test/old",
-            publishedAt: "2020-01-01T00:00:00Z",
-            isFavorite: true,
-          },
-          {
-            id: teamId,
-            feedId: teamFeed,
-            title: "Shared article",
-            link: "https://example.test/team-story",
-            publishedAt: "2020-01-01T00:00:00Z",
-            isFavorite: true,
-          },
-          ...Array.from({ length: 245 }, (_, i) => ({
-            id: `${prefix}-${String(i).padStart(3, "0")}`,
-            feedId: personalFeed,
-            title: `Recent ${i}`,
-            link: `https://example.test/${i}`,
-            publishedAt: new Date().toISOString(),
-          })),
-        ])
+      await database.insert(workspaceSubscriptions).values({
+        workspaceType: "organization",
+        workspaceId: team,
+        planKey: "pro",
+        billingSource: "manual",
+        subscriptionStatus: "active",
+        accessState: "active",
+      })
+      await database.insert(articles).values([
+        {
+          id: oldId,
+          feedId: personalFeed,
+          title: "Archived favorite",
+          link: "https://example.test/old",
+          publishedAt: "2020-01-01T00:00:00Z",
+          isFavorite: true,
+        },
+        {
+          id: teamId,
+          feedId: teamFeed,
+          title: "Shared article",
+          link: "https://example.test/team-story",
+          publishedAt: "2020-01-01T00:00:00Z",
+          isFavorite: true,
+        },
+        ...Array.from({ length: 245 }, (_, i) => ({
+          id: `${prefix}-${String(i).padStart(3, "0")}`,
+          feedId: personalFeed,
+          title: `Recent ${i}`,
+          link: `https://example.test/${i}`,
+          publishedAt: new Date().toISOString(),
+        })),
+      ])
     })
     afterAll(async () => {
       if (!database) return
@@ -249,20 +245,37 @@ describe.runIf(process.env.RUN_READER_POSTGRES_TESTS === "true")(
       context = ctx(alice, team)
       expect((await readFavoriteIds(context)).workspace).toContain(teamId)
     })
-  it("enforces the Cloud plan matrix without deleting saved workspace favorites", async () => {
-    context = ctx(alice, team)
-    for (const planKey of ["free", "personal_plus", "pro", "enterprise"] as const) {
-      await database.update(workspaceSubscriptions).set({ planKey }).where(eq(workspaceSubscriptions.workspaceId, team))
-      const enabled = planKey === "pro" || planKey === "enterprise"
-      const favorites = await readFavoriteIds(context)
-      expect(favorites.workspaceEnabled).toBe(enabled)
-      expect(favorites.workspace).toContain(teamId)
-      if (enabled) await expect(save([teamId], true, "workspace")).resolves.toEqual({ ids: [teamId] })
-      else await expect(save([teamId], true, "workspace")).rejects.toThrow("team workspace")
-    }
-    await database.update(workspaceSubscriptions).set({ planKey: "pro" }).where(eq(workspaceSubscriptions.workspaceId, team))
-  })
-  it("rejects changed identities, foreign article IDs, and invalid cursors", async () => {
+    it("enforces the Cloud plan matrix without deleting saved workspace favorites", async () => {
+      context = ctx(alice, team)
+      for (const planKey of [
+        "free",
+        "personal_plus",
+        "pro",
+        "enterprise",
+      ] as const) {
+        await database
+          .update(workspaceSubscriptions)
+          .set({ planKey })
+          .where(eq(workspaceSubscriptions.workspaceId, team))
+        const enabled = planKey === "pro" || planKey === "enterprise"
+        const favorites = await readFavoriteIds(context)
+        expect(favorites.workspaceEnabled).toBe(enabled)
+        expect(favorites.workspace).toContain(teamId)
+        if (enabled)
+          await expect(save([teamId], true, "workspace")).resolves.toEqual({
+            ids: [teamId],
+          })
+        else
+          await expect(save([teamId], true, "workspace")).rejects.toThrow(
+            "team workspace"
+          )
+      }
+      await database
+        .update(workspaceSubscriptions)
+        .set({ planKey: "pro" })
+        .where(eq(workspaceSubscriptions.workspaceId, team))
+    })
+    it("rejects changed identities, foreign article IDs, and invalid cursors", async () => {
       context = ctx()
       expect((await save([teamId])).ids).toEqual([])
       await expect(
@@ -307,6 +320,75 @@ describe.runIf(process.env.RUN_READER_POSTGRES_TESTS === "true")(
           .from(folders)
           .where(eq(folders.workspaceId, bob))
       ).toHaveLength(1)
+    })
+    it("supports 180-day history and uses first-added time for unknown publication dates", async () => {
+      context = ctx()
+      const now = Date.now()
+      const rows = [
+        {
+          id: `${prefix}-history-inside`,
+          publishedAt: new Date(now - 179 * 86_400_000).toISOString(),
+          createdAt: new Date(now).toISOString(),
+        },
+        {
+          id: `${prefix}-history-outside`,
+          publishedAt: new Date(now - 181 * 86_400_000).toISOString(),
+          createdAt: new Date(now).toISOString(),
+        },
+        {
+          id: `${prefix}-history-undated`,
+          publishedAt: null,
+          createdAt: new Date(now - 100 * 86_400_000).toISOString(),
+        },
+      ]
+      await database
+        .insert(articles)
+        .values(
+          rows.map((row) => ({
+            ...row,
+            feedId: personalFeed,
+            title: "History boundary",
+            link: `https://example.test/${row.id}`,
+          }))
+        )
+      try {
+        const page = await getArticlePage({
+          data: {
+            userId: alice,
+            workspaceId: alice,
+            days: 180,
+            query: "History boundary",
+          },
+        })
+        expect(page.items.map((row) => row.id).sort()).toEqual(
+          [rows[0].id, rows[2].id].sort()
+        )
+        const short = await getArticlePage({
+          data: {
+            userId: alice,
+            workspaceId: alice,
+            days: 90,
+            query: "History boundary",
+          },
+        })
+        expect(short.items).toHaveLength(0)
+        const all = await getArticlePage({
+          data: {
+            userId: alice,
+            workspaceId: alice,
+            days: 0,
+            query: "History boundary",
+          },
+        })
+        expect(all.items).toHaveLength(3)
+      } finally {
+        await database.delete(articles).where(
+          inArray(
+            articles.id,
+            rows.map((row) => row.id)
+          )
+        )
+      }
     })
     it("enforces the write guard before saving", async () => {
       context = ctx()

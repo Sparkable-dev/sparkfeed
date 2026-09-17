@@ -151,7 +151,7 @@ describe("openapi document", () => {
       Object.keys(
         addFeed.requestBody.content["application/json"].schema.properties
       ).sort()
-    ).toEqual(["folder_id", "name", "url"])
+    ).toEqual(["allow_scrape", "folder_id", "name", "url"])
   })
 
   it("marks a path parameter as in:path and required", () => {

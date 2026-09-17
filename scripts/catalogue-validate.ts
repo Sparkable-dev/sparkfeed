@@ -22,9 +22,7 @@ import { readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { existsSync } from 'node:fs'
 import { resolveFeed } from '../src/server/utils/detectRSS'
-import { safeFetchText } from '../src/server/utils/fetch'
-import { extractPageLinks } from '../src/server/utils/page-feed'
-import { extractReadable } from '../src/server/utils/extract'
+import { inspectWebsite } from '../src/server/utils/website-preview'
 
 const ROOT = process.cwd()
 const CATALOGUE_PATH = join(ROOT, 'src/config/catalogue.json')
@@ -155,7 +153,7 @@ function countBy(values: string[]): Map<string, number> {
 //─────────────────────────────────────────────
 
 type Outcome =
-  | { kind: 'ok'; target: Target; url: string; itemCount: number; title: string | null; ms: number }
+  | { kind: 'ok'; warning?: string; target: Target; url: string; itemCount: number; title: string | null; ms: number }
   | { kind: 'moved'; target: Target; from: string; url: string; itemCount: number; title: string | null; ms: number }
   | { kind: 'dead'; target: Target; reason: string; ms: number }
 
@@ -166,13 +164,11 @@ async function check(target: Target): Promise<Outcome> {
     if (target.entry.sourceKind === 'page') {
       const native = await resolveFeed(input)
       if (native) throw new Error(`Native feed found at ${native.url}; use RSS instead of a website source`)
-      const page = await safeFetchText(input)
-      if (!page.res.ok) throw new Error(`Listing returned ${page.res.status}`)
-      const links = extractPageLinks(page.text, page.finalUrl)
-      if (links.length < 3) throw new Error('Fewer than three article links found')
-      const sample = await safeFetchText(links[0].url)
-      if (!sample.res.ok || (extractReadable(sample.text, sample.finalUrl)?.length ?? 0) < 200) throw new Error('Sample article cannot be read')
-      return { kind: 'ok', target, url: page.finalUrl, itemCount: links.length, title: target.name, ms: Date.now() - startedAt }
+      const page = await inspectWebsite(input)
+      if (!page) throw new Error('Fewer than three credible article links found')
+      return { kind: 'ok', target, url: page.url, itemCount: page.itemCount, title: page.title, ms: Date.now() - startedAt,
+        warning: page.quality === 'partial' ? 'Partial reader content in the four-article sample; original links remain usable' : undefined }
+
     }
     const resolved = await resolveFeed(input)
     const ms = Date.now() - startedAt
@@ -234,7 +230,7 @@ async function main() {
   for (const o of outcomes) {
     const secs = `${(o.ms / 1000).toFixed(1)}s`.padStart(6)
     if (o.kind === 'ok') {
-      console.log(`ok    ${o.target.slug.padEnd(28)} ${String(o.itemCount).padStart(4)} items  ${secs}`)
+      console.log(`ok    ${o.target.slug.padEnd(28)} ${String(o.itemCount).padStart(4)} items  ${secs}${o.warning ? `  WARNING: ${o.warning}` : ""}`)
     } else if (o.kind === 'moved') {
       console.log(`MOVED ${o.target.slug.padEnd(28)} ${o.from}\n      ${' '.repeat(28)} -> ${o.url}  (${o.itemCount} items) ${secs}`)
     } else {

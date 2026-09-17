@@ -30,7 +30,7 @@ export function FeedVerification({
         data.valid ? (
           <ToolCard
             icon={CheckCircle2Icon}
-            title="Feed confirmed"
+            title={data.source_kind === "page" ? "Website checked" : "Feed confirmed"}
             meta={data.already_subscribed ? "already subscribed" : undefined}
           >
             <div className="space-y-2.5 px-3 py-2.5">
@@ -49,10 +49,12 @@ export function FeedVerification({
                 <AddFeedButton
                   url={data.url!}
                   name={data.title ?? domainOf(data.url!)}
+                  sourceKind={data.source_kind}
                   alreadyAdded={data.already_subscribed}
                 />
               </div>
 
+              {data.quality === "partial" && <p className="text-xs text-amber-500">Some articles could only be saved as links. Reader content may be unavailable.</p>}
               <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-[11px]">
                 <Row label="Items" value={`${data.item_count ?? 0}`} />
                 <Row

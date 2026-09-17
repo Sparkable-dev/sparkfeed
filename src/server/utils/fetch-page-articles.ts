@@ -1,8 +1,9 @@
 import { randomUUID } from "node:crypto"
-import { and, eq, inArray, isNull } from "drizzle-orm"
+import { and, asc, eq, inArray, isNull } from "drizzle-orm"
+import { inspectWebsite, readArticle } from "./website-preview"
 import { safeFetchText } from "./fetch"
-import { extractPageLinks } from "./page-feed"
-import { extractReadable } from "./extract"
+import { extractPageLinks, nextListingPage } from "./page-feed"
+import { acceptFeedReaderContent } from "./extract"
 import { mapWithConcurrency } from "./concurrency"
 import {
   recordFeedHealth,
@@ -37,66 +38,7 @@ const MAX_NEW_PER_RUN = 12
 /** Article pages fetched at once. Politeness as much as throughput. */
 const ARTICLE_CONCURRENCY = 4
 const LISTING_TIMEOUT_MS = 15_000
-const ARTICLE_TIMEOUT_MS = 10_000
 /** An article page is text; anything larger is not one. */
-const ARTICLE_MAX_BYTES = 2 * 1024 * 1024
-
-/** What one post looks like once its own page has been read. */
-interface FetchedArticle {
-  link: string
-  title: string
-  description: string | null
-  content: string | null
-  image: string | null
-  publishedAt: string | null
-}
-
-/**
- * Reads one post's own page.
- *
- * Failure is not fatal and not even unusual — a post behind a cookie wall, a
- * JS-rendered page, a 404 from a stale listing. The link and the title from the
- * listing are already worth storing, so a failed read degrades to those rather
- * than dropping the post.
- */
-async function readArticle(item: PageLink): Promise<FetchedArticle> {
-  const fallback: FetchedArticle = {
-    link: item.url,
-    title: item.title,
-    description: null,
-    content: null,
-    image: null,
-    publishedAt: item.publishedAt,
-  }
-
-  try {
-    const { res, text, finalUrl } = await safeFetchText(item.url, {
-      timeoutMs: ARTICLE_TIMEOUT_MS,
-      maxBytes: ARTICLE_MAX_BYTES,
-    })
-    if (!res.ok) return fallback
-
-    const readable = extractReadable(text, finalUrl || item.url)
-    if (!readable || readable.length < 200) return fallback
-
-    return {
-      link: item.url,
-      /*
-        The listing's title wins. It is what the site chose to show in its own
-        index, whereas a page's <title> is usually the headline with " | Site
-        Name" appended, and Readability takes it verbatim.
-      */
-      title: item.title || readable.title || item.url,
-      description: readable.excerpt,
-      content: readable.contentHtml,
-      image: readable.image,
-      // The article page states its date; the listing at best implied one.
-      publishedAt: readable.publishedAt ?? item.publishedAt,
-    }
-  } catch {
-    return fallback
-  }
-}
 
 /**
  * Reads a listing page and stores whatever is new on it.
@@ -109,34 +51,70 @@ async function readArticle(item: PageLink): Promise<FetchedArticle> {
  */
 export async function fetchPageArticles(
   feedId: string,
-  pageUrl: string
+  pageUrl: string,
+  options: { archive?: boolean; startUrl?: string } = {}
 ): Promise<IngestResult> {
-  const { res, text, finalUrl } = await safeFetchText(pageUrl, {
-    timeoutMs: LISTING_TIMEOUT_MS,
-  })
-  if (!res.ok) throw new Error(`That page returned ${res.status}.`)
+  const listing = await collectPageArticles(
+    options.startUrl || pageUrl,
+    options.archive ? 5 : 1
+  )
+  const found = listing.items
 
-  const found = extractPageLinks(text, finalUrl || pageUrl)
-  if (found.length === 0) {
-    throw new Error("No posts found on that page. Its layout may have changed.")
-  }
-
-  const links = [...new Set(found.map((item) => item.url))]
+  const links = [
+    ...new Set(
+      found.flatMap((item) => [
+        item.url,
+        `${item.url.replace(/\/+$/, "")}/`,
+        item.url.replace(/\/+$/, ""),
+      ])
+    ),
+  ]
   const existingRows = await db
     .select({
       id: articles.id,
       link: articles.link,
       content: articles.content,
+      title: articles.title,
+      fetchedAt: articles.contentFetchedAt,
       errorAt: articles.contentErrorAt,
       publishedAt: articles.publishedAt,
     })
     .from(articles)
     .where(and(eq(articles.feedId, feedId), inArray(articles.link, links)))
-  const existing = new Set(existingRows.map((r) => r.link))
+  // Archive links can rotate out of the listing before their bodies are read.
+  const backlog = await db
+    .select({
+      id: articles.id,
+      link: articles.link,
+      content: articles.content,
+      title: articles.title,
+      fetchedAt: articles.contentFetchedAt,
+      errorAt: articles.contentErrorAt,
+      publishedAt: articles.publishedAt,
+    })
+    .from(articles)
+    .where(and(eq(articles.feedId, feedId), isNull(articles.content)))
+    .orderBy(asc(articles.contentErrorAt))
+    .limit(MAX_NEW_PER_RUN)
+  for (const row of backlog)
+    if (!existingRows.some((existing) => existing.id === row.id))
+      existingRows.push(row)
+  const key = (url: string) => url.replace(/\/+$/, "")
+  const existing = new Set(existingRows.map((r) => key(r.link)))
+  const byUrl = new Map(found.map((item) => [key(item.url), item]))
   for (const row of existingRows) {
-    const publishedAt = safeParseDate(
-      found.find((item) => item.url === row.link)?.publishedAt
+    const item = byUrl.get(key(row.link))
+    if (
+      item &&
+      item.from !== "slug" &&
+      item.title.length >= 16 &&
+      item.title !== row.title
     )
+      await db
+        .update(articles)
+        .set({ title: item.title.slice(0, 500) })
+        .where(and(eq(articles.id, row.id), eq(articles.feedId, feedId)))
+    const publishedAt = safeParseDate(byUrl.get(key(row.link))?.publishedAt)
     if (!row.publishedAt && publishedAt)
       await db
         .update(articles)
@@ -151,12 +129,15 @@ export async function fetchPageArticles(
   }
 
   const fresh = selectFreshItems(
-    found.map((item) => ({ ...item, link: item.url })),
+    found.map((item) => ({ ...item, link: key(item.url) })),
     existing
   )
   const skipped = found.length - fresh.length
 
-  const batch = fresh.slice(0, MAX_NEW_PER_RUN)
+  const newBudget = existingRows.some((r) => !r.content)
+    ? MAX_NEW_PER_RUN - 4
+    : MAX_NEW_PER_RUN
+  const batch = fresh.slice(0, newBudget)
   const fetched = await mapWithConcurrency(
     batch,
     ARTICLE_CONCURRENCY,
@@ -166,12 +147,12 @@ export async function fetchPageArticles(
   // Persist every discovered link now; a busy listing can rotate before the next refresh.
   // Bodies beyond the per-run budget are fetched when opened, or on a later refresh.
   fetched.push(
-    ...fresh.slice(MAX_NEW_PER_RUN).map((item) => ({
+    ...fresh.slice(newBudget).map((item) => ({
       link: item.link,
       title: item.title,
       description: null,
       content: null,
-      image: null,
+      image: item.image ?? null,
       publishedAt: item.publishedAt,
     }))
   )
@@ -180,25 +161,41 @@ export async function fetchPageArticles(
   const retry = existingRows
     .filter(
       (r) =>
-        !r.content &&
+        (!r.content ||
+          !r.fetchedAt ||
+          Date.now() - Date.parse(r.fetchedAt) > 7 * 86_400_000) &&
         (!r.errorAt || Date.now() - Date.parse(r.errorAt) > 60 * 60_000)
     )
     .slice(0, Math.max(0, MAX_NEW_PER_RUN - batch.length))
   await mapWithConcurrency(retry, ARTICLE_CONCURRENCY, async (row) => {
-    const item = found.find((i) => i.url === row.link)
-    if (!item) return
+    const item = byUrl.get(key(row.link)) ?? {
+      url: row.link,
+      title: row.title,
+      publishedAt: row.publishedAt,
+      from: "link-text" as const,
+    }
     const article = await readArticle(item)
     await db
       .update(articles)
       .set({
         ...(article.content
           ? {
-              content: article.content,
+              content:
+                acceptFeedReaderContent(article.content, row.content) ??
+                row.content,
               contentFetchedAt: new Date().toISOString(),
               contentSource: "extracted",
-              image: article.image,
-              description: article.description,
+              ...(article.image ? { image: article.image } : {}),
+              ...(article.description
+                ? { description: article.description }
+                : {}),
             }
+          : {}),
+        ...(article.title && (item.from !== "slug" || article.content)
+          ? { title: article.title.slice(0, 500) }
+          : {}),
+        ...(!row.publishedAt && safeParseDate(article.publishedAt)
+          ? { publishedAt: safeParseDate(article.publishedAt) }
           : {}),
         contentErrorAt: article.content ? null : new Date().toISOString(),
       })
@@ -221,7 +218,7 @@ export async function fetchPageArticles(
           contentFetchedAt: article.content ? new Date().toISOString() : null,
           contentSource: article.content ? "extracted" : null,
           contentErrorAt:
-            article.content || !attempted.has(article.link)
+            article.content || !attempted.has(key(article.link))
               ? null
               : new Date().toISOString(),
           sourceId: `url:${article.link}`,
@@ -239,19 +236,91 @@ export async function fetchPageArticles(
     }
   }
 
-  return { inserted, skipped, failed }
+  return {
+    inserted,
+    skipped,
+    failed,
+    ...(options.archive
+      ? {
+          archive: {
+            pages: listing.pages,
+            nextUrl: listing.nextUrl,
+            reason: listing.reason,
+          },
+        }
+      : {}),
+  }
+}
+
+/** Bounded traversal of publisher-provided pagination. All requests retain SSRF checks. */
+export async function collectPageArticles(startUrl: string, maxPages = 1) {
+  const items: Array<PageLink> = []
+  const seen = new Set<string>()
+  const visited = new Set<string>()
+  const started = Date.now()
+  let nextUrl: string | null = startUrl
+  let pages = 0
+  let reason =
+    "No further HTML pagination found. JavaScript-only archives may need a browser."
+  while (nextUrl && pages < Math.min(maxPages, 5) && items.length < 160) {
+    if (Date.now() - started >= 45_000) {
+      reason = "Time limit reached. Continue to fetch more."
+      break
+    }
+    if (visited.has(nextUrl)) {
+      nextUrl = null
+      reason = "Stopped a repeated pagination link."
+      break
+    }
+    visited.add(nextUrl)
+    const current = nextUrl
+    try {
+      const { res, text, finalUrl } = await safeFetchText(current, {
+        timeoutMs: Math.min(
+          LISTING_TIMEOUT_MS,
+          45_000 - (Date.now() - started)
+        ),
+      })
+      if (!res.ok) throw new Error(`That page returned ${res.status}.`)
+      const base = finalUrl || current
+      if (new URL(base).origin !== new URL(startUrl).origin)
+        throw new Error("Archive redirected to another site.")
+      const found = extractPageLinks(text, base)
+      if (!found.length)
+        throw new Error(
+          "No posts found on that page. Its layout may have changed."
+        )
+      const fresh = found.filter(
+        (item) => !seen.has(item.url.replace(/\/+$/, ""))
+      )
+      for (const item of fresh) {
+        seen.add(item.url.replace(/\/+$/, ""))
+        items.push(item)
+      }
+      pages++
+      nextUrl = nextListingPage(text, base)
+      if (!fresh.length) {
+        nextUrl = null
+        reason = "Stopped because the page repeated articles already found."
+        break
+      }
+    } catch (error) {
+      if (!items.length) throw error
+      reason = `Some archive pages could not be read. ${error instanceof Error ? error.message : "Try again later."}`
+      break
+    }
+  }
+  if (nextUrl && !reason.startsWith("Some"))
+    reason = "Batch limit reached. Continue to fetch more."
+  return { items, pages, nextUrl, reason }
 }
 
 /** A small preview uses the same extraction path as an imported website. */
 export async function fetchPagePreview(url: string) {
-  const { res, text, finalUrl } = await safeFetchText(url, {
-    timeoutMs: LISTING_TIMEOUT_MS,
-  })
-  if (!res.ok) throw new Error(`That page returned ${res.status}.`)
-  const found = extractPageLinks(text, finalUrl || url)
-  if (!found.length)
+  const result = await inspectWebsite(url)
+  if (!result)
     throw new Error("No posts found on that page. Its layout may have changed.")
-  return mapWithConcurrency(found.slice(0, 4), 2, readArticle)
+  return result.articles
 }
 
 /**
@@ -264,7 +333,8 @@ export async function fetchPagePreview(url: string) {
 export async function ingestSource(
   feedId: string,
   url: string,
-  kind: string | null
+  kind: string | null,
+  options: { archive?: boolean; startUrl?: string } = {}
 ): Promise<IngestResult> {
   if (kind !== "page") {
     const { fetchAndInsertArticles } = await import("./fetch-articles")
@@ -276,7 +346,7 @@ export async function ingestSource(
     return { inserted: 0, skipped: 1, failed: 0 }
 
   try {
-    const result = await fetchPageArticles(feedId, url)
+    const result = await fetchPageArticles(feedId, url, options)
     await recordFeedHealth(feedId, null)
     return result
   } catch (err) {

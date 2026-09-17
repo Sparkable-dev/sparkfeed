@@ -19,20 +19,20 @@ import catalogueConfig from "@/config/catalogue.json"
  * `excluded.` has to survive that cast. Demo mode is exactly this arrangement.
  */
 
-it("includes two website sources in every Discover category", () => {
+it("keeps website choices while preferring newly available native feeds", () => {
   for (const category of catalogueConfig.categories) {
     expect(
       category.items.filter(
         (item) => "sourceKind" in item && item.sourceKind === "page"
       ),
       category.name
-    ).toHaveLength(2)
+    ).toHaveLength(category.slug === "crypto" ? 1 : 2)
   }
   const websiteRows = flattenCatalogue().feeds.filter(
     (f) => f.sourceKind === "page"
   )
-  expect(websiteRows).toHaveLength(30)
-  expect(new Set(websiteRows.map((f) => f.feedUrl)).size).toBe(30)
+  expect(websiteRows).toHaveLength(29)
+  expect(new Set(websiteRows.map((f) => f.feedUrl)).size).toBe(29)
 })
 
 async function freshDb(): Promise<Database> {

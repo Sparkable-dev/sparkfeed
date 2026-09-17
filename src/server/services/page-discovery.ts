@@ -1,7 +1,9 @@
+import { inspectWebsite } from "../utils/website-preview"
 import { BlockedUrlError, safeFetchText } from "../utils/fetch"
 import { sectionNames, sectionsInHtml } from "../utils/discover"
-import { CONTENT_SEGMENTS, MIN_PAGE_LINKS, extractPageLinks } from "../utils/page-feed"
+import { CONTENT_SEGMENTS } from "../utils/page-feed"
 import { mapWithConcurrency } from "../utils/concurrency"
+import type { FeedSignals } from "../utils/feed-signals"
 
 /**
  * Finding the page to read when a site has no feed.
@@ -28,6 +30,8 @@ export interface PageCandidate {
   sampleTitles: Array<string>
   /** The section it came from — "blog", "news" — or null when it was pasted. */
   section: string | null
+  signals?: FeedSignals
+  quality?: "readable" | "partial"
 }
 
 const PAGE_TIMEOUT_MS = 8_000
@@ -38,41 +42,21 @@ const MAX_SECTIONS_TRIED = 6
 const MAX_SUGGESTIONS = 3
 const TOTAL_BUDGET_MS = 14_000
 
-/** A page's own title, tidied of the site name most pages append. */
-function titleOf(html: string, section: string | null, origin: string): string {
-  const match = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)
-  const raw = match?.[1]?.replace(/\s+/g, " ").trim()
-  if (raw) {
-    // "Blog | Emerline" and "Emerline — Blog" both want their first half.
-    const head = raw.split(/\s+[|–—·]\s+/)[0].trim()
-    if (head.length >= 3) return head.slice(0, 120)
-  }
-  if (section) return section.charAt(0).toUpperCase() + section.slice(1)
-  try {
-    return new URL(origin).hostname.replace(/^www\./, "")
-  } catch {
-    return origin
-  }
-}
-
 async function readIfListing(
   url: string,
-  section: string | null,
-  origin: string,
+  section: string | null
 ): Promise<PageCandidate | null> {
   try {
-    const { res, text } = await safeFetchText(url, { timeoutMs: PAGE_TIMEOUT_MS })
-    if (!res.ok) return null
-
-    const links = extractPageLinks(text, url)
-    if (links.length < MIN_PAGE_LINKS) return null
-
+    const result = await inspectWebsite(url)
+    if (!result) return null
     return {
-      url,
-      title: titleOf(text, section, origin),
-      itemCount: links.length,
-      sampleTitles: links.slice(0, 3).map((l) => l.title),
+      url: result.url,
+      title: result.title,
+      itemCount: result.itemCount,
+      sampleTitles: result.sampleTitles,
       section,
+      signals: result.signals,
+      quality: result.quality,
     }
   } catch (err) {
     if (err instanceof BlockedUrlError) throw err
@@ -87,7 +71,9 @@ async function readIfListing(
  * `example.com/blog` has already told us where to look, and confirming it is
  * one request rather than a sitemap read.
  */
-export async function discoverReadablePages(input: string): Promise<Array<PageCandidate>> {
+export async function discoverReadablePages(
+  input: string
+): Promise<Array<PageCandidate>> {
   let target: URL
   try {
     target = new URL(input)
@@ -111,7 +97,7 @@ export async function discoverReadablePages(input: string): Promise<Array<PageCa
   // The homepage and the sitemap are independent, so they go together — the
   // same reason `discoverMoreFeeds` fetches them in parallel.
   const [pasted, homepage, sitemapSections] = await Promise.all([
-    readIfListing(target.href, null, origin),
+    readIfListing(target.href, null),
     target.href.replace(/\/+$/, "") === origin
       ? Promise.resolve(null)
       : safeFetchText(origin, { timeoutMs: PAGE_TIMEOUT_MS }).catch((err) => {
@@ -158,7 +144,7 @@ export async function discoverReadablePages(input: string): Promise<Array<PageCa
 
     const batch = queue.slice(i, i + PROBE_CONCURRENCY)
     const results = await mapWithConcurrency(batch, PROBE_CONCURRENCY, (c) =>
-      readIfListing(c.url, c.section, origin),
+      readIfListing(c.url, c.section)
     )
     for (const result of results) {
       keep(result)
@@ -168,5 +154,7 @@ export async function discoverReadablePages(input: string): Promise<Array<PageCa
 
   // Most posts wins among the survivors: a blog has more entries than a press
   // page, and both are writing.
-  return found.sort((a, b) => b.itemCount - a.itemCount).slice(0, MAX_SUGGESTIONS)
+  return found
+    .sort((a, b) => b.itemCount - a.itemCount)
+    .slice(0, MAX_SUGGESTIONS)
 }

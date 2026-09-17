@@ -724,6 +724,10 @@
                   "name": {
                     "description": "Override the feed title.",
                     "type": "string"
+                  },
+                  "allow_scrape": {
+                    "description": "Allow a verified Website source when no native feed exists.",
+                    "type": "boolean"
                   }
                 },
                 "required": [

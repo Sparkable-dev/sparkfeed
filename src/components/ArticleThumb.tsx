@@ -84,6 +84,7 @@ export function ArticleThumb({
           src={src}
           alt=""
           loading="lazy"
+          referrerPolicy="no-referrer"
           onError={() => setFailed(true)}
           className="absolute inset-0 size-full object-cover"
         />

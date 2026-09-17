@@ -16,6 +16,10 @@ import { createDb } from "@/db/client"
  */
 
 let db: Database
+let website: unknown = null
+vi.mock("../../utils/website-preview", () => ({
+  inspectWebsite: async () => website,
+}))
 let resolved: unknown = null
 let resolveThrows: Error | null = null
 
@@ -82,6 +86,7 @@ function stub(over: {
 }
 
 beforeEach(async () => {
+  website = null
   resolved = null
   resolveThrows = null
 
@@ -104,7 +109,7 @@ describe("an address that is not a feed", () => {
       url: "https://example.com/about",
     })
     expect(result.valid).toBe(false)
-    expect(result.reason).toContain("No RSS or Atom feed")
+    expect(result.reason).toContain("No feed or readable article listing")
     expect(result.requested_url).toBe("https://example.com/about")
   })
 
@@ -251,4 +256,22 @@ describe("a real feed", () => {
     })
     expect(result.already_subscribed).toBe(false)
   })
+})
+
+it("verifies a website using the shared listing check and exposes partial extraction", async () => {
+  website = {
+    url: "https://example.com/blog",
+    title: "Website",
+    itemCount: 3,
+    sampleTitles: ["Real headline"],
+    quality: "partial",
+    signals: { lastPublishedAt: null },
+  }
+  const result = await verifyFeed(PRINCIPAL, {
+    url: "https://example.com/blog",
+  })
+  expect(result.valid).toBe(true)
+  expect(result.source_kind).toBe("page")
+  expect(result.quality).toBe("partial")
+  expect(result.last_published_at).toBeNull()
 })

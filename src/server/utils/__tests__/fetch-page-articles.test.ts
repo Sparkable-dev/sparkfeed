@@ -248,3 +248,79 @@ describe("when a page stops working", () => {
     await expect(fetchPageArticles("fd-1", LISTING)).rejects.toThrow(/404/)
   })
 })
+
+it("repairs titles and missing dates without replacing saved identity or first-found time", async () => {
+  const slugs = ["first-post-here", "second-post-here", "third-post-here"]
+  pages.set(LISTING, listing(slugs))
+  for (const slug of slugs) pages.set(`${LISTING}/${slug}`, article(slug, LONG))
+  await fetchPageArticles("fd-repair", LISTING)
+  const { articles } = await import("@/db/schema")
+  const { eq } = await import("drizzle-orm")
+  const before = (await storedArticles()).find((r) =>
+    r.link.endsWith(slugs[0])
+  )!
+  await db
+    .update(articles)
+    .set({
+      title: "Research",
+      publishedAt: null,
+      contentFetchedAt: "2020-01-01T00:00:00Z",
+      createdAt: "2026-08-01T00:00:00Z",
+      isFavorite: true,
+    })
+    .where(eq(articles.id, before.id))
+  pages.set(
+    `${LISTING}/${slugs[0]}`,
+    article("Real article title", LONG, "2026-07-01")
+  )
+  await fetchPageArticles("fd-repair", LISTING)
+  const after = (await storedArticles()).find((r) => r.id === before.id)!
+  expect(after.title).toBe("first post here")
+  expect(after.publishedAt).toBe("2026-07-01T00:00:00.000Z")
+  expect(after.createdAt).toBe("2026-08-01T00:00:00Z")
+  expect(Boolean(after.isFavorite)).toBe(true)
+  expect(await storedArticles()).toHaveLength(3)
+})
+
+it("retains listing images when article requests fail", async () => {
+  pages.set(
+    LISTING,
+    [1, 2, 3]
+      .map(
+        (i) =>
+          `<a href="/blog/article-story-${i}"><img src="/cover-${i}.jpg"><h3>Real story number ${i}</h3></a>`
+      )
+      .join("")
+  )
+  await fetchPageArticles("fd-images", LISTING)
+  const rows = await storedArticles()
+  expect(rows).toHaveLength(3)
+  expect(
+    rows.every((r) => r.image?.startsWith("https://example.com/cover-"))
+  ).toBe(true)
+  expect(rows.every((r) => r.publishedAt === null)).toBe(true)
+})
+
+it("repairs deferred bodies after an article leaves the listing", async () => {
+  pages.set(
+    LISTING,
+    listing(["first-post-here", "second-post-here", "third-post-here"])
+  )
+  await fetchPageArticles("fd-backlog", LISTING)
+  const { articles } = await import("@/db/schema")
+  await db.update(articles).set({ contentErrorAt: null })
+  pages.set(
+    LISTING,
+    listing(["fourth-post-here", "fifth-post-here", "sixth-post-here"])
+  )
+  pages.set(
+    `${LISTING}/first-post-here`,
+    article("Recovered headline", LONG, "2026-07-03")
+  )
+  await fetchPageArticles("fd-backlog", LISTING)
+  const row = (await storedArticles()).find((r) =>
+    r.link.endsWith("first-post-here")
+  )!
+  expect(row.content).toContain("Real article prose")
+  expect(row.publishedAt).toBe("2026-07-03T00:00:00.000Z")
+})

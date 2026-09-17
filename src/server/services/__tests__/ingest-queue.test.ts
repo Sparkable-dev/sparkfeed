@@ -138,3 +138,38 @@ describe("ingest queue", () => {
     expect(ingestSource).toHaveBeenCalledTimes(2)
   })
 })
+
+it("continues a bounded archive using its server-held cursor", async () => {
+  const { enqueueArchive, archiveStatus } = await import("../ingest-queue")
+  const archiveTask = {
+    feedId: "archive-feed",
+    url: "https://example.com/blog/",
+    kind: "page",
+  }
+  ingestSource.mockResolvedValueOnce({
+    inserted: 5,
+    skipped: 0,
+    failed: 0,
+    archive: {
+      pages: 5,
+      nextUrl: "https://example.com/blog/?page=6",
+      reason: "Continue",
+    },
+  })
+  expect(enqueueArchive(archiveTask).state).toBe("running")
+  await waitForIngestIdle()
+  expect(archiveStatus(archiveTask.feedId)?.hasMore).toBe(true)
+  ingestSource.mockResolvedValueOnce({
+    inserted: 2,
+    skipped: 0,
+    failed: 0,
+    archive: { pages: 1, nextUrl: null, reason: "Done" },
+  })
+  enqueueArchive(archiveTask)
+  await waitForIngestIdle()
+  expect(ingestSource.mock.calls[1][3]).toEqual({
+    archive: true,
+    startUrl: "https://example.com/blog/?page=6",
+  })
+  expect(archiveStatus(archiveTask.feedId)?.inserted).toBe(2)
+})

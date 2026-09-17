@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto"
-import { and, count, eq, inArray, isNull } from "drizzle-orm"
+import { and, count, eq, inArray, isNull, sql } from "drizzle-orm"
 import { z } from "zod"
 import { createServerFn } from "@tanstack/react-start"
 import { loadReaderPreview } from "./utils/reader-preview"
@@ -463,7 +463,7 @@ export const findPages = createServerFn({ method: "POST" })
             inventing a freshness, and the row falls back to describing the
             page instead.
           */
-          signals: emptySignals(page.url),
+          signals: page.signals ?? emptySignals(page.url),
         })),
       }
     } catch (err) {
@@ -1327,3 +1327,37 @@ export const updateFeed = createServerFn({ method: "POST" }).middleware([workspa
       return { status: "ok", url }
     }
   )
+
+/** Source diagnostics and archive status are scoped before any data is read. */
+export const getSourceReadStatus = createServerFn({ method: "GET" })
+  .validator(z.object({ feedId: z.string() }))
+  .handler(async ({ data }) => {
+    await assertOwnsFeed(data.feedId)
+    const [summary] = await db.select({
+      total: count(),
+      incomplete: sql<number>`sum(case when ${articles.content} is null then 1 else 0 end)`,
+      undated: sql<number>`sum(case when ${articles.publishedAt} is null then 1 else 0 end)`,
+      latest: sql<string | null>`max(${articles.publishedAt})`,
+    }).from(articles).where(eq(articles.feedId, data.feedId))
+    const [feed] = await db.select({ id: feeds.id, name: feeds.name, url: feeds.url, kind: feeds.kind,
+      createdAt: feeds.createdAt, lastFetchedAt: feeds.lastFetchedAt, lastError: feeds.lastError, lastErrorAt: feeds.lastErrorAt
+    }).from(feeds).where(eq(feeds.id, data.feedId)).limit(1)
+    if (!feed) throw new Error(NOT_FOUND_MSG)
+    const source: ManagedSource = { ...feed, type: feed.kind === "page" ? "scraped" : "rss", articleCount: Number(summary.total) }
+    const { archiveStatus } = await import("./services/ingest-queue")
+    return { source, total: Number(summary.total), incomplete: Number(summary.incomplete ?? 0), undated: Number(summary.undated ?? 0), latest: summary.latest, archive: archiveStatus(data.feedId) }
+  })
+
+export const fetchOlderArticles = createServerFn({ method: "POST" }).middleware([workspaceWriteMiddleware])
+  .validator(z.object({ feedId: z.string() }))
+  .handler(async ({ data }) => {
+    if (DEMO_MODE) throw new Error(DEMO_LOCKED_MSG)
+    await assertOwnsFeed(data.feedId)
+    const [feed] = await db.select().from(feeds).where(eq(feeds.id, data.feedId)).limit(1)
+    if (!feed || feed.kind !== "page") throw new Error("Archive loading is available for website sources with next-page links.")
+    if (feed.entitlementPausedAt) throw new Error("This source is paused for your plan.")
+    const { canIngestFeed } = await import("./entitlements/ingestion")
+    if (!(await canIngestFeed(feed.id))) throw new Error("This source cannot fetch articles on the current plan.")
+    const { enqueueArchive } = await import("./services/ingest-queue")
+    return enqueueArchive({ feedId: feed.id, url: feed.url, kind: feed.kind })
+  })

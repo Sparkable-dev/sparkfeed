@@ -255,7 +255,7 @@ describe("titles", () => {
 })
 
 describe("what the site declares about itself", () => {
-  it("prefers JSON-LD, with its dates", () => {
+  it("supports schema-only listings, with their dates", () => {
     const ld = JSON.stringify({
       "@context": "https://schema.org",
       "@type": "Blog",
@@ -275,10 +275,7 @@ describe("what the site declares about itself", () => {
       ],
     })
     const links = extractPageLinks(
-      page(
-        cards(["ignored-post-here"]),
-        `<script type="application/ld+json">${ld}</script>`
-      ),
+      page("", `<script type="application/ld+json">${ld}</script>`),
       "https://example.com/blog"
     )
     expect(links.map((l) => l.title)).toEqual([
@@ -475,4 +472,64 @@ describe("structured article lists", () => {
     )
     expect(extractPageLinks(html, "https://example.com/blog")).toEqual([])
   })
+})
+
+// Reduced publisher markup: category headings precede headlines; schema may
+// describe an old archive rather than the cards actually displayed.
+describe("mixed publisher metadata", () => {
+  it("reads headlines after category headings and keeps card images", () => {
+    const html = [1, 2, 3]
+      .map(
+        (i) =>
+          `<section><h4>Computer Vision</h4><h4>A real research headline number ${i}</h4><a href="/blog/research-story-${i}"><img src="/cover-${i}.jpg">Learn More</a></section>`
+      )
+      .join("")
+    const result = extractPageLinks(html, "https://example.com/blog/")
+    expect(result.map((i) => i.title)).toEqual(
+      [1, 2, 3].map((i) => `A real research headline number ${i}`)
+    )
+    expect(result[0].image).toBe("https://example.com/cover-1.jpg")
+  })
+  it("does not let stale schema replace the visible listing", () => {
+    const schema = [1, 2, 3].map((i) => ({
+      "@type": "Article",
+      url: `https://example.com/blog/old-archive-${i}`,
+      headline: `Old archive headline ${i}`,
+    }))
+    const html =
+      `<script type="application/ld+json">${JSON.stringify(schema)}</script>` +
+      [1, 2, 3, 4]
+        .map(
+          (i) =>
+            `<a href="/blog/current-story-${i}"><h3>Current story number ${i}</h3></a>`
+        )
+        .join("")
+    expect(
+      extractPageLinks(html, "https://example.com/blog").map((i) => i.title)
+    ).toEqual([1, 2, 3, 4].map((i) => `Current story number ${i}`))
+  })
+  it("enriches a visible story from matching schema across trailing slashes", () => {
+    const html =
+      `<script type="application/ld+json">${JSON.stringify({ "@type": "Article", url: "https://example.com/blog/current-story-1/", headline: "Current story number 1", datePublished: "2026-09-01" })}</script>` +
+      [1, 2, 3]
+        .map(
+          (i) =>
+            `<a href="/blog/current-story-${i}">Current story number ${i}</a>`
+        )
+        .join("")
+    const items = extractPageLinks(html, "https://example.com/blog")
+    expect(items).toHaveLength(3)
+    expect(items[0].publishedAt).toBe("2026-09-01")
+    expect(items[1].publishedAt).toBeNull()
+  })
+})
+
+it("does not substitute unrelated schema for a sparse visible listing", () => {
+  const schema = [1, 2, 3].map((i) => ({
+    "@type": "Article",
+    url: `https://example.com/blog/stale-post-${i}`,
+    headline: `Stale article ${i}`,
+  }))
+  const html = `<script type="application/ld+json">${JSON.stringify(schema)}</script><a href="/blog/current-story">Current story</a>`
+  expect(extractPageLinks(html, "https://example.com/blog")).toEqual([])
 })

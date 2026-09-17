@@ -51,6 +51,7 @@ export interface PreviewArticle {
   description: string | null
   image: string | null
   publishedAt: string | null
+  notice?: string
 }
 
 export type PreviewFeedState = "ok" | "empty" | "unavailable"
@@ -107,17 +108,21 @@ async function refreshFeed(
 
   let rows: Array<typeof catalogueArticles.$inferInsert> = []
   let error: string | null = null
+  let partial = false
 
   try {
     const items: Array<LinkedFeedItem> =
       sourceKind === "page"
-        ? (await fetchPagePreview(url)).map((i) => ({
-            link: i.link,
-            title: i.title,
-            contentSnippet: i.description ?? undefined,
-            image: i.image ?? undefined,
-            pubDate: i.publishedAt ?? undefined,
-          }))
+        ? (await fetchPagePreview(url)).map((i) => {
+            if (!i.content) partial = true
+            return {
+              link: i.link,
+              title: i.title,
+              contentSnippet: i.description ?? undefined,
+              image: i.image ?? undefined,
+              pubDate: i.publishedAt ?? undefined,
+            }
+          })
         : await fetchFeedItems(url, { timeoutMs: FETCH_TIMEOUT_MS })
 
     const seen = new Set<string>()
@@ -172,7 +177,14 @@ async function refreshFeed(
    */
   await db
     .update(catalogueFeeds)
-    .set({ articlesFetchedAt: now, articlesError: error })
+    .set({
+      articlesFetchedAt: now,
+      articlesError:
+        error ??
+        (partial
+          ? "Partial website import: some article pages could not be read."
+          : null),
+    })
     .where(eq(catalogueFeeds.slug, slug))
 }
 
@@ -315,12 +327,20 @@ async function readCachedArticles(
 
   return resolved.map((feed) => {
     const articles = bySlug.get(feed.slug) ?? []
+    const warning = health.find((h) => h.slug === feed.slug)?.error
+    if (warning?.startsWith("Partial website import:") && articles[0])
+      articles[0].notice =
+        "Some article pages could not be read. Original links remain available."
     if (articles.length > 0)
       return {
         slug: feed.slug,
         state: "ok" as const,
         articles,
-        stale: failed.has(feed.slug),
+        stale:
+          failed.has(feed.slug) &&
+          !health
+            .find((h) => h.slug === feed.slug)
+            ?.error?.startsWith("Partial website import:"),
       }
     // Nothing cached is two different situations, and the UI says different
     // things about them: a quiet feed is still worth adding, a broken one is not.

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { useInfiniteQuery } from "@tanstack/react-query"
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query"
 import { useNavigate, useRouter } from "@tanstack/react-router"
 import { AlertTriangle, Check, ChevronDown, Lock } from "lucide-react"
 import { toast } from "sonner"
@@ -8,6 +8,8 @@ import type { FeedRow, FolderRow } from "@/lib/rss-types"
 import type { ArticleRow } from "@/components/ArticleGrid"
 import type {Crumb, HeaderAction} from "@/components/layout/header-actions";
 import type { FavoriteScope } from "@/lib/workspace-scope"
+import { deleteFeed, deleteFolder, getSourceReadStatus, renameFeed, renameFolder  } from "@/server/rss"
+import { getActiveWorkspaceAccessState } from "@/server/workspace-access-state"
 import { invalidateWorkspace } from "@/lib/workspace-query"
 import { useGuestShare } from "@/hooks/guest-share-context"
 import { AppSidebar } from "@/components/app-sidebar"
@@ -44,7 +46,6 @@ import { ArticleGrid } from "@/components/ArticleGrid"
 import { EditFeedModal } from "@/components/EditFeedModal"
 import { FolderShareModal } from "@/components/FolderShareModal"
 import { ManageModal  } from "@/components/folder/ManageModal"
-import { deleteFeed, deleteFolder, renameFeed, renameFolder } from "@/server/rss"
 import { DEMO_MODE } from "@/lib/demo"
 import { useReaderStore } from "@/store/readerStore"
 import { useAddFeed } from "@/components/add-feed/add-feed-context"
@@ -65,7 +66,7 @@ import {
 } from "@/components/layout/header-actions"
 
 // 0 means "All Time"
-type DateFilterOption = 0 | 15 | 30 | 60 | 90
+type DateFilterOption = 0 | 15 | 30 | 60 | 90 | 180
 
 const DATE_FILTER_OPTIONS: Array<{ label: string; value: DateFilterOption }> = [
   { label: "All Time", value: 0 },
@@ -73,6 +74,7 @@ const DATE_FILTER_OPTIONS: Array<{ label: string; value: DateFilterOption }> = [
   { label: "Last 30 Days", value: 30 },
   { label: "Last 60 Days", value: 60 },
   { label: "Last 90 Days", value: 90 },
+  { label: "Last 180 Days", value: 180 },
 ]
 
 interface RSSShellProps {
@@ -232,6 +234,13 @@ export function RSSShell({
   // The route loader owns server data. Copying it into state hid invalidations.
   const scope = useWorkspaceScope()
   const navigation = useWorkspaceNavigation()
+  const access = useQuery({
+    queryKey: ["workspace", scope?.userId, scope?.workspaceId, "history-access"],
+    queryFn: () => getActiveWorkspaceAccessState(),
+    enabled: !!scope && !DEMO_MODE,
+    staleTime: 60_000,
+  })
+  const historyOptions = DATE_FILTER_OPTIONS.filter(option => option.value !== 180 || DEMO_MODE || ["personal_plus", "pro", "enterprise", "community"].includes(access.data?.plan ?? ""))
   const localFavorites = useReaderStore((state) => state.favorites)
   const counts = navigation.data?.counts ?? initialData.counts
   const { folders, feeds, degraded = false } = navigation.data ?? initialData
@@ -240,6 +249,9 @@ export function RSSShell({
   const [editingFeed, setEditingFeed] = useState<FeedRow | null>(null)
   const [search, setSearch] = useState("")
   const [dateFilter, setDateFilter] = useState<DateFilterOption>(15)
+  useEffect(() => {
+    if (dateFilter === 180 && access.data && !historyOptions.some(option => option.value === 180)) setDateFilter(90)
+  }, [dateFilter, access.data, historyOptions])
   const [localFavoriteScope, setLocalFavoriteScope] = useState<FavoriteScope>("personal")
   const favoriteScope = selectedFavoriteScope ?? localFavoriteScope
   const setFavoriteScope = onFavoriteScopeChange ?? setLocalFavoriteScope
@@ -255,6 +267,12 @@ export function RSSShell({
       demoFavoriteIds: DEMO_MODE && favoritesView ? localFavorites.slice(0, 500) : undefined,
     }),
     enabled: !!scope && !children && (!favoritesView || favoriteScope !== "workspace" || !!navigation.data?.favorites.workspaceEnabled),
+  })
+  const sourceSummary = useQuery({
+    queryKey: ["workspace", scope?.userId, scope?.workspaceId, "source-quality", feedId],
+    queryFn: () => getSourceReadStatus({ data: { feedId: feedId! } }),
+    enabled: !!scope && !!feedId && !children,
+    staleTime: 60_000,
   })
   const rawArticles = useMemo(() => scope && !children ? pages.data?.pages.flatMap((page) => page.items) ?? [] : initialData.articles, [scope, children, pages.data, initialData.articles])
   const [shareModalFolder, setShareModalFolder] = useState<{ type?: 'folder' | 'feed'; id: string; name: string; isPublic: boolean } | null>(null)
@@ -486,7 +504,7 @@ export function RSSShell({
           align="end"
           className="min-w-[160px] rounded-xl border border-border dark:border-zinc-700/60 bg-card dark:bg-[#0a0a0a] p-1 text-foreground dark:text-zinc-200 shadow-2xl"
         >
-          {DATE_FILTER_OPTIONS.map((opt) => {
+          {historyOptions.map((opt) => {
             const active = dateFilter === opt.value
             return (
               <DropdownMenuItem
@@ -668,6 +686,12 @@ export function RSSShell({
                     <p className="text-sm text-muted-foreground">
                       No articles match your {search ? "search" : "date range"}.
                     </p>
+                    {sourceSummary.data && sourceSummary.data.total > 0 && (
+                      <p className="text-xs text-muted-foreground">
+                        {sourceSummary.data.total} saved articles.
+                        {sourceSummary.data.latest ? ` Latest known publication: ${new Date(sourceSummary.data.latest).toLocaleDateString()}.` : " Publication dates are unavailable; filters use the date first added."}
+                      </p>
+                    )}
                     <Button variant="outline" onClick={() => { setSearch(""); setDateFilter(0) }}>
                       Clear filters and show saved articles
                     </Button>

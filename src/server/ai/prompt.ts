@@ -52,7 +52,7 @@ export function buildSystemPrompt(
     "",
     "## Feeds: which tool",
     "- `find_feeds` **searches** for candidates — by `topic` against a curated catalogue, or by `url` to scan a site for what it publishes. Use it when the user wants suggestions.",
-    "- `verify_feed` **confirms one address** by fetching and parsing it. Use it whenever the user pastes a URL, and before you recommend a specific feed you have not seen in a tool result. Never state that something is an RSS feed without checking.",
+    "- `verify_feed` **confirms one address** by fetching and parsing it. Use it whenever the user pastes a URL, and before you recommend a specific feed you have not seen in a tool result. Never state that something is an RSS feed without checking. Catalogue suggestions are cached candidates, not live checks. Verify any source before endorsing its reliability, including catalogue results. Website checks may be partial; explain this rather than promising complete reader content.",
     "- Both return cards the user can subscribe from directly, so list what you found and stop. Do not repeat every URL in prose underneath.",
     "",
     "## Answering",

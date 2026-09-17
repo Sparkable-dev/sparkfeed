@@ -1,4 +1,5 @@
 import { inArray } from "drizzle-orm"
+import { inspectWebsite } from "../utils/website-preview"
 import { resolveFeed } from "../utils/detectRSS"
 import { discoverMoreFeeds } from "../utils/discover"
 import { readCatalogue } from "./catalogue"
@@ -29,6 +30,10 @@ import { feedUrlKey } from "@/lib/validation"
  */
 
 export interface FeedCandidate {
+  source_kind?: "rss" | "page"
+  verification?: "cached" | "live"
+  quality?: "readable" | "partial"
+  last_published_at?: string | null
   url: string
   title: string
   description: string | null
@@ -59,6 +64,8 @@ export interface FindFeedsArgs {
  * site does — here it is".
  */
 export interface FeedVerification {
+  source_kind?: "rss" | "page"
+  quality?: "readable" | "partial"
   valid: boolean
   /** The address that actually parsed, which is often not the one given. */
   url: string | null
@@ -113,12 +120,40 @@ export async function verifyFeed(
     )
   }
 
-  if (!resolved) return miss(`No RSS or Atom feed found at ${args.url}.`)
+  if (!resolved) {
+    try {
+      const page = await inspectWebsite(args.url)
+      if (!page)
+        return miss(`No feed or readable article listing found at ${args.url}.`)
+      const subscribed = await subscribedUrls(principal)
+      return {
+        valid: true,
+        source_kind: "page",
+        quality: page.quality,
+        url: page.url,
+        requested_url: args.url,
+        title: page.title,
+        site_url: originOf(page.url),
+        item_count: page.itemCount,
+        sample_titles: page.sampleTitles,
+        posts_per_week: null,
+        last_published_at: page.signals.lastPublishedAt,
+        already_subscribed: subscribed.has(feedUrlKey(page.url)),
+        signals: page.signals,
+        reason: null,
+      }
+    } catch (err) {
+      return miss(
+        err instanceof Error ? err.message : "Could not read the website."
+      )
+    }
+  }
 
   const subscribed = await subscribedUrls(principal)
 
   return {
     valid: true,
+    source_kind: "rss",
     url: resolved.url,
     requested_url: args.url,
     title: resolved.title,
@@ -219,6 +254,8 @@ async function fromCatalogue(
         scored.push({
           score,
           candidate: {
+            source_kind: feed.sourceKind ?? "rss",
+            verification: "cached",
             url: feed.feedUrl,
             title: feed.name,
             description: feed.description,
@@ -323,6 +360,8 @@ async function fromUrl(
   const out: Array<Omit<FeedCandidate, "already_subscribed">> = []
   if (primary) {
     out.push({
+      source_kind: "rss",
+      verification: "live",
       url: primary.url,
       title: primary.title ?? primary.url,
       description: null,
@@ -366,7 +405,26 @@ async function fromUrl(
   }
 
   if (out.length === 0) {
-    throw upstreamFailed(`No RSS or Atom feed found at ${url}.`)
+    const page = await inspectWebsite(url).catch(() => null)
+    if (!page)
+      throw upstreamFailed(
+        `No feed or readable article listing found at ${url}.`
+      )
+    out.push({
+      url: page.url,
+      title: page.title,
+      description: "Website source",
+      site_url: originOf(page.url),
+      sample_titles: page.sampleTitles,
+      item_count: page.itemCount,
+      source: "site",
+      source_kind: "page",
+      verification: "live",
+      quality: page.quality,
+      last_published_at: page.signals.lastPublishedAt,
+      category: null,
+      slug: null,
+    })
   }
   return out
 }

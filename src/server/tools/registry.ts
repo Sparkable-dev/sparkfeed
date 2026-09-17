@@ -420,6 +420,7 @@ export const TOOL_REGISTRY: Array<ToolDef> = [
         .optional()
         .describe('Folder to file it under, e.g. "fld_abc123".'),
       name: z.string().optional().describe("Override the feed title."),
+      allow_scrape: z.boolean().optional().describe("Allow a verified Website source when no native feed exists."),
     }),
     annotations: {
       readOnlyHint: false,
@@ -430,8 +431,8 @@ export const TOOL_REGISTRY: Array<ToolDef> = [
     scope: "feeds:write",
     minAutonomy: "ask",
     http: { method: "POST", path: "/feeds", paramsIn: "body" },
-    run: (p, a: { url: string; folder_id?: string; name?: string }) =>
-      addFeed(p, { url: a.url, folderId: a.folder_id, name: a.name }),
+    run: (p, a: { url: string; folder_id?: string; name?: string; allow_scrape?: boolean }) =>
+      addFeed(p, { url: a.url, folderId: a.folder_id, name: a.name, allowScrape: a.allow_scrape }),
     summarize: (r) =>
       `Added "${r.feed.name}" with ${r.articles_imported} articles.`,
   }),

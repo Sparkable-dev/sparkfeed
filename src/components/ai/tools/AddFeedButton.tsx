@@ -36,10 +36,12 @@ export function AddFeedButton({
   url,
   name,
   alreadyAdded,
+  sourceKind,
   size = "default",
 }: {
   url: string
   name: string
+  sourceKind?: "rss" | "page"
   alreadyAdded: boolean
   /** `sm` for a card in a dense list; `default` for a single verification card. */
   size?: "sm" | "default"
@@ -71,6 +73,7 @@ export function AddFeedButton({
           folderId,
           includeKeywords: [],
           excludeKeywords: [],
+          allowScrape: sourceKind === "page",
         },
       })
 

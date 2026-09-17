@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start"
 import { z } from "zod"
-import { and, eq } from "drizzle-orm"
+import { and, eq, gte, sql } from "drizzle-orm"
 import { sparkfeedEdition } from "./entitlements/config"
 import { dodoClient } from "./billing/dodo-client"
 import { readDodoBillingConfig, readTeamProducts } from "./billing/dodo-config"
@@ -17,7 +17,14 @@ import {
   startTeamCheckout,
   teamPortal,
 } from "./billing/team-subscriptions"
-import { member, session, teamBillingState, user } from "@/db/schema"
+import {
+  aiUsageRequests,
+  creditLedger,
+  member,
+  session,
+  teamBillingState,
+  user,
+} from "@/db/schema"
 import { db } from "@/db/index"
 
 async function billingActor() {
@@ -140,6 +147,34 @@ export const getTeamBillingSummary = createServerFn({ method: "GET" })
         .from(teamBillingState)
         .where(eq(teamBillingState.workspaceId, data.workspaceId))
         .limit(1)
+      const periodStart = row.currentPeriodStart ?? row.createdAt
+      const [[credits], [usage]] = await Promise.all([
+        db
+          .select({
+            available: sql<number>`greatest(coalesce(sum(${creditLedger.amount}), 0), 0)`,
+          })
+          .from(creditLedger)
+          .where(
+            and(
+              eq(creditLedger.workspaceType, "organization"),
+              eq(creditLedger.workspaceId, data.workspaceId)
+            )
+          ),
+        db
+          .select({
+            credits: sql<number>`coalesce(sum(${aiUsageRequests.chargedCredits}), 0)`,
+            costUsd: sql<number>`coalesce(sum(${aiUsageRequests.costUsd}), 0)`,
+            requests: sql<number>`count(*)::int`,
+          })
+          .from(aiUsageRequests)
+          .where(
+            and(
+              eq(aiUsageRequests.workspaceType, "organization"),
+              eq(aiUsageRequests.workspaceId, data.workspaceId),
+              gte(aiUsageRequests.startedAt, periodStart)
+            )
+          ),
+      ])
       return {
         plan: row.planKey,
         status: row.subscriptionStatus,
@@ -172,6 +207,10 @@ export const getTeamBillingSummary = createServerFn({ method: "GET" })
         syncWarning,
         paymentFailed: state?.providerStatus === "failed",
         pendingPlanChange: Boolean(state?.pendingPlanChange),
+        sparkAiCreditsAvailable: Number(credits?.available ?? 0),
+        sparkAiCreditsUsed: Number(usage?.credits ?? 0),
+        sparkAiCostUsd: Number(usage?.costUsd ?? 0),
+        sparkAiRequests: Number(usage?.requests ?? 0),
         checkoutUncertain: Boolean(
           state?.checkoutRequestedAt &&
           !state.checkoutUrl &&

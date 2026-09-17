@@ -14,6 +14,7 @@ import {
 import type { ToolSet } from "ai"
 import type { ApiPrincipal } from "../api/principal"
 import type { AutonomyId } from "@/config/autonomy"
+import type { AiUsageCollector } from "./usage"
 import { AUTONOMY_RANK } from "@/config/autonomy"
 
 /**
@@ -35,7 +36,8 @@ import { AUTONOMY_RANK } from "@/config/autonomy"
  */
 export function buildChatTools(
   principal: ApiPrincipal,
-  autonomy: AutonomyId
+  autonomy: AutonomyId,
+  usage?: AiUsageCollector
 ): ToolSet {
   const entries = allowedTools(principal, autonomy).map((def) => [
     def.name,
@@ -77,7 +79,7 @@ export function buildChatTools(
   */
   return {
     ...Object.fromEntries(entries),
-    ...chatOnlyTools(principal, autonomy),
+    ...chatOnlyTools(principal, autonomy, usage),
   } as ToolSet
 }
 
@@ -87,7 +89,11 @@ export function buildChatTools(
  * Web search is refused in demo outright: the demo deployment is public and
  * unauthenticated, and every search is a billable call to a second model.
  */
-function chatOnlyTools(principal: ApiPrincipal, autonomy: AutonomyId) {
+function chatOnlyTools(
+  principal: ApiPrincipal,
+  autonomy: AutonomyId,
+  usage?: AiUsageCollector
+) {
   const tools: Record<string, unknown> = {}
 
   if (AUTONOMY_RANK[autonomy] >= AUTONOMY_RANK[ARTIFACT_MIN_AUTONOMY]) {
@@ -97,7 +103,7 @@ function chatOnlyTools(principal: ApiPrincipal, autonomy: AutonomyId) {
     !principal.demo &&
     AUTONOMY_RANK[autonomy] >= AUTONOMY_RANK[WEB_SEARCH_MIN_AUTONOMY]
   ) {
-    tools[WEB_SEARCH_TOOL_NAME] = webSearchTool()
+    tools[WEB_SEARCH_TOOL_NAME] = webSearchTool(usage)
   }
 
   return tools

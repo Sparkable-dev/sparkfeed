@@ -204,6 +204,13 @@
       "when": 1789582955287,
       "tag": "0028_pending_billing_seat_guard",
       "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1789632802494,
+      "tag": "0029_chief_cammi",
+      "breakpoints": true
     }
   ]
 }

@@ -60,7 +60,8 @@ export const Route = createFileRoute("/api/chat")({
               ? await reserveManagedAiCredits(
                   context.workspace!,
                   context.userId!,
-                  randomUUID()
+                  randomUUID(),
+                  parsed.data.modelId
                 )
               : null
           if (sparkfeedEdition() === "cloud" && !reservation) {
@@ -80,10 +81,10 @@ export const Route = createFileRoute("/api/chat")({
               },
               reservation
                 ? {
-                    onComplete: (costUsd) =>
-                      settleManagedAiCredits(reservation, costUsd),
-                    onIncomplete: () =>
-                      settleManagedAiCredits(reservation, null),
+                    onComplete: (usage) =>
+                      settleManagedAiCredits(reservation, usage),
+                    onIncomplete: (usage) =>
+                      settleManagedAiCredits(reservation, usage),
                   }
                 : undefined
             )

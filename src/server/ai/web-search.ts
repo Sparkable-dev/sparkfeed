@@ -2,6 +2,7 @@ import { createGateway } from "@ai-sdk/gateway"
 import { generateText, tool } from "ai"
 import { z } from "zod"
 import type { AutonomyId } from "@/config/autonomy"
+import type { AiUsageCollector } from "./usage"
 
 /**
  * Web search, as a second model rather than a search API.
@@ -80,7 +81,7 @@ const DESCRIPTION =
  * workspace. Returned, the model reads it, says search is unavailable, and
  * carries on with the tools that do work.
  */
-export function webSearchTool() {
+export function webSearchTool(usage?: AiUsageCollector) {
   return tool({
     description: DESCRIPTION,
     inputSchema: WebSearchInput,
@@ -104,6 +105,14 @@ export function webSearchTool() {
             "Answer the question from current web sources. Be concise and factual. " +
             "Do not speculate; if the sources disagree, say so.",
           prompt: buildPrompt(args),
+        })
+        usage?.recordWebSearch({
+          provider: "vercel-gateway",
+          modelId: SEARCH_MODEL,
+          response: result.response,
+          finishReason: result.finishReason,
+          usage: result.usage,
+          providerMetadata: result.providerMetadata,
         })
 
         return {

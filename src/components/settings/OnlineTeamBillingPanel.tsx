@@ -193,7 +193,7 @@ export function OnlineTeamBillingPanel({
         )}
         {summary && (
           <>
-            <dl className="grid gap-4 text-sm sm:grid-cols-3">
+            <dl className="grid gap-4 text-sm sm:grid-cols-4">
               <div>
                 <dt className="text-muted-foreground">
                   {summary.canCheckout
@@ -214,6 +214,16 @@ export function OnlineTeamBillingPanel({
               <div>
                 <dt className="text-muted-foreground">Period ends</dt>
                 <dd>{date(summary.periodEnd)}</dd>
+              </div>
+              <div>
+                <dt className="text-muted-foreground">Spark AI</dt>
+                <dd className="font-medium tabular-nums">
+                  {Math.floor(summary.sparkAiCreditsAvailable)} credits left
+                </dd>
+                <dd className="text-xs text-muted-foreground">
+                  {Math.floor(summary.sparkAiCreditsUsed)} used across{" "}
+                  {summary.sparkAiRequests} requests
+                </dd>
               </div>
             </dl>
             {summary.canCheckout && (

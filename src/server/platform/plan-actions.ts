@@ -12,6 +12,7 @@ import {
 } from "@/server/entitlements/effective"
 import { grantWorkspaceAllowance } from "@/server/entitlements/allowances"
 import { ensureCloudFreeAccount } from "@/server/entitlements/credits"
+import { sparkAiPlanPolicy } from "@/server/entitlements/plan-policy"
 import { syncEffectivePersonalSources } from "@/server/billing/personal-lifecycle"
 
 const planInput = workspaceInput.extend({
@@ -75,7 +76,9 @@ export async function changePlan(
       monthlyAiCredits:
         input.planKey === "enterprise"
           ? (effective.overrideMonthlyAiCredits ??
-            (effective.planKey === "pro" ? 200 : 0))
+            (effective.planKey === "pro"
+              ? sparkAiPlanPolicy("pro").monthlyCredits
+              : 0))
           : samePlan
             ? (current?.monthlyAiCredits ?? null)
             : null,

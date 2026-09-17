@@ -54,6 +54,10 @@ const active = {
   portalAvailable: false,
   canCheckout: false,
   syncWarning: null,
+  sparkAiCreditsAvailable: 815.75,
+  sparkAiCreditsUsed: 264.25,
+  sparkAiCostUsd: 2.6425,
+  sparkAiRequests: 18,
 }
 beforeEach(() => {
   vi.clearAllMocks()
@@ -79,6 +83,8 @@ describe("Team billing feedback", () => {
       .mockResolvedValue(active)
     render(<OnlineTeamBillingPanel workspace={workspace} onChanged={vi.fn()} />)
     await screen.findByText(/Payment needs attention/)
+    expect(screen.getByText("815 credits left")).toBeTruthy()
+    expect(screen.getByText("264 used across 18 requests")).toBeTruthy()
     fireEvent.click(screen.getByRole("button", { name: "Refresh billing" }))
     await waitFor(() =>
       expect(mock.success).toHaveBeenCalledWith(

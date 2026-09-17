@@ -74,8 +74,8 @@ A Pro subscription creates a separate organization workspace. It does not conver
 | --- | --- | --- | --- | --- |
 | Community | Self-hosted individuals and teams | Personal and organization | Full application features, API, MCP, operator-configured AI providers, and up to 10 registered accounts per deployment | No Dodo |
 | Free | Individual reader | One personal workspace | Unlimited standard RSS, 5 active no-RSS sources, and 50 one-time Spark AI credits | Free |
-| Personal+ | Founders, researchers, analysts, and agent users | One personal workspace | Unlimited standard RSS, 50 active cost-bearing source units, API, MCP, 100 monthly Spark AI credits, and a 300-credit balance cap | $5 monthly or $48 annually, tax included |
-| Pro | Small teams | One organization workspace | 1 to 10 seats, shared content, invitations, roles, API, MCP, 50 pooled cost-bearing source units per paid seat, 200 monthly Spark AI credits per active member, and a 600-credit per-member balance cap | $12 monthly or $96 annually per seat, tax included |
+| Personal+ | Founders, researchers, analysts, and agent users | One personal workspace | Unlimited standard RSS, 50 active cost-bearing source units, API, MCP, 150 monthly Spark AI credits, and a 450-credit balance cap | $5 monthly or $48 annually, tax included |
+| Pro | Small teams | One organization workspace | 1 to 10 seats, shared content, invitations, roles, API, MCP, 50 pooled cost-bearing source units per paid seat, 360 monthly Spark AI credits per active member, and a 1,080-credit per-member balance cap | $12 monthly or $96 annually per seat, tax included |
 | Enterprise | Larger or contract-driven teams | Organization or dedicated deployment | 11 or more seats, contract-defined capacity, controls, support, invoicing, and deployment requirements | Custom |
 
 Free is the trial. Paid plans do not have a separate timed trial at launch.
@@ -97,8 +97,10 @@ Cloud uses Sparkable-managed model providers. Cloud customers cannot supply prov
 Credit rules are:
 
 - Free grants 50 credits once to each verified Cloud account. Creating or joining another workspace does not create another Free grant.
-- Personal+ grants 100 credits each month. The balance cannot exceed 300 credits.
-- Pro grants 200 credits each month to each active accepted member. Credits belong to that member within that workspace and are not pooled. The balance cannot exceed 600 credits.
+- Personal+ grants 150 credits each month. The balance cannot exceed 450 credits.
+- Pro grants 360 credits each month to each active accepted member. Credits belong to that member within that workspace and are not pooled. The balance cannot exceed 1,080 credits. The workspace Owner sees the aggregate remaining and used credits.
+- One Spark AI credit represents $0.01 of measured provider cost. Store balances to six decimal places, charge the exact AI Gateway cost for every model call in a turn, and include separate web-search model calls. The customer UI floors the remaining balance to a whole number while billing and audit records retain precision.
+- Allow one in-flight Spark AI turn per member per workspace. Reserve the member's spendable balance while a turn runs, refund every unspent or unpriced amount, and recover reservations left in progress for more than 15 minutes.
 - Annual subscriptions still receive credits monthly.
 - A new Pro member receives a prorated grant for the remaining days in the current subscription period.
 - A grant uses `workspace:user:period` as its idempotency scope. Removing and reinviting a member cannot create another grant for the same period.

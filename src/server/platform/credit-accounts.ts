@@ -33,12 +33,12 @@ export async function readCreditAccount(
   plan: string
 ): Promise<CreditAccount> {
   const [row] = await database.execute(sql`SELECT
-    coalesce(sum(amount) FILTER (WHERE credit_bucket='free'),0)::int AS free,
-    coalesce(sum(amount) FILTER (WHERE credit_bucket='paid'),0)::int AS paid,
+    coalesce(sum(amount) FILTER (WHERE credit_bucket='free'),0) AS free,
+    coalesce(sum(amount) FILTER (WHERE credit_bucket='paid'),0) AS paid,
     coalesce(sum(-amount) FILTER (WHERE entry_type='reservation' AND NOT EXISTS (
       SELECT 1 FROM credit_ledger done WHERE done.workspace_type=l.workspace_type AND done.workspace_id=l.workspace_id
       AND done.beneficiary_user_id=l.beneficiary_user_id AND done.ai_request_id=l.ai_request_id
-      AND done.credit_bucket=l.credit_bucket AND done.entry_type IN ('settlement','refund'))),0)::int AS reserved,
+      AND done.credit_bucket=l.credit_bucket AND done.entry_type IN ('settlement','refund'))),0) AS reserved,
     md5(coalesce(string_agg(id,',' ORDER BY id),'')) AS revision
     FROM credit_ledger l WHERE workspace_type=${workspace.type} AND workspace_id=${workspace.id} AND beneficiary_user_id=${userId}`)
   const free = Math.max(0, Number(row.free)),
@@ -175,7 +175,7 @@ export async function setCreditBalance(
       if (bucket === "paid" && !paidPlan) continue
       const [sum] = await tx
         .select({
-          amount: sql<number>`coalesce(sum(${creditLedger.amount}),0)::int`,
+          amount: sql<number>`coalesce(sum(${creditLedger.amount}),0)`,
         })
         .from(creditLedger)
         .where(

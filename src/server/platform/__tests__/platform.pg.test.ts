@@ -218,7 +218,7 @@ describe.runIf(process.env.RUN_PLATFORM_POSTGRES_TESTS === "true")(
         person.id,
         "paid"
       )
-      expect(amount).toBe(100)
+      expect(amount).toBe(150)
       await grantWorkspaceAllowance(
         { type: "personal", id: person.id },
         person.id
@@ -229,7 +229,7 @@ describe.runIf(process.env.RUN_PLATFORM_POSTGRES_TESTS === "true")(
           person.id,
           "paid"
         )
-      ).toBe(100)
+      ).toBe(150)
       const held = await reserveManagedAiCredits(
         { type: "personal", id: person.id },
         person.id,
@@ -375,7 +375,7 @@ describe.runIf(process.env.RUN_PLATFORM_POSTGRES_TESTS === "true")(
           person.id,
           "paid"
         )
-      ).toBe(200)
+      ).toBe(300)
     })
     it("does not refill held credits or replay a capped monthly grant", async () => {
       const workspace = { type: "personal" as const, id: person.id }
@@ -384,7 +384,7 @@ describe.runIf(process.env.RUN_PLATFORM_POSTGRES_TESTS === "true")(
         person.id,
         new Date("2026-11-06T12:00:00Z")
       )
-      expect(await creditBalance(workspace, person.id, "paid")).toBe(300)
+      expect(await creditBalance(workspace, person.id, "paid")).toBe(450)
       const held = await reserveManagedAiCredits(
         workspace,
         person.id,
@@ -399,7 +399,7 @@ describe.runIf(process.env.RUN_PLATFORM_POSTGRES_TESTS === "true")(
         )
       ).toBe(0)
       await releaseManagedAiCredits(held!)
-      expect(await creditBalance(workspace, person.id, "paid")).toBe(300)
+      expect(await creditBalance(workspace, person.id, "paid")).toBe(450)
       await database.insert(creditLedger).values({
         id: randomUUID(),
         workspaceType: "personal",
@@ -419,7 +419,7 @@ describe.runIf(process.env.RUN_PLATFORM_POSTGRES_TESTS === "true")(
           new Date("2026-12-06T12:00:00Z")
         )
       ).toBe(0)
-      expect(await creditBalance(workspace, person.id, "paid")).toBe(250)
+      expect(await creditBalance(workspace, person.id, "paid")).toBe(400)
     })
     it("removing an expired override preserves its original retention deadline", async () => {
       const expired = new Date(Date.now() - 40 * 86400000).toISOString()

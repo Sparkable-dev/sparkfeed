@@ -3,6 +3,7 @@ import { sparkfeedEdition } from "./config"
 import { creditBalance, ensureCloudFreeAccount } from "./credits"
 import { readEffectiveSubscription } from "./effective"
 import { grantWorkspaceAllowance } from "./allowances"
+import { sparkAiPlanPolicy } from "./plan-policy"
 import type {
   EntitlementOverrides,
   PlanKey,
@@ -72,7 +73,8 @@ export async function resolveEntitlements(
   if (workspace.type === "personal") {
     await refreshPersonalSubscriptionLifecycle(workspace.id)
   } else {
-    const { refreshTeamLifecycle } = await import("../billing/team-subscriptions")
+    const { refreshTeamLifecycle } =
+      await import("../billing/team-subscriptions")
     await refreshTeamLifecycle(workspace.id)
   }
 
@@ -151,7 +153,7 @@ export async function resolveEntitlements(
     personal_plus: {
       seats: 1,
       sources: 50,
-      monthlyCredits: 100,
+      monthlyCredits: sparkAiPlanPolicy("personal_plus").monthlyCredits,
       api: true,
       mcp: true,
       invitations: false,
@@ -159,7 +161,7 @@ export async function resolveEntitlements(
     pro: {
       seats: row.paidSeatQuantity,
       sources: row.paidSeatQuantity * 50,
-      monthlyCredits: 200,
+      monthlyCredits: sparkAiPlanPolicy("pro").monthlyCredits,
       api: true,
       mcp: true,
       invitations: true,

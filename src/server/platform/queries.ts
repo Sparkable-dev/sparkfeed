@@ -97,9 +97,9 @@ export const workspaceCte = sql`WITH identities AS (
  UNION ALL SELECT 'organization',m.organization_id,m.user_id,m.id,m.role FROM member m
 ), credit_totals AS (
  SELECT workspace_type,workspace_id,beneficiary_user_id,
- greatest(coalesce(sum(amount) FILTER (WHERE credit_bucket='free'),0),0)::int free,
- greatest(coalesce(sum(amount) FILTER (WHERE credit_bucket='paid'),0),0)::int paid,
- coalesce(sum(-amount) FILTER (WHERE entry_type='reservation' AND NOT EXISTS(SELECT 1 FROM credit_ledger f WHERE f.workspace_type=l.workspace_type AND f.workspace_id=l.workspace_id AND f.beneficiary_user_id=l.beneficiary_user_id AND f.ai_request_id=l.ai_request_id AND f.credit_bucket=l.credit_bucket AND f.entry_type IN ('settlement','refund'))),0)::int reserved,
+ greatest(coalesce(sum(amount) FILTER (WHERE credit_bucket='free'),0),0) free,
+ greatest(coalesce(sum(amount) FILTER (WHERE credit_bucket='paid'),0),0) paid,
+ coalesce(sum(-amount) FILTER (WHERE entry_type='reservation' AND NOT EXISTS(SELECT 1 FROM credit_ledger f WHERE f.workspace_type=l.workspace_type AND f.workspace_id=l.workspace_id AND f.beneficiary_user_id=l.beneficiary_user_id AND f.ai_request_id=l.ai_request_id AND f.credit_bucket=l.credit_bucket AND f.entry_type IN ('settlement','refund'))),0) reserved,
  md5(string_agg(id,',' ORDER BY id)) credit_revision
  FROM credit_ledger l GROUP BY workspace_type,workspace_id,beneficiary_user_id
 )`
@@ -126,8 +126,8 @@ export async function workspacePage(
     direction = q.direction === "asc" ? sql`ASC` : sql`DESC`
   const [items, totals] = await Promise.all([
     db.execute(sql`${workspaceCte} SELECT ${workspaceFields},
-   coalesce((SELECT sum(coalesce(c.free,0)+CASE WHEN i.effective_plan='free' THEN 0 ELSE coalesce(c.paid,0) END)::int FROM workspace_people p LEFT JOIN credit_totals c ON c.workspace_type=p.kind AND c.workspace_id=p.workspace_id AND c.beneficiary_user_id=p.user_id WHERE p.kind=i.kind AND p.workspace_id=i.id),0) AS "creditsAvailable",
-   coalesce((SELECT sum(c.reserved)::int FROM workspace_people p JOIN credit_totals c ON c.workspace_type=p.kind AND c.workspace_id=p.workspace_id AND c.beneficiary_user_id=p.user_id WHERE p.kind=i.kind AND p.workspace_id=i.id),0) AS "creditsReserved"
+   coalesce((SELECT sum(coalesce(c.free,0)+CASE WHEN i.effective_plan='free' THEN 0 ELSE coalesce(c.paid,0) END) FROM workspace_people p LEFT JOIN credit_totals c ON c.workspace_type=p.kind AND c.workspace_id=p.workspace_id AND c.beneficiary_user_id=p.user_id WHERE p.kind=i.kind AND p.workspace_id=i.id),0) AS "creditsAvailable",
+   coalesce((SELECT sum(c.reserved) FROM workspace_people p JOIN credit_totals c ON c.workspace_type=p.kind AND c.workspace_id=p.workspace_id AND c.beneficiary_user_id=p.user_id WHERE p.kind=i.kind AND p.workspace_id=i.id),0) AS "creditsReserved"
    FROM inventory i ${workspaceWhere(q)} ORDER BY ${order} ${direction},i.kind,i.id LIMIT ${q.pageSize} OFFSET ${(q.page - 1) * q.pageSize}`),
     db.execute(
       sql`${workspaceCte} SELECT count(*)::int total FROM inventory i ${workspaceWhere(q)}`

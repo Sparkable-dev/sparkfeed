@@ -23,6 +23,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { DEMO_MODE } from "@/lib/demo"
+import { useSparkAiCredits } from "@/components/ai/credit-context"
 
 /**
  * The composer.
@@ -49,6 +50,7 @@ export function SparkComposer() {
   const activeSkillId = useAIComposerPrefs((s) => s.activeSkillId)
   const setActiveSkill = useAIComposerPrefs((s) => s.setActiveSkill)
   const activeSkill = getSkill(activeSkillId ?? undefined)
+  const credits = useSparkAiCredits()
 
   // Picking a skill replaces the `/query` with the skill's own phrasing and
   // pins it as a chip. Replacing rather than clearing matters: Send only
@@ -175,6 +177,16 @@ export function SparkComposer() {
 
           <div className="flex-1" />
 
+          {credits.balance !== null ? (
+            <span
+              className="rounded-full border border-border/60 px-2 py-1 text-xs text-muted-foreground tabular-nums"
+              aria-label={`${credits.balance.toFixed(6)} Spark AI credits remaining`}
+            >
+              {credits.refreshing
+                ? "Updating…"
+                : `${Math.floor(credits.balance)} credits`}
+            </span>
+          ) : null}
           <ModelMenu />
           <MicButton />
 

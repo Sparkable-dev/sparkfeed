@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto"
 import { and, eq, gte, lt, sql } from "drizzle-orm"
 import { readEffectiveSubscription } from "./effective"
+import { sparkAiPlanPolicy } from "./plan-policy"
 import type { WorkspaceRef } from "./types"
 import { db } from "@/db/index"
 import { creditLedger, member, workspaceCreditSchedules } from "@/db/schema"
@@ -56,9 +57,8 @@ export async function grantWorkspaceAllowance(
       if (!membership) return 0
       joinedAt = membership.createdAt
     } else if (workspace.id !== userId) return 0
-    const monthly =
-      row.overrideMonthlyAiCredits ??
-      (row.planKey === "personal_plus" ? 100 : row.planKey === "pro" ? 200 : 0)
+    const policy = sparkAiPlanPolicy(row.planKey)
+    const monthly = row.overrideMonthlyAiCredits ?? policy.monthlyCredits ?? 0
     if (monthly <= 0) return 0
     const scheduleWhere = and(
       eq(workspaceCreditSchedules.workspaceType, workspace.type),
@@ -119,13 +119,13 @@ export async function grantWorkspaceAllowance(
     )
     const [balance] = await tx
       .select({
-        amount: sql<number>`cast(coalesce(sum(${creditLedger.amount}),0) as int)`,
+        amount: sql<number>`coalesce(sum(${creditLedger.amount}),0)`,
       })
       .from(creditLedger)
       .where(owner)
     const [already] = await tx
       .select({
-        amount: sql<number>`cast(coalesce(sum(${creditLedger.amount}),0) as int)`,
+        amount: sql<number>`coalesce(sum(${creditLedger.amount}),0)`,
       })
       .from(creditLedger)
       .where(
@@ -138,7 +138,7 @@ export async function grantWorkspaceAllowance(
       )
     const [reserved] = await tx
       .select({
-        amount: sql<number>`cast(coalesce(sum(-${creditLedger.amount}),0) as int)`,
+        amount: sql<number>`coalesce(sum(-${creditLedger.amount}),0)`,
       })
       .from(creditLedger)
       .where(
@@ -152,7 +152,7 @@ export async function grantWorkspaceAllowance(
       0,
       Math.min(
         target - Number(already?.amount ?? 0),
-        monthly * 3 -
+        (policy.rolloverCap ?? monthly * 3) -
           Number(balance?.amount ?? 0) -
           Number(reserved?.amount ?? 0)
       )

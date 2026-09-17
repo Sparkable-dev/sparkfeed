@@ -2,10 +2,12 @@ import { convertToModelMessages, stepCountIs, streamText } from "ai"
 import { resolveModelSelection } from "./models"
 import { buildSystemPrompt } from "./prompt"
 import { allowedToolNames, buildChatTools } from "./tools"
+import { AiUsageCollector } from "./usage"
 import type { UIMessage } from "ai"
 import type { EffortId } from "@/config/ai-models"
 import type { AutonomyId } from "@/config/autonomy"
 import type { ApiPrincipal } from "../api/principal"
+import type { AiUsageRequestStatus, AiUsageSummary } from "./usage"
 
 export interface ChatRequest {
   messages: Array<UIMessage>
@@ -16,20 +18,8 @@ export interface ChatRequest {
 }
 
 export interface ChatBillingCallbacks {
-  onComplete: (costUsd: number | null) => Promise<void>
-  onIncomplete: () => Promise<void>
-}
-
-function gatewayCost(event: {
-  finalStep: { providerMetadata?: Record<string, Record<string, unknown>> }
-}): number | null {
-  const raw = event.finalStep.providerMetadata?.gateway?.cost
-  if (typeof raw === "number" && Number.isFinite(raw) && raw >= 0) return raw
-  if (typeof raw === "string") {
-    const parsed = Number(raw)
-    if (Number.isFinite(parsed) && parsed >= 0) return parsed
-  }
-  return null
+  onComplete: (usage: AiUsageSummary) => Promise<void>
+  onIncomplete: (usage: AiUsageSummary) => Promise<void>
 }
 
 /**
@@ -55,22 +45,37 @@ export async function buildChatStream(
   billing?: ChatBillingCallbacks
 ) {
   const selection = resolveModelSelection(request.modelId, request.effort)
+  const usage = new AiUsageCollector()
+  let settlement: Promise<void> | null = null
+  const finalize = (status: AiUsageRequestStatus) => {
+    if (settlement) return settlement
+    const callback =
+      status === "completed" ? billing?.onComplete : billing?.onIncomplete
+    settlement = callback
+      ? usage.summarize(status).then(callback)
+      : Promise.resolve()
+    return settlement
+  }
 
   return streamText({
     model: selection.model,
     system: buildSystemPrompt(principal, request.autonomy, request.skillId),
     // v7: async, and returns the full history rather than a single turn.
     messages: await convertToModelMessages(request.messages),
-    tools: buildChatTools(principal, request.autonomy),
+    tools: buildChatTools(principal, request.autonomy, usage),
     stopWhen: stepCountIs(8),
+    maxOutputTokens: 4096,
     // Provider-agnostic reasoning control — the SDK maps this onto each
     // provider's native parameter, so there is no per-vendor branching here.
     // Omitted entirely for models with no effort control.
     ...(selection.effort ? { reasoning: selection.effort } : {}),
-    onEnd: billing
-      ? async (event) => billing.onComplete(gatewayCost(event))
-      : undefined,
-    onAbort: billing ? async () => billing.onIncomplete() : undefined,
+    onLanguageModelCallStart: (event) => usage.startLanguageModelCall(event),
+    onChunk: ({ chunk }) => {
+      if ("providerMetadata" in chunk) usage.captureChunk(chunk)
+    },
+    onLanguageModelCallEnd: (event) => usage.finishLanguageModelCall(event),
+    onEnd: billing ? async () => finalize("completed") : undefined,
+    onAbort: billing ? async () => finalize("incomplete") : undefined,
     onError: async ({ error }) => {
       console.error(
         `[ai] stream error (${selection.providerId}/${selection.upstreamModelId}, tools: ${allowedToolNames(
@@ -79,7 +84,7 @@ export async function buildChatStream(
         ).join(", ")}):`,
         error
       )
-      await billing?.onIncomplete()
+      if (billing) await finalize("error")
     },
   })
 }

@@ -372,10 +372,10 @@ describe.runIf(process.env.RUN_PLATFORM_POSTGRES_TESTS === "true")(
         .select()
         .from(workspaceOverrides)
         .where(eq(workspaceOverrides.workspaceId, team))
-      expect(assignment.monthlyAiCredits).toBe(200)
+      expect(assignment.monthlyAiCredits).toBe(360)
       // New team members receive the existing joining-period proration.
       expect(first.available).toBeGreaterThan(0)
-      expect(first.available).toBeLessThanOrEqual(200)
+      expect(first.available).toBeLessThanOrEqual(360)
       await changePlan(
         {
           action: "change_plan",

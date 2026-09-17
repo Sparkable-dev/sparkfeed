@@ -5,6 +5,7 @@ import { SparkChat } from "@/components/ai/SparkChat"
 import { Skeleton } from "@/components/ui/skeleton"
 import { loadChat } from "@/server/chats"
 import { isChatId } from "@/lib/chat-id"
+import { getSparkAiCreditSummary } from "@/server/ai-credit-actions"
 
 export const Route = createFileRoute("/_protected/dashboard/ai/$threadId")({
   loader: async ({ params, context }) => {
@@ -13,17 +14,18 @@ export const Route = createFileRoute("/_protected/dashboard/ai/$threadId")({
     // blank conversation that then saved itself under that name.
     if (!isChatId(params.threadId)) throw notFound()
 
-    const [data, chat] = await Promise.all([
+    const [data, chat, credits] = await Promise.all([
       loadWorkspaceData(context),
       loadChat({ data: { threadId: params.threadId } }),
+      getSparkAiCreditSummary(),
     ])
-    return { data, chat }
+    return { data, chat, credits }
   },
   component: AIPage,
 })
 
 function AIPage() {
-  const { data, chat } = Route.useLoaderData()
+  const { data, chat, credits } = Route.useLoaderData()
 
   return (
     <RSSShell
@@ -61,6 +63,7 @@ function AIPage() {
             key={chat.id}
             threadId={chat.id}
             initialMessages={chat.messages}
+            initialCreditBalance={credits.balance}
           />
         </ClientOnly>
       </div>

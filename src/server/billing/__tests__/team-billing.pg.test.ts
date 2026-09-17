@@ -444,7 +444,7 @@ describe.runIf(process.env.RUN_TEAM_POSTGRES_TESTS === "true")(
         .select()
         .from(creditLedger)
         .where(eq(creditLedger.workspaceId, id))
-      expect(grants.reduce((sum, entry) => sum + entry.amount, 0)).toBe(200)
+      expect(grants.reduce((sum, entry) => sum + entry.amount, 0)).toBe(360)
       const personal = await database
         .select()
         .from(workspaceSubscriptions)

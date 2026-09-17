@@ -220,7 +220,7 @@ async function expireRetainedPaidCredits(
       return
     const [balance] = await tx
       .select({
-        amount: sql<number>`cast(coalesce(sum(${creditLedger.amount}),0) as int)`,
+        amount: sql<number>`coalesce(sum(${creditLedger.amount}),0)`,
       })
       .from(creditLedger)
       .where(

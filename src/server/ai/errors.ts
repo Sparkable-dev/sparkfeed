@@ -37,6 +37,12 @@ export const AI_NOT_ENTITLED = () =>
 export const AI_BAD_REQUEST = () =>
   new AIError("That request was malformed.", 400)
 
+export const AI_BUSY = () =>
+  new AIError(
+    "Spark AI is already answering another message for you in this workspace. Let it finish before sending another.",
+    409
+  )
+
 export const AI_NO_PROVIDER = (modelLabel: string) =>
   new AIError(
     `No AI provider is configured for ${modelLabel}. Set AI_GATEWAY_API_KEY, OPENAI_API_KEY, or OPENROUTER_API_KEY.`,

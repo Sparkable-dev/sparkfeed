@@ -2,6 +2,7 @@ import {
   boolean,
   index,
   integer,
+  numeric,
   pgTable,
   primaryKey,
   text,
@@ -565,7 +566,11 @@ export const creditLedger = pgTable(
     workspaceId: text("workspace_id").notNull(),
     beneficiaryUserId: text("beneficiary_user_id"),
     creditBucket: text("credit_bucket").$type<CreditBucket>().notNull(),
-    amount: integer("amount").notNull(),
+    amount: numeric("amount", {
+      precision: 20,
+      scale: 6,
+      mode: "number",
+    }).notNull(),
     entryType: text("entry_type").$type<CreditEntryType>().notNull(),
     grantPeriod: text("grant_period"),
     aiRequestId: text("ai_request_id"),
@@ -585,6 +590,118 @@ export const creditLedger = pgTable(
       t.beneficiaryUserId
     ),
     index("credit_ledger_request_idx").on(t.aiRequestId),
+  ]
+)
+
+/** One durable row per Spark AI turn, including interrupted and recovered turns. */
+export const aiUsageRequests = pgTable(
+  "ai_usage_requests",
+  {
+    id: text("id").primaryKey(),
+    workspaceType: text("workspace_type")
+      .$type<WorkspaceRef["type"]>()
+      .notNull(),
+    workspaceId: text("workspace_id").notNull(),
+    beneficiaryUserId: text("beneficiary_user_id").notNull(),
+    planKey: text("plan_key").$type<PlanKey>().notNull(),
+    requestedModelId: text("requested_model_id"),
+    providerId: text("provider_id"),
+    upstreamModelId: text("upstream_model_id"),
+    status: text("status")
+      .$type<"in_progress" | "completed" | "incomplete" | "error" | "stale">()
+      .notNull(),
+    reservedCredits: numeric("reserved_credits", {
+      precision: 20,
+      scale: 6,
+      mode: "number",
+    })
+      .notNull()
+      .default(0),
+    chargedCredits: numeric("charged_credits", {
+      precision: 20,
+      scale: 6,
+      mode: "number",
+    })
+      .notNull()
+      .default(0),
+    costUsd: numeric("cost_usd", {
+      precision: 20,
+      scale: 10,
+      mode: "number",
+    })
+      .notNull()
+      .default(0),
+    unpricedSteps: integer("unpriced_steps").notNull().default(0),
+    inputTokens: integer("input_tokens").notNull().default(0),
+    cachedInputTokens: integer("cached_input_tokens").notNull().default(0),
+    cacheWriteTokens: integer("cache_write_tokens").notNull().default(0),
+    outputTokens: integer("output_tokens").notNull().default(0),
+    reasoningTokens: integer("reasoning_tokens").notNull().default(0),
+    totalTokens: integer("total_tokens").notNull().default(0),
+    stepCount: integer("step_count").notNull().default(0),
+    startedAt: text("started_at")
+      .notNull()
+      .$defaultFn(() => new Date().toISOString()),
+    completedAt: text("completed_at"),
+  },
+  (t) => [
+    index("ai_usage_requests_member_idx").on(
+      t.workspaceType,
+      t.workspaceId,
+      t.beneficiaryUserId,
+      t.startedAt
+    ),
+    index("ai_usage_requests_workspace_idx").on(
+      t.workspaceType,
+      t.workspaceId,
+      t.startedAt
+    ),
+  ]
+)
+
+/** Per-provider-call cost and token detail for a Spark AI turn. */
+export const aiUsageSteps = pgTable(
+  "ai_usage_steps",
+  {
+    id: text("id").primaryKey(),
+    requestId: text("request_id")
+      .notNull()
+      .references(() => aiUsageRequests.id, { onDelete: "cascade" }),
+    sequence: integer("sequence").notNull(),
+    kind: text("kind").$type<"chat" | "web_search">().notNull(),
+    providerId: text("provider_id").notNull(),
+    modelId: text("model_id").notNull(),
+    responseId: text("response_id"),
+    generationId: text("generation_id"),
+    finishReason: text("finish_reason"),
+    costUsd: numeric("cost_usd", {
+      precision: 20,
+      scale: 10,
+      mode: "number",
+    }),
+    chargedCredits: numeric("charged_credits", {
+      precision: 20,
+      scale: 6,
+      mode: "number",
+    })
+      .notNull()
+      .default(0),
+    inputTokens: integer("input_tokens").notNull().default(0),
+    cachedInputTokens: integer("cached_input_tokens").notNull().default(0),
+    cacheWriteTokens: integer("cache_write_tokens").notNull().default(0),
+    outputTokens: integer("output_tokens").notNull().default(0),
+    reasoningTokens: integer("reasoning_tokens").notNull().default(0),
+    totalTokens: integer("total_tokens").notNull().default(0),
+    createdAt: text("created_at")
+      .notNull()
+      .$defaultFn(() => new Date().toISOString()),
+  },
+  (t) => [
+    uniqueIndex("ai_usage_steps_request_sequence_uidx").on(
+      t.requestId,
+      t.sequence
+    ),
+    index("ai_usage_steps_generation_idx").on(t.generationId),
   ]
 )
 

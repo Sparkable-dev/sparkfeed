@@ -1,10 +1,11 @@
 import { randomUUID } from "node:crypto"
 import { and, eq, sql } from "drizzle-orm"
+import { FREE_SPARK_AI_CREDITS } from "./plan-policy"
 import type { CreditBucket, WorkspaceRef } from "./types"
 import { db } from "@/db/index"
 import { creditLedger, workspaceSubscriptions } from "@/db/schema"
 
-export const CLOUD_FREE_CREDIT_GRANT = 50
+export const CLOUD_FREE_CREDIT_GRANT = FREE_SPARK_AI_CREDITS
 
 export function freeCreditGrantKey(userId: string): string {
   return `cloud-free:user:${userId}`
@@ -59,7 +60,7 @@ export async function creditBalance(
 ): Promise<number> {
   const [row] = await db
     .select({
-      value: sql<number>`cast(coalesce(sum(${creditLedger.amount}), 0) as int)`,
+      value: sql<number>`coalesce(sum(${creditLedger.amount}), 0)`,
     })
     .from(creditLedger)
     .where(

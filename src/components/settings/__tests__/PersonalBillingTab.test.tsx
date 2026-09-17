@@ -62,8 +62,8 @@ describe("personal billing tab", () => {
       plan: "personal_plus",
       billingStatus: "active",
       interval: "monthly",
-      paidCredits: 100,
-      spendableCredits: 150,
+      paidCredits: 150,
+      spendableCredits: 149.95,
       sourceLimit: 50,
       portalAvailable: true,
     })
@@ -78,6 +78,12 @@ describe("personal billing tab", () => {
     )
     expect(screen.queryByText("Upgrade to Personal+")).toBeNull()
     expect(screen.queryByText("Team plans are coming soon")).toBeNull()
+    expect(
+      screen.getByText(
+        "API, MCP, 50 no-RSS sources, and 150 monthly Spark AI credits."
+      )
+    ).toBeTruthy()
+    expect(screen.getByText("149")).toBeTruthy()
   })
 
   it("waits for a pending checkout instead of offering another checkout", async () => {

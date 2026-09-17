@@ -17,6 +17,8 @@ import {
 } from "@/components/ai/artifacts/artifact-context"
 import { useAIComposerPrefs } from "@/store/aiComposerPrefs"
 import { notifyChatSaved } from "@/components/ai/history/use-chat-history"
+import { getSparkAiCreditSummary } from "@/server/ai-credit-actions"
+import { SparkAiCreditContext } from "@/components/ai/credit-context"
 
 /**
  * Root of the Spark AI page. Client-only — `useChatRuntime` wraps `useChat`,
@@ -31,11 +33,25 @@ import { notifyChatSaved } from "@/components/ai/history/use-chat-history"
 export function SparkChat({
   threadId,
   initialMessages,
+  initialCreditBalance,
 }: {
   threadId: string
   initialMessages: Array<{ id: string; role: string; parts: Array<unknown> }>
+  initialCreditBalance: number | null
 }) {
   const [error, setError] = React.useState<string | null>(null)
+  const [balance, setBalance] = React.useState(initialCreditBalance)
+  const [refreshing, setRefreshing] = React.useState(false)
+  const refreshBalance = React.useCallback(async () => {
+    if (initialCreditBalance === null) return
+    setRefreshing(true)
+    try {
+      const summary = await getSparkAiCreditSummary()
+      setBalance(summary.balance)
+    } finally {
+      setRefreshing(false)
+    }
+  }, [initialCreditBalance])
 
   // Read through a ref so changing model or effort mid-conversation does not
   // rebuild the transport (which would tear down an in-flight stream). The
@@ -105,11 +121,17 @@ export function SparkChat({
     id: threadId,
     messages: initialMessages as never,
     transport,
-    onError: (err) => setError(err.message || "Spark AI could not respond."),
+    onError: (err) => {
+      setError(err.message || "Spark AI could not respond.")
+      void refreshBalance()
+    },
     // The server saves the thread as the stream ends; this is what tells the
     // sidebar to look, so a brand new conversation appears in History without
     // having to navigate away and back.
-    onFinish: () => notifyChatSaved(),
+    onFinish: () => {
+      notifyChatSaved()
+      void refreshBalance()
+    },
   })
 
   // Clear a stale banner as soon as the next attempt starts.
@@ -124,11 +146,13 @@ export function SparkChat({
   )
 
   return (
-    <AssistantRuntimeProvider runtime={runtime} config={config}>
-      <ArtifactProvider threadId={threadId}>
-        <ChatSurface error={error} onClearError={handleClearError} />
-      </ArtifactProvider>
-    </AssistantRuntimeProvider>
+    <SparkAiCreditContext.Provider value={{ balance, refreshing }}>
+      <AssistantRuntimeProvider runtime={runtime} config={config}>
+        <ArtifactProvider threadId={threadId}>
+          <ChatSurface error={error} onClearError={handleClearError} />
+        </ArtifactProvider>
+      </AssistantRuntimeProvider>
+    </SparkAiCreditContext.Provider>
   )
 }
 

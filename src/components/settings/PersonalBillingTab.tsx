@@ -189,7 +189,7 @@ export function PersonalBillingTab() {
           <CardTitle>{isPersonalPlus ? "Personal+" : "Free"}</CardTitle>
           <CardDescription>
             {isPersonalPlus
-              ? "API, MCP, 50 no-RSS sources, and 100 monthly Spark AI credits."
+              ? "API, MCP, 50 no-RSS sources, and 150 monthly Spark AI credits."
               : "Five no-RSS sources and 50 one-time Spark AI credits."}
           </CardDescription>
         </CardHeader>
@@ -205,7 +205,9 @@ export function PersonalBillingTab() {
             <div className="rounded-lg border p-3">
               <div className="text-muted-foreground">Spendable credits</div>
               <div className="mt-1 font-semibold">
-                {summary.spendableCredits ?? "Operator managed"}
+                {summary.spendableCredits === null
+                  ? "Operator managed"
+                  : Math.floor(summary.spendableCredits)}
               </div>
             </div>
             <div className="rounded-lg border p-3">

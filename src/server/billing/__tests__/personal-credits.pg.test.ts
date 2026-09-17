@@ -7,7 +7,7 @@ describe.runIf(process.env.RUN_POSTGRES_TESTS === "true")(
     it("reserves both buckets and settles the measured Gateway cost", async () => {
       const { and, eq } = await import("drizzle-orm")
       const { db } = await import("@/db/index")
-      const { creditLedger, workspaceSubscriptions } =
+      const { aiUsageRequests, creditLedger, workspaceSubscriptions } =
         await import("@/db/schema")
       const { creditBalance } = await import("@/server/entitlements/credits")
       const {
@@ -78,7 +78,18 @@ describe.runIf(process.env.RUN_POSTGRES_TESTS === "true")(
         )
         await releaseManagedAiCredits(released!)
         expect(await creditBalance(workspace, userId)).toBe(17)
+
+        const fractional = await reserveManagedAiCredits(
+          workspace,
+          userId,
+          "request-3"
+        )
+        await settleManagedAiCredits(fractional!, 0.0002)
+        expect(await creditBalance(workspace, userId)).toBe(16.98)
       } finally {
+        await db
+          .delete(aiUsageRequests)
+          .where(eq(aiUsageRequests.beneficiaryUserId, userId))
         await db
           .delete(creditLedger)
           .where(

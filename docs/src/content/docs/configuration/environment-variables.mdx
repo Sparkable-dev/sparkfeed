@@ -16,14 +16,14 @@ The repository's `.env.example` file is the canonical configuration reference.
 
 ## Google and GitHub sign-in
 
-Google is optional. Configure both Google values to enable its sign-in button. GitHub remains visible as **Coming soon** and cannot start a new connection from the UI.
+Google and GitHub are optional. Configure both values for a provider to enable its sign-in, sign-up, and connect buttons. Unconfigured providers are hidden. When none are configured, the auth forms show only email and password, without a social divider. Existing connections remain manageable in Settings → Security even after a provider is disabled.
 
 | Variable | Description |
 | --- | --- |
 | `GOOGLE_CLIENT_ID` | Google OAuth Web application client ID. |
 | `GOOGLE_CLIENT_SECRET` | Google OAuth client secret. |
-| `GITHUB_CLIENT_ID` | Reserved GitHub OAuth App client ID. Leave unset for this rollout. |
-| `GITHUB_CLIENT_SECRET` | Reserved GitHub OAuth client secret. Leave unset for this rollout. |
+| `GITHUB_CLIENT_ID` | GitHub OAuth App client ID. |
+| `GITHUB_CLIENT_SECRET` | GitHub OAuth client secret. |
 
 Keep these values in the server environment. Never prefix a client secret with `VITE_` or commit it. Restart the application after changing credentials. A provider with only one value configured causes a startup error.
 
@@ -35,11 +35,11 @@ Keep these values in the server environment. Never prefix a client secret with `
 4. Store the client ID and secret as `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` on the server. Set `APP_URL`, `BETTER_AUTH_URL`, and any `SPARKFEED_APP_ORIGIN` override to the same application origin.
 5. Test with an allowed account. Set the audience to production for public access and complete any requested branding verification.
 
-Google sign-in requests only `openid`, `email`, and `profile`. It does not request Gmail or Drive access. Use a separate Google project for testing and production.
+Google sign-in requests only `openid`, `email`, and `profile`. It does not request Gmail or Drive access. Use separate OAuth clients for isolated testing. Multiple clients can share one Google Cloud project and its consent-screen branding.
 
 ### Enable Google on Railway
 
-For Sparkfeed's hosted release, deploy `dev` to **SparkFeed-Application** at `beta.sparkfeed.dev` first. Leave both Google variables unset on beta. Verify email sign-in, the hidden Google button, and the GitHub **Coming soon** state before merging `dev` into `main`. **SparkFeed-Production** at `app.sparkfeed.dev` tracks `main`. Both services are currently inside the Railway environment named `production`, so check the service name and domain when editing variables.
+For Sparkfeed's hosted release, deploy `dev` to **SparkFeed-Application** at `beta.sparkfeed.dev` first. Leave both Google variables unset on beta. Verify email sign-in, the absence of unconfigured social buttons and their divider before merging `dev` into `main`. **SparkFeed-Production** at `app.sparkfeed.dev` tracks `main`. Both services are currently inside the Railway environment named `production`, so check the service name and domain when editing variables.
 
 1. Select the production Railway environment and the customer application service whose custom domain is `app.sparkfeed.dev`.
 2. Confirm that the deployment source includes the Google provider, provider discovery, and connected-account UI. Adding variables does not upload local code changes.
@@ -59,13 +59,28 @@ VITE_DEMO_MODE=false
 7. Keep the deployment's existing `BETTER_AUTH_SECRET` and `DATABASE_URL`. The auth secret also encrypts stored OAuth tokens. Do not rotate it while adding Google credentials.
 8. Review Railway's staged changes for the selected service. Deploy the intended code and variable changes together. Railway does not apply staged variables to the running deployment until deployment.
 9. Wait for a successful deployment and the `/api/health` check. The repository's Railway start command runs database migrations before starting the server. Check migration and startup logs if deployment fails.
-10. Open `https://app.sparkfeed.dev/sign-in` in a private browser window. Confirm that Google appears and GitHub remains **Coming soon**. Complete the checks below.
+10. Open `https://app.sparkfeed.dev/sign-in` in a private browser window. Confirm that Google appears. GitHub appears only when both GitHub variables are configured. Complete the checks below.
 
 The production Google client must contain `https://app.sparkfeed.dev/api/auth/callback/google` as an authorized redirect URI. The landing-page domain is not a JavaScript origin for this flow. Keep production credentials out of beta, local development, the documentation service, and the private staff dashboard.
 
-Hosted beta disables Google whenever `SPARKFEED_ENVIRONMENT=beta`, even if Google credentials are present. Leave its Google variables unset. For a separate development instance that needs Google testing, use an isolated Google project and client. Sealed Railway variables are not copied when duplicating an environment or service.
+Hosted beta disables Google whenever `SPARKFEED_ENVIRONMENT=beta`, even if Google credentials are present. Leave its Google variables unset. For a separate development instance that needs Google testing, use an isolated OAuth client. Sealed Railway variables are not copied when duplicating an environment or service.
 
 See [Railway service and sealed variables](https://docs.railway.com/variables) and [Railway staged deployments](https://docs.railway.com/deployments/staged-changes).
+
+### Configure GitHub
+
+1. In [GitHub Developer settings](https://github.com/settings/developers), register an **OAuth App**. For hosted production, use the name `Sparkfeed-BetterAuth-Prod`, homepage `https://sparkfeed.dev`, and exact redirect URI `https://app.sparkfeed.dev/api/auth/callback/github`.
+2. Leave wildcard matching and Device Flow disabled. Token expiry can stay enabled; Better Auth supports GitHub refresh tokens when issued.
+3. Generate a client secret. Add `GITHUB_CLIENT_ID` and `GITHUB_CLIENT_SECRET` to **SparkFeed-Production** in Railway and deploy the staged variables. Keep both unset on beta. Seal the secret after saving a recovery copy in a password manager.
+4. Test sign-in with a GitHub account whose primary email is private, then connect and disconnect GitHub under Settings → Security. Better Auth requests `read:user` and `user:email` by default to retrieve a verified email.
+
+This setup uses a GitHub OAuth App. If you instead create a GitHub App, grant **Account permissions → Email addresses → Read-only**. Never request repository access just for sign-in. See [Better Auth's GitHub provider](https://better-auth.com/docs/authentication/github).
+
+### Review authentication in the staff dashboard
+
+Open a user detail page in the private dashboard. **Sign-in methods & connected accounts** shows the current provider connections and when they were added. **Authentication history** shows the latest 50 successful sign-ins and connection changes. **Sessions & devices** shows the method recorded when each session was created.
+
+History starts when this version is deployed; earlier sessions show **Not recorded**. Session refreshes are not new sign-ins. Failed attempts are not included. Customer deletion removes the associated history. The signed staff API returns an explicit projection with no passwords, OAuth tokens, or session tokens. This history is enabled only for the cloud edition.
 
 ### Diagnose a failed Google sign-in
 

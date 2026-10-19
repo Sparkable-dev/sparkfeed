@@ -74,10 +74,7 @@ export function SocialButtons({
   redirect?: string
 }) {
   const { data: providers = [] } = useSocialProviders()
-  const visibleProviders: Array<SocialProvider> = [
-    ...(providers.includes("google") ? ["google" as const] : []),
-    "github",
-  ]
+  const visibleProviders = providers
   const [pending, setPending] = useState<SocialProvider | null>(null)
   const [error, setError] = useState("")
   const destination = safeLoginRedirect(
@@ -86,7 +83,7 @@ export function SocialButtons({
   )
 
   async function connect(provider: SocialProvider) {
-    if (pending || provider === "github") return
+    if (pending) return
     setPending(provider)
     setError("")
     try {
@@ -103,6 +100,7 @@ export function SocialButtons({
       setPending(null)
     }
   }
+  if (!visibleProviders.length) return null
   return (
     <>
       <div
@@ -115,8 +113,7 @@ export function SocialButtons({
             type="button"
             className="h-9 cursor-pointer gap-2 rounded-lg text-sm shadow-xs dark:bg-background"
             onClick={() => void connect(provider)}
-            disabled={pending !== null || provider === "github"}
-            aria-label={provider === "github" ? "GitHub Coming soon" : undefined}
+            disabled={pending !== null}
           >
             {provider === "google" ? (
               <img
@@ -141,9 +138,6 @@ export function SocialButtons({
             {pending === provider
               ? "Connecting..."
               : socialProviderLabels[provider]}
-            {provider === "github" && (
-              <span className="text-xs text-muted-foreground">Coming soon</span>
-            )}
           </Button>
         ))}
       </div>

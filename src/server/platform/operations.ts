@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto"
-import { and, desc, eq, or, sql } from "drizzle-orm"
+import { and, desc, eq, inArray, or, sql } from "drizzle-orm"
 import { z } from "zod"
 import {
   failAdminAudit,
@@ -11,8 +11,10 @@ import type { PlatformActor } from "./access"
 import { PlatformRequestError } from "@/server/platform/assertion"
 import { db } from "@/db/index"
 import {
+  account as authAccount,
   billingRequests,
   creditLedger,
+  customerAuthEvents,
   dodoWebhookInbox,
   invitation,
   member,
@@ -171,7 +173,60 @@ export async function getPlatformUser(userId: string) {
     .innerJoin(organization, eq(member.organizationId, organization.id))
     .where(eq(member.userId, userId))
 
-  return { account, sessions, memberships }
+  const connectedAccounts = await db
+    .select({
+      id: authAccount.id,
+      providerId: authAccount.providerId,
+      createdAt: authAccount.createdAt,
+    })
+    .from(authAccount)
+    .where(eq(authAccount.userId, userId))
+    .orderBy(desc(authAccount.createdAt))
+  const history = await db
+    .select({
+      id: customerAuthEvents.id,
+      action: customerAuthEvents.action,
+      method: customerAuthEvents.method,
+      createdAt: customerAuthEvents.createdAt,
+    })
+    .from(customerAuthEvents)
+    .where(eq(customerAuthEvents.userId, userId))
+    .orderBy(desc(customerAuthEvents.createdAt), desc(customerAuthEvents.id))
+    .limit(51)
+  const signIns = sessions.length
+    ? await db
+        .select({
+          sessionId: customerAuthEvents.sessionId,
+          method: customerAuthEvents.method,
+        })
+        .from(customerAuthEvents)
+        .where(
+          and(
+            eq(customerAuthEvents.userId, userId),
+            eq(customerAuthEvents.action, "sign_in"),
+            inArray(
+              customerAuthEvents.sessionId,
+              sessions.map((s) => s.id)
+            )
+          )
+        )
+        .orderBy(desc(customerAuthEvents.createdAt))
+    : []
+  const methods = new Map<string, string>()
+  for (const event of signIns)
+    if (event.sessionId && !methods.has(event.sessionId))
+      methods.set(event.sessionId, event.method)
+  return {
+    account,
+    memberships,
+    connectedAccounts,
+    sessions: sessions.map((s) => ({
+      ...s,
+      authMethod: methods.get(s.id) ?? null,
+    })),
+    authEvents: history.slice(0, 50),
+    authEventsHasMore: history.length > 50,
+  }
 }
 
 async function workspaceLabel(
@@ -359,8 +414,13 @@ async function reconcileSubscription(
 ) {
   if (workspaceType !== "personal") {
     const config = readDodoBillingConfig()
-    if (!config?.teamProducts) throw new PlatformRequestError(400, "Team billing configuration is unavailable.")
-    const { reconcileTeam } = await import("@/server/billing/team-subscriptions")
+    if (!config?.teamProducts)
+      throw new PlatformRequestError(
+        400,
+        "Team billing configuration is unavailable."
+      )
+    const { reconcileTeam } =
+      await import("@/server/billing/team-subscriptions")
     await reconcileTeam(workspaceId, dodoClient(), config)
     return getPlatformWorkspace(workspaceType, workspaceId)
   }

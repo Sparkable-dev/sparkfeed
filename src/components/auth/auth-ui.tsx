@@ -1,12 +1,16 @@
 import { useState } from "react"
 import { Eye, EyeOff } from "lucide-react"
-import { toast } from "sonner"
 import type { ReactNode } from "react"
+import type { SocialProvider } from "@/lib/social-auth"
 import { useThemeCycle } from "@/hooks/use-theme-cycle"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { authClient } from "@/lib/auth-client"
+import { authHref, safeLoginRedirect } from "@/lib/auth-redirect"
+import { socialAuthError, socialProviderLabels } from "@/lib/social-auth"
+import { useSocialProviders } from "@/hooks/use-social-providers"
 
 // Shared geometry and original assets from Shadcn Space's auth 02 blocks.
 export function AuthLayout({
@@ -62,19 +66,59 @@ export function AuthLayout({
     </main>
   )
 }
-export function SocialButtons({ action }: { action: "sign-in" | "sign-up" }) {
+export function SocialButtons({
+  action,
+  redirect,
+}: {
+  action: "sign-in" | "sign-up"
+  redirect?: string
+}) {
+  const { data: providers = [] } = useSocialProviders()
+  const visibleProviders: Array<SocialProvider> = [
+    ...(providers.includes("google") ? ["google" as const] : []),
+    "github",
+  ]
+  const [pending, setPending] = useState<SocialProvider | null>(null)
+  const [error, setError] = useState("")
+  const destination = safeLoginRedirect(
+    redirect,
+    action === "sign-up" ? "/discover" : "/"
+  )
+
+  async function connect(provider: SocialProvider) {
+    if (pending || provider === "github") return
+    setPending(provider)
+    setError("")
+    try {
+      const result = await authClient.signIn.social({
+        provider,
+        callbackURL: destination,
+        errorCallbackURL: authHref(`/${action}`, { redirect: destination }),
+      })
+      if (result.error)
+        setError(socialAuthError(result.error.code || "unknown"))
+    } catch {
+      setError("Unable to connect. Please try again.")
+    } finally {
+      setPending(null)
+    }
+  }
   return (
     <>
-      <div className="mt-6 mb-4 grid grid-cols-2 gap-3 md:gap-6">
-        {(["Google", "GitHub"] as const).map((provider) => (
+      <div
+        className={`mt-6 mb-4 grid gap-3 md:gap-6 ${visibleProviders.length > 1 ? "grid-cols-2" : "grid-cols-1"}`}
+      >
+        {visibleProviders.map((provider) => (
           <Button
             key={provider}
             variant="outline"
             type="button"
             className="h-9 cursor-pointer gap-2 rounded-lg text-sm shadow-xs dark:bg-background"
-            onClick={() => toast.info(`${provider} ${action} is coming soon.`)}
+            onClick={() => void connect(provider)}
+            disabled={pending !== null || provider === "github"}
+            aria-label={provider === "github" ? "GitHub Coming soon" : undefined}
           >
-            {provider === "Google" ? (
+            {provider === "google" ? (
               <img
                 src="https://images.shadcnspace.com/assets/svgs/icon-google.svg"
                 alt=""
@@ -94,10 +138,16 @@ export function SocialButtons({ action }: { action: "sign-in" | "sign-up" }) {
                 />
               </>
             )}
-            {provider}
+            {pending === provider
+              ? "Connecting..."
+              : socialProviderLabels[provider]}
+            {provider === "github" && (
+              <span className="text-xs text-muted-foreground">Coming soon</span>
+            )}
           </Button>
         ))}
       </div>
+      <AuthError message={error} />
       <div className="flex items-center gap-2">
         <hr className="grow border-border" />
         <p className="text-sm font-medium text-muted-foreground">

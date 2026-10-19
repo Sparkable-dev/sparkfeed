@@ -44,6 +44,7 @@ import {
   dodoBetterAuthPlugin,
 } from "@/server/billing/dodo-auth"
 import { resolveAuthConfig } from "@/lib/auth-config"
+import { resolveSocialProviders, socialAccountOptions } from "@/lib/social-auth"
 import { workspaceAccess, workspaceRoles } from "@/lib/workspace-roles"
 
 const dbProvider = import.meta.env.VITE_DEMO_MODE === "true" ? "sqlite" : "pg"
@@ -54,6 +55,9 @@ const cloudAuth = sparkfeedEdition() === "cloud"
 
 export const auth = betterAuth({
   appName: "Sparkfeed",
+  baseURL: authConfig.configuredOrigin,
+  socialProviders: resolveSocialProviders(),
+  account: socialAccountOptions,
   trustedOrigins: authConfig.trustedOrigins,
   advanced: {
     cookiePrefix: authConfig.cookiePrefix,
@@ -111,7 +115,8 @@ export const auth = betterAuth({
           return { data: newUser }
         },
         after: async (newUser) => {
-          const { initializeWorkspace } = await import("@/server/services/initialize-workspace")
+          const { initializeWorkspace } =
+            await import("@/server/services/initialize-workspace")
           await initializeWorkspace(newUser.id)
           if (sparkfeedEdition() !== "cloud") return
           await ensureCloudFreeAccount(
@@ -208,7 +213,8 @@ export const auth = betterAuth({
         canUserCreateWorkspace(user.id),
       organizationHooks: {
         afterCreateOrganization: async ({ organization: org }) => {
-          const { initializeWorkspace } = await import("@/server/services/initialize-workspace")
+          const { initializeWorkspace } =
+            await import("@/server/services/initialize-workspace")
           await initializeWorkspace(org.id)
         },
         beforeUpdateOrganization: async ({ organization: org, user }) => {
@@ -217,7 +223,8 @@ export const auth = betterAuth({
         beforeDeleteOrganization: async ({ organization: org, user }) => {
           await assertOrganizationCleanupAllowed(org.id, user)
           if (cloudAuth) {
-            const { assertTeamDeletionAllowed } = await import("@/server/billing/team-subscriptions")
+            const { assertTeamDeletionAllowed } =
+              await import("@/server/billing/team-subscriptions")
             await assertTeamDeletionAllowed(org.id)
           }
         },
@@ -240,7 +247,8 @@ export const auth = betterAuth({
             invitedRole: invitation.role,
           })
           if (cloudAuth) {
-            const { reserveTeamSeat } = await import("@/server/billing/team-subscriptions")
+            const { reserveTeamSeat } =
+              await import("@/server/billing/team-subscriptions")
             await reserveTeamSeat(invitation.organizationId)
           }
         },
@@ -279,13 +287,15 @@ export const auth = betterAuth({
             member.organizationId
           )
           if (cloudAuth) {
-            const { queueTeamSeatReduction } = await import("@/server/billing/team-subscriptions")
+            const { queueTeamSeatReduction } =
+              await import("@/server/billing/team-subscriptions")
             await queueTeamSeatReduction(member.organizationId)
           }
         },
         afterCancelInvitation: async ({ invitation }) => {
           if (cloudAuth) {
-            const { queueTeamSeatReduction } = await import("@/server/billing/team-subscriptions")
+            const { queueTeamSeatReduction } =
+              await import("@/server/billing/team-subscriptions")
             await queueTeamSeatReduction(invitation.organizationId)
           }
         },

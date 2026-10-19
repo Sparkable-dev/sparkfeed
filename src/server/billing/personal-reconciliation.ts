@@ -55,6 +55,7 @@ export async function reconcilePendingPersonalCheckout(
 
   if (local?.status !== "checkout_pending" || !local.customerId) return false
 
+  const observedAt = new Date()
   const page = await client.subscriptions.list({
     customer_id: local.customerId,
     page_number: 1,
@@ -75,6 +76,30 @@ export async function reconcilePendingPersonalCheckout(
   const subscription = await client.subscriptions.retrieve(
     latest.subscription_id
   )
-  await reconcilePersonalSubscriptionFromDodo(subscription, new Date(), config)
+  await reconcilePersonalSubscriptionFromDodo(subscription, observedAt, config)
+  return true
+}
+
+/** Billing-page/maintenance recovery for missing or misclassified webhooks. */
+export async function reconcilePersonalBilling(
+  userId: string,
+  client: DodoPayments,
+  config: DodoBillingConfig
+): Promise<boolean> {
+  const [local] = await db
+    .select({ id: workspaceSubscriptions.dodoSubscriptionId })
+    .from(workspaceSubscriptions)
+    .where(
+      and(
+        eq(workspaceSubscriptions.workspaceType, "personal"),
+        eq(workspaceSubscriptions.workspaceId, userId)
+      )
+    )
+    .limit(1)
+  if (!local?.id)
+    return reconcilePendingPersonalCheckout(userId, client, config)
+  const observedAt = new Date()
+  const remote = await client.subscriptions.retrieve(local.id)
+  await reconcilePersonalSubscriptionFromDodo(remote, observedAt, config)
   return true
 }

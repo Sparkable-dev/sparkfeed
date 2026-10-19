@@ -7,6 +7,7 @@ import {
   within,
 } from "@testing-library/react"
 import { afterEach, expect, it, vi } from "vitest"
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import type { ReactNode } from "react"
 
 const org = vi.hoisted(() => ({
@@ -55,7 +56,11 @@ vi.mock("@/components/ui/sidebar", () => ({
 const { TeamSwitcher } = await import("./team-switcher")
 afterEach(cleanup)
 it("shows plan labels, keeps controls from shrinking, and never renders the internal slug", async () => {
-  render(<TeamSwitcher />)
+  render(
+    <QueryClientProvider client={new QueryClient()}>
+      <TeamSwitcher />
+    </QueryClientProvider>
+  )
   await screen.findByText("Pro")
   fireEvent.click(screen.getByRole("button", { name: "Switch workspace" }))
   const menu = within(await screen.findByRole("menu"))

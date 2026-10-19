@@ -1,6 +1,10 @@
 import { randomUUID } from "node:crypto"
 import { and, eq, gte, lt, sql } from "drizzle-orm"
-import { readEffectiveSubscription } from "./effective"
+import {
+  activeOverride,
+  readEffectiveSubscription,
+  readWorkspaceOverride,
+} from "./effective"
 import { sparkAiPlanPolicy } from "./plan-policy"
 import type { WorkspaceRef } from "./types"
 import { db } from "@/db/index"
@@ -42,6 +46,16 @@ export async function grantWorkspaceAllowance(
       )
     const row = await readEffectiveSubscription(tx, workspace, at, true)
     if (!row || row.accessState !== "active" || row.planKey === "free") return 0
+    // Grace preserves work and existing credits, not another unpaid allowance.
+    if (
+      row.billingSource === "dodo" &&
+      (row.subscriptionStatus === "past_due" ||
+        (row.subscriptionStatus === "canceled" &&
+          row.currentPeriodEnd &&
+          new Date(row.currentPeriodEnd) <= at)) &&
+      !activeOverride(await readWorkspaceOverride(tx, workspace), at)?.planKey
+    )
+      return 0
     let joinedAt: Date | null = null
     if (workspace.type === "organization") {
       const [membership] = await tx

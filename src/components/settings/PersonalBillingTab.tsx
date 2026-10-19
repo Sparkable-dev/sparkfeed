@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react"
+import { useQueryClient } from "@tanstack/react-query"
 import { Check, ExternalLink, Loader2 } from "lucide-react"
 import { toast } from "sonner"
 import { Link } from "@tanstack/react-router"
@@ -28,31 +29,36 @@ function readableDate(value: string | null): string | null {
 }
 
 export function PersonalBillingTab() {
+  const queryClient = useQueryClient()
   const [summary, setSummary] = useState<PersonalBillingSummary | null>(null)
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState<string | null>(null)
   const [selectedSources, setSelectedSources] = useState<Array<string>>([])
 
-  const load = useCallback(async (background = false) => {
-    if (!background) setLoading(true)
-    try {
-      const next = await getPersonalBillingSummary()
-      setSummary(next)
-      setSelectedSources(
-        next.sources
-          .filter((source) => source.active)
-          .map((source) => source.id)
-      )
-    } catch (error) {
-      if (!background) {
-        toast.error(
-          error instanceof Error ? error.message : "Could not load billing."
+  const load = useCallback(
+    async (background = false) => {
+      if (!background) setLoading(true)
+      try {
+        const next = await getPersonalBillingSummary()
+        setSummary(next)
+        void queryClient.invalidateQueries({ queryKey: ["workspace"] })
+        setSelectedSources(
+          next.sources
+            .filter((source) => source.active)
+            .map((source) => source.id)
         )
+      } catch (error) {
+        if (!background) {
+          toast.error(
+            error instanceof Error ? error.message : "Could not load billing."
+          )
+        }
+      } finally {
+        if (!background) setLoading(false)
       }
-    } finally {
-      if (!background) setLoading(false)
-    }
-  }, [])
+    },
+    [queryClient]
+  )
 
   useEffect(() => {
     if (DEMO_MODE) {
@@ -173,15 +179,40 @@ export function PersonalBillingTab() {
 
   return (
     <div className="space-y-8">
-      {(summary.proUpgrade || (isPersonalPlus && summary.teamUpgradeAvailable)) && (
+      {(summary.proUpgrade ||
+        (isPersonalPlus && summary.teamUpgradeAvailable)) && (
         <Card>
           <CardHeader>
-            <CardTitle>{summary.proUpgrade?.complete ? "Your workspace is now Pro" : "Share this workspace with your team"}</CardTitle>
-            <CardDescription>{summary.proUpgrade?.complete ? "Your sources and articles moved to your shared Pro workspace. Personal+ renewal has been stopped." : "Upgrade to Pro to share your existing folders, sources, and articles with invited members."}</CardDescription>
+            <CardTitle>
+              {summary.proUpgrade?.complete
+                ? "Your workspace is now Pro"
+                : "Share this workspace with your team"}
+            </CardTitle>
+            <CardDescription>
+              {summary.proUpgrade?.complete
+                ? "Your sources and articles moved to your shared Pro workspace. Personal+ renewal has been stopped."
+                : "Upgrade to Pro to share your existing folders, sources, and articles with invited members."}
+            </CardDescription>
           </CardHeader>
-          <CardContent>{summary.proUpgrade ? <Button render={<Link to="/settings/workspaces/$slug" params={{ slug: summary.proUpgrade.slug }} search={{ section: "billing" }} />}>
-            {summary.proUpgrade.complete ? "View Pro workspace" : "Continue Pro upgrade"}
-          </Button> : <TeamCheckoutDialog upgradePersonal />}</CardContent>
+          <CardContent>
+            {summary.proUpgrade ? (
+              <Button
+                render={
+                  <Link
+                    to="/settings/workspaces/$slug"
+                    params={{ slug: summary.proUpgrade.slug }}
+                    search={{ section: "billing" }}
+                  />
+                }
+              >
+                {summary.proUpgrade.complete
+                  ? "View Pro workspace"
+                  : "Continue Pro upgrade"}
+              </Button>
+            ) : (
+              <TeamCheckoutDialog upgradePersonal />
+            )}
+          </CardContent>
         </Card>
       )}
       <Card>
@@ -194,7 +225,17 @@ export function PersonalBillingTab() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {summary.complimentary && <p className="rounded-lg border border-primary/20 bg-primary/5 p-3 text-sm">Your effective access includes an operator override{summary.overrideExpiresAt ? ` until ${new Date(summary.overrideExpiresAt).toLocaleDateString()}` : ""}. Your billed plan is {summary.billedPlan === "personal_plus" ? "Personal+" : "Free"}. This does not change subscription charges.</p>}
+          {summary.complimentary && (
+            <p className="rounded-lg border border-primary/20 bg-primary/5 p-3 text-sm">
+              Your effective access includes an operator override
+              {summary.overrideExpiresAt
+                ? ` until ${new Date(summary.overrideExpiresAt).toLocaleDateString()}`
+                : ""}
+              . Your billed plan is{" "}
+              {summary.billedPlan === "personal_plus" ? "Personal+" : "Free"}.
+              This does not change subscription charges.
+            </p>
+          )}
           <div className="grid gap-3 text-sm sm:grid-cols-3">
             <div className="rounded-lg border p-3">
               <div className="text-muted-foreground">Status</div>
@@ -219,34 +260,59 @@ export function PersonalBillingTab() {
             </div>
           </div>
 
+          {summary.plan === "free" && summary.billingStatus === "past_due" && (
+            <p className="text-sm text-muted-foreground">
+              Your workspace is on Free. Dodo may still retry your previous
+              payment. Open the billing portal to cancel that subscription or
+              update your payment method to restore Personal+.
+            </p>
+          )}
           {renewal ? (
             <p className="text-sm text-muted-foreground">
               {summary.billingStatus === "canceled"
-                ? "Access ends"
+                ? "Returns to Free"
                 : "Next billing date"}
               : {renewal}
             </p>
           ) : null}
           {grace ? (
             <p className="text-sm text-amber-600">
-              Payment recovery is required by {grace} to avoid read-only access.
+              Update your payment method by {grace} to keep Personal+.
+              Otherwise, this workspace returns to Free. Your saved content
+              stays available.
             </p>
           ) : null}
 
-          {summary.portalAvailable ? (
+          {summary.billingStatus === "canceled" && (
+            <p className="text-sm text-muted-foreground">
+              Your subscription will not renew. This workspace automatically
+              returns to Free when paid access ends. RSS feeds keep working; up
+              to five no-RSS sources remain active.
+            </p>
+          )}
+          <div className="flex flex-wrap gap-2">
             <Button
               variant="outline"
-              onClick={openPortal}
               disabled={busy !== null}
+              onClick={() => void load(false)}
             >
-              {busy === "portal" ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <ExternalLink className="mr-2 h-4 w-4" />
-              )}
-              Open billing portal
+              Refresh billing status
             </Button>
-          ) : null}
+            {summary.portalAvailable ? (
+              <Button
+                variant="outline"
+                onClick={openPortal}
+                disabled={busy !== null}
+              >
+                {busy === "portal" ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <ExternalLink className="mr-2 h-4 w-4" />
+                )}
+                Open billing portal
+              </Button>
+            ) : null}
+          </div>
         </CardContent>
       </Card>
 
@@ -270,7 +336,9 @@ export function PersonalBillingTab() {
         </Card>
       ) : null}
 
-      {!isPersonalPlus && !checkoutPending ? (
+      {!isPersonalPlus &&
+      !checkoutPending &&
+      summary.billingStatus !== "past_due" ? (
         <Card>
           <CardHeader>
             <CardTitle>Upgrade to Personal+</CardTitle>

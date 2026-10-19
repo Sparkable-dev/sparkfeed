@@ -1,4 +1,5 @@
 import { z } from "zod"
+import { BILLING_GRACE_DAYS } from "./subscription-policy"
 import type { Subscription } from "dodopayments/resources/subscriptions"
 import type { DodoBillingConfig } from "./dodo-config"
 
@@ -50,13 +51,14 @@ export function teamLifecycle(
     subscriptionStatus: string
     failedPaymentGraceDeadline: string | null
     currentPeriodStart: string | null
+    currentPeriodEnd?: string | null
   },
   now = new Date()
 ) {
   const paidBefore = Boolean(previous.currentPeriodStart)
   const grace =
     previous.failedPaymentGraceDeadline ??
-    new Date(now.getTime() + 13 * 86400000).toISOString()
+    new Date(now.getTime() + BILLING_GRACE_DAYS * 86400000).toISOString()
   if (remote.status === "paused")
     return {
       subscriptionStatus: "past_due" as const,
@@ -68,7 +70,13 @@ export function teamLifecycle(
       subscriptionStatus: remote.cancel_at_next_billing_date
         ? ("canceled" as const)
         : ("active" as const),
-      accessState: "active" as const,
+      accessState:
+        remote.cancel_at_next_billing_date &&
+        (!teamCancellationGraceEnd(remote.next_billing_date) ||
+          Date.parse(teamCancellationGraceEnd(remote.next_billing_date)!) <=
+            now.getTime())
+          ? ("read_only" as const)
+          : ("active" as const),
       failedPaymentGraceDeadline: null,
     }
   if (
@@ -86,6 +94,19 @@ export function teamLifecycle(
           : ("read_only" as const),
       failedPaymentGraceDeadline: paidBefore ? grace : null,
     }
+  if (remote.status === "cancelled" || remote.status === "expired") {
+    const end = teamCancellationGraceEnd(
+      previous.currentPeriodEnd ?? remote.next_billing_date
+    )
+    return {
+      subscriptionStatus: "canceled" as const,
+      accessState:
+        paidBefore && end && Date.parse(end) > now.getTime()
+          ? ("active" as const)
+          : ("read_only" as const),
+      failedPaymentGraceDeadline: null,
+    }
+  }
   return {
     subscriptionStatus:
       remote.status === "pending"
@@ -94,4 +115,10 @@ export function teamLifecycle(
     accessState: "read_only" as const,
     failedPaymentGraceDeadline: null,
   }
+}
+
+/** Team workspaces have no Free tier. Keep data and allow 13 days to resubscribe. */
+export function teamCancellationGraceEnd(periodEnd: string | null | undefined) {
+  if (!periodEnd || !Number.isFinite(Date.parse(periodEnd))) return null
+  return new Date(Date.parse(periodEnd) + BILLING_GRACE_DAYS * 86400000).toISOString()
 }

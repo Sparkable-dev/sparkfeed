@@ -64,7 +64,7 @@ export async function createPersonalCheckout(
     })) {
       if (!Object.values(config.personalProducts).includes(remote.product_id))
         continue
-      if (!["failed", "cancelled"].includes(remote.status))
+      if (!["failed", "cancelled", "expired"].includes(remote.status))
         throw new Error(
           "A Personal+ subscription already exists. Use Manage billing to recover or change it instead of paying again."
         )

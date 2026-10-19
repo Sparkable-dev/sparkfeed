@@ -8,6 +8,7 @@ import {
   organization,
   platformAdminAuditLog,
   session,
+  teamBillingState,
   user,
   workspaceSubscriptions,
 } from "@/db/schema"
@@ -91,7 +92,8 @@ export async function deleteHostedOrganizations(ids: Array<string>) {
           )
         )
         .limit(1)
-      if (billing && (billing.subscriptionStatus !== "canceled" || (billing.dodoCustomerId && billing.accessState !== "read_only")))
+      const [state] = await tx.select({ status: teamBillingState.providerStatus }).from(teamBillingState).where(eq(teamBillingState.workspaceId, id)).limit(1)
+      if (billing && (billing.subscriptionStatus !== "canceled" || (billing.dodoCustomerId && !["cancelled", "expired"].includes(state?.status ?? ""))))
         throw new APIError("FORBIDDEN", {
           message: "End this workspace plan before deleting the workspace.",
         })

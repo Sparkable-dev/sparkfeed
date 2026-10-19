@@ -358,8 +358,8 @@ describe.runIf(process.env.RUN_TEAM_POSTGRES_TESTS === "true")(
     })
     it("never replaces a subscription that Dodo can still recover", async () => {
       const id = await subscribed()
-      for (const status of ["active", "on_hold", "expired"] as const) {
-        remote.status = status
+      for (const status of ["active", "on_hold", "past_due"] as const) {
+        remote.status = status as Subscription["status"]
         await expect(
           service.startTeamCheckout(id, actor, purchase, client, config)
         ).rejects.toThrow()
@@ -693,21 +693,42 @@ describe.runIf(process.env.RUN_TEAM_POSTGRES_TESTS === "true")(
         (await service.readTeamSubscription(database, id)).accessState
       ).toBe("read_only")
     })
-    it("preserves access through scheduled cancellation, then stops access", async () => {
+    it("keeps canceled teams active through a fixed grace period, then preserves read-only access", async () => {
       const id = await subscribed()
       await service.setTeamCancellation(id, actor, true, client, config)
       const row = await service.readTeamSubscription(database, id)
       expect(row.subscriptionStatus).toBe("canceled")
       expect(row.accessState).toBe("active")
-      await service.refreshTeamLifecycle(id, new Date(Date.parse(future) + 1))
+      const duringGrace = new Date(Date.parse(future) + 86400000)
+      await service.refreshTeamLifecycle(id, duringGrace)
+      expect(await grantWorkspaceAllowance({ type: "organization", id }, actor, duringGrace)).toBe(0)
       expect(
         (await service.readTeamSubscription(database, id)).accessState
-      ).toBe("read_only")
+      ).toBe("active")
       remote.status = "cancelled"
-      await service.syncTeamSubscription(remote, config)
+      await service.syncTeamSubscription(remote, config, duringGrace)
+      expect(
+        (await service.readTeamSubscription(database, id)).accessState
+      ).toBe("active")
+      await service.refreshTeamLifecycle(
+        id,
+        new Date(Date.parse(future) + 13 * 86400000)
+      )
       expect(
         (await service.readTeamSubscription(database, id)).accessState
       ).toBe("read_only")
+      expect(
+        await database
+          .select()
+          .from(organization)
+          .where(eq(organization.id, id))
+      ).toHaveLength(1)
+      expect(
+        await database
+          .select()
+          .from(member)
+          .where(eq(member.organizationId, id))
+      ).toHaveLength(1)
     })
     it("rejects changed quotes and schedules reductions without granting unpaid seats", async () => {
       const id = await subscribed()
@@ -1155,4 +1176,34 @@ describe("Team billing policy", () => {
     })
     expect(result.accessState).toBe("read_only")
   })
+  it.each(["cancelled", "expired"])(
+    "uses a fixed grace cutoff for paid %s teams",
+    (status) => {
+      const ended = {
+        status,
+        next_billing_date: "2026-09-01T00:00:00Z",
+      } as Subscription
+      const previous = {
+        subscriptionStatus: "active",
+        currentPeriodStart: "2026-08-01T00:00:00Z",
+        currentPeriodEnd: ended.next_billing_date,
+        failedPaymentGraceDeadline: null,
+      }
+      expect(
+        teamLifecycle(ended, previous, new Date("2026-09-02T00:00:00Z"))
+          .accessState
+      ).toBe("active")
+      expect(
+        teamLifecycle(ended, previous, new Date("2026-09-14T00:00:00Z"))
+          .accessState
+      ).toBe("read_only")
+      expect(
+        teamLifecycle(
+          ended,
+          { ...previous, currentPeriodStart: null },
+          new Date("2026-09-02T00:00:00Z")
+        ).accessState
+      ).toBe("read_only")
+    }
+  )
 })

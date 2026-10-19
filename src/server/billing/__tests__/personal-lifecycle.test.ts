@@ -203,4 +203,30 @@ describe("Personal+ downgrade", () => {
     expect(row.dodoSubscriptionId).toBe("sub-funded-with-grant-failure")
     expect(row.planKey).toBe("personal_plus")
   })
+  it("restores legacy read-only access during grace and automatically returns to Free afterward", async () => {
+    const { workspaceSubscriptions } = await import("@/db/schema")
+    await db
+      .update(workspaceSubscriptions)
+      .set({
+        subscriptionStatus: "past_due",
+        accessState: "read_only",
+        failedPaymentGraceDeadline: "2026-09-14T00:00:00.000Z",
+      })
+    await refreshPersonalSubscriptionLifecycle(
+      "user-1",
+      new Date("2026-09-02T00:00:00.000Z")
+    )
+    let [row] = await db.select().from(workspaceSubscriptions)
+    expect(row.planKey).toBe("personal_plus")
+    expect(row.accessState).toBe("active")
+    await refreshPersonalSubscriptionLifecycle(
+      "user-1",
+      new Date("2026-09-14T00:00:00.000Z")
+    )
+    ;[row] = await db.select().from(workspaceSubscriptions)
+    expect(row.planKey).toBe("free")
+    expect(row.accessState).toBe("active")
+    expect(row.billingSource).toBe("dodo")
+    expect(row.failedPaymentGraceDeadline).toBe("2026-09-14T00:00:00.000Z")
+  })
 })

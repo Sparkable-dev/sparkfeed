@@ -1,9 +1,9 @@
 import * as React from "react"
+import { useQuery } from "@tanstack/react-query"
 import { useNavigate } from "@tanstack/react-router"
 import { toast } from "sonner"
 import { ChevronDownIcon, PlusIcon, User } from "lucide-react"
 import { CreateWorkspaceModal } from "./CreateWorkspaceModal"
-import type { EntitlementPlan } from "@/server/entitlements/types"
 import { authClient } from "@/lib/auth-client"
 import { DEMO_MODE } from "@/lib/demo"
 import { useWorkspaceCreationPermission } from "@/hooks/use-workspace-creation-permission"
@@ -59,35 +59,19 @@ function AuthenticatedTeamSwitcher() {
   const activeOrg = hydrated ? clientActiveOrg : null
   const user = hydrated ? session.data?.user : undefined
   const workspaceCreation = useWorkspaceCreationPermission()
-  const [personalPlan, setPersonalPlan] =
-    React.useState<EntitlementPlan | null>(null)
-  const [teamPlans, setTeamPlans] = React.useState<
-    Record<string, EntitlementPlan>
-  >({})
-  const loadPlans = React.useCallback(async () => {
-    if (DEMO_MODE || !user?.id) return
-    try {
-      const summary = await getWorkspaceOverview()
-      setPersonalPlan(
-        summary.workspaces.find((w) => w.type === "personal")?.plan ?? null
-      )
-      setTeamPlans(
-        Object.fromEntries(
-          summary.workspaces
-            .filter((w) => w.type === "organization")
-            .map((w) => [w.id, w.plan])
-        )
-      )
-    } catch {
-      /* Keep the last confirmed labels when offline. */
-    }
-  }, [user?.id])
-
-  React.useEffect(() => {
-    if (DEMO_MODE || !user?.id) return
-
-    void loadPlans()
-  }, [user?.id, loadPlans])
+  const overview = useQuery({
+    queryKey: ["workspace", "overview", user?.id],
+    queryFn: () => getWorkspaceOverview(),
+    enabled: Boolean(user?.id),
+    staleTime: 60_000,
+  })
+  const personalPlan =
+    overview.data?.workspaces.find((w) => w.type === "personal")?.plan ?? null
+  const teamPlans = Object.fromEntries(
+    overview.data?.workspaces
+      .filter((w) => w.type === "organization")
+      .map((w) => [w.id, w.plan]) ?? []
+  )
 
   const handleSwitch = async (id: string | null) => {
     if (DEMO_MODE) {
@@ -110,7 +94,7 @@ function AuthenticatedTeamSwitcher() {
       <SidebarMenuItem>
         <DropdownMenu
           onOpenChange={(open) => {
-            if (open) void loadPlans()
+            if (open) void overview.refetch()
           }}
         >
           <DropdownMenuTrigger

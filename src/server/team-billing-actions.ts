@@ -1,10 +1,10 @@
 import { createServerFn } from "@tanstack/react-start"
 import { z } from "zod"
 import { and, eq, gte, sql } from "drizzle-orm"
+import { teamCancellationGraceEnd, teamPurchaseInput } from "./billing/team-policy"
 import { sparkfeedEdition } from "./entitlements/config"
 import { dodoClient } from "./billing/dodo-client"
 import { readDodoBillingConfig, readTeamProducts } from "./billing/dodo-config"
-import { teamPurchaseInput } from "./billing/team-policy"
 import {
   applyQueuedTeamReduction,
   cancelTeamScheduledChange,
@@ -190,20 +190,21 @@ export const getTeamBillingSummary = createServerFn({ method: "GET" })
             row.billingSource === "manual")
         ),
         periodEnd: row.currentPeriodEnd,
-        graceDeadline: row.failedPaymentGraceDeadline,
+        graceDeadline:
+          row.subscriptionStatus === "canceled"
+            ? teamCancellationGraceEnd(row.currentPeriodEnd)
+            : row.failedPaymentGraceDeadline,
         scheduledSeats: row.scheduledSeatQuantity,
         scheduledAt: row.scheduledSeatEffectiveAt,
         scheduledInterval: state?.scheduledInterval ?? null,
         pendingSeatReduction: state?.pendingSeatReduction ?? null,
         portalAvailable: Boolean(row.dodoCustomerId),
         canCheckout:
-          !["on_hold", "past_due", "expired"].includes(
-            state?.providerStatus ?? ""
-          ) &&
+          !["on_hold", "past_due"].includes(state?.providerStatus ?? "") &&
           (row.billingSource === "manual" ||
             row.subscriptionStatus === "checkout_pending" ||
             (row.subscriptionStatus === "canceled" &&
-              row.accessState === "read_only")),
+              ["cancelled", "expired"].includes(state?.providerStatus ?? ""))),
         syncWarning,
         paymentFailed: state?.providerStatus === "failed",
         pendingPlanChange: Boolean(state?.pendingPlanChange),

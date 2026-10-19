@@ -16,9 +16,8 @@ vi.mock("../personal-webhooks", () => ({
   reconcilePersonalSubscriptionFromDodo: reconcile,
 }))
 
-const { reconcilePendingPersonalCheckout } = await import(
-  "../personal-reconciliation"
-)
+const { reconcilePendingPersonalCheckout, reconcilePersonalBilling } =
+  await import("../personal-reconciliation")
 
 const config = {
   apiKey: "test-key",
@@ -146,5 +145,35 @@ describe("pending Personal+ reconciliation", () => {
     ).resolves.toBe(false)
     expect(retrieve).not.toHaveBeenCalled()
     expect(reconcile).not.toHaveBeenCalled()
+  })
+  it("retrieves an existing subscription even when a stale local record says past due", async () => {
+    const { workspaceSubscriptions } = await import("@/db/schema")
+    await db
+      .update(workspaceSubscriptions)
+      .set({
+        planKey: "personal_plus",
+        subscriptionStatus: "past_due",
+        dodoSubscriptionId: "sub-canceled",
+      })
+    const subscription = {
+      subscription_id: "sub-canceled",
+      status: "cancelled",
+    }
+    const retrieve = vi.fn().mockResolvedValue(subscription),
+      list = vi.fn()
+    await expect(
+      reconcilePersonalBilling(
+        "user-1",
+        { subscriptions: { retrieve, list } } as unknown as DodoPayments,
+        config
+      )
+    ).resolves.toBe(true)
+    expect(retrieve).toHaveBeenCalledWith("sub-canceled")
+    expect(list).not.toHaveBeenCalled()
+    expect(reconcile).toHaveBeenCalledWith(
+      subscription,
+      expect.any(Date),
+      config
+    )
   })
 })

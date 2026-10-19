@@ -245,10 +245,14 @@ export function OnlineTeamBillingPanel({
                 Open Manage billing to update your payment method.
               </p>
             )}
-            {summary.status === "canceled" && !summary.canCheckout && (
+            {summary.status === "canceled" && (
               <p className="text-sm">
-                Cancellation is scheduled for {date(summary.periodEnd)}. Your
-                team keeps access until then.
+                Your subscription will not renew. Paid access ends{" "}
+                {date(summary.periodEnd)}.
+                {summary.accessState === "active"
+                  ? ` Your team can keep working until ${date(summary.graceDeadline)} during the cancellation grace period.`
+                  : " Your workspace is read-only. Subscribe again to resume updates."}{" "}
+                Saved content and team members are preserved.
               </p>
             )}
             {summary.scheduledSeats !== null && (

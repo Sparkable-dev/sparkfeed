@@ -8,10 +8,11 @@ import {
 import { dodoClient } from "./billing/dodo-client"
 import { readTeamProducts } from "./billing/dodo-config"
 import {
+  refreshPersonalSubscriptionLifecycle,
   repairFailedInitialPersonalCheckout,
   selectFreePersonalSources,
 } from "./billing/personal-lifecycle"
-import { reconcilePendingPersonalCheckout } from "./billing/personal-reconciliation"
+import { reconcilePersonalBilling } from "./billing/personal-reconciliation"
 import { grantPersonalMonthlyCredits } from "./billing/personal-credits"
 import type {
   BillingInterval,
@@ -20,14 +21,23 @@ import type {
   WorkspaceAccessState,
 } from "@/server/entitlements/types"
 import { db } from "@/db/index"
-import { feeds, organization, teamBillingState, user, workspaceSubscriptions } from "@/db/schema"
+import {
+  feeds,
+  organization,
+  teamBillingState,
+  user,
+  workspaceSubscriptions,
+} from "@/db/schema"
 import {
   creditBalance,
   ensureCloudFreeAccount,
 } from "@/server/entitlements/credits"
 import { sparkfeedEdition } from "@/server/entitlements/config"
 import { resolveEntitlements } from "@/server/entitlements/resolve"
-import { activeOverride, readWorkspaceOverride } from "@/server/entitlements/effective"
+import {
+  activeOverride,
+  readWorkspaceOverride,
+} from "@/server/entitlements/effective"
 import { personalWorkspaceRef } from "@/lib/workspaces"
 
 export interface PersonalBillingSource {
@@ -96,17 +106,18 @@ export const getPersonalBillingSummary = createServerFn({
   )
   await repairFailedInitialPersonalCheckout(session.user.id)
   try {
-    await reconcilePendingPersonalCheckout(
+    await reconcilePersonalBilling(
       session.user.id,
       dodoClient(),
       currentDodoBillingConfig()
     )
   } catch (error) {
     console.error(
-      "[billing] Pending checkout reconciliation failed:",
+      "[billing] Personal subscription reconciliation failed:",
       error instanceof Error ? error.message : "unknown error"
     )
   }
+  await refreshPersonalSubscriptionLifecycle(session.user.id)
   const [subscription] = await db
     .select()
     .from(workspaceSubscriptions)
@@ -157,20 +168,36 @@ export const getPersonalBillingSummary = createServerFn({
 
   const freeCredits = await creditBalance(workspace, session.user.id, "free")
   const paidCredits = await creditBalance(workspace, session.user.id, "paid")
-  const [upgrade] = await db.select({ slug: organization.slug, movedAt: teamBillingState.contentMovedAt })
-    .from(teamBillingState).innerJoin(organization, eq(organization.id, teamBillingState.workspaceId))
-    .where(eq(teamBillingState.upgradeUserId, session.user.id)).limit(1)
+  const [upgrade] = await db
+    .select({
+      slug: organization.slug,
+      movedAt: teamBillingState.contentMovedAt,
+    })
+    .from(teamBillingState)
+    .innerJoin(organization, eq(organization.id, teamBillingState.workspaceId))
+    .where(eq(teamBillingState.upgradeUserId, session.user.id))
+    .limit(1)
 
   return {
     plan: entitlements.plan,
     billedPlan: subscription?.planKey ?? "free",
-    complimentary: Boolean(activeOverride(await readWorkspaceOverride(db, workspace))),
-    overrideExpiresAt: activeOverride(await readWorkspaceOverride(db, workspace))?.expiresAt ?? null,
+    complimentary: Boolean(
+      activeOverride(await readWorkspaceOverride(db, workspace))
+    ),
+    overrideExpiresAt:
+      activeOverride(await readWorkspaceOverride(db, workspace))?.expiresAt ??
+      null,
     billingStatus: entitlements.billingStatus,
     accessState: entitlements.accessState,
     interval: subscription?.billingInterval ?? null,
-    currentPeriodEnd: subscription?.currentPeriodEnd ?? null,
-    graceDeadline: subscription?.failedPaymentGraceDeadline ?? null,
+    currentPeriodEnd:
+      entitlements.plan === "free"
+        ? null
+        : (subscription?.currentPeriodEnd ?? null),
+    graceDeadline:
+      entitlements.plan === "free"
+        ? null
+        : (subscription?.failedPaymentGraceDeadline ?? null),
     freeCredits,
     paidCredits,
     spendableCredits: entitlements.sparkAiCreditBalance,
@@ -182,7 +209,9 @@ export const getPersonalBillingSummary = createServerFn({
       active: source.pausedAt === null,
     })),
     teamUpgradeAvailable: Boolean(readTeamProducts()),
-    proUpgrade: upgrade ? { slug: upgrade.slug, complete: Boolean(upgrade.movedAt) } : null,
+    proUpgrade: upgrade
+      ? { slug: upgrade.slug, complete: Boolean(upgrade.movedAt) }
+      : null,
     portalAvailable: Boolean(
       account?.customerId && subscription?.dodoSubscriptionId
     ),

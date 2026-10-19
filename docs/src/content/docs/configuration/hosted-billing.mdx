@@ -1,0 +1,34 @@
+---
+title: Hosted billing and cancellation
+description: How Personal+ and Pro handle cancellation, payment recovery, and plan limits.
+---
+
+This page describes Sparkfeed's managed cloud service. Community Edition does not use Dodo subscriptions or hosted plan restrictions.
+
+## Personal+ returns to Free
+
+Cancel Personal+ through **Settings → Workspace → Personal workspace → Open billing portal**. A scheduled cancellation keeps Personal+ until the paid period ends. When Dodo confirms that the subscription is canceled or expired, the workspace automatically returns to Free.
+
+Your RSS feeds can still refresh on Free. Folders, sources, and saved articles stay in the workspace. Up to five no-RSS sources remain active; additional no-RSS sources are paused. Choose a different set of five from the personal workspace's billing settings. Personal+ API and MCP access ends with the paid plan.
+
+A failed renewal has a fixed payment-recovery window of up to 13 days. Personal+ stays usable during that window unless the provider confirms that the subscription has ended. If payment is not recovered, the workspace returns to usable Free access. The billing page still reports any unresolved Dodo payment recovery. Open the portal to cancel that subscription or recover it before attempting a new checkout. Returning to Free does not cancel an outstanding invoice or stop Dodo's own payment retries.
+
+Unused paid Spark AI credits are retained for 30 days after downgrade but cannot be spent on Free. A successful Personal+ recovery within that period restores access to the retained balance. Returning to Free does not issue another one-time Free credit grant.
+
+## Team cancellation and downgrades
+
+Pro team workspaces do not convert into personal Free workspaces. Canceling Pro stops renewal while preserving the shared workspace and its members.
+
+The team keeps access through the paid period, followed by a fixed 13-day cancellation grace period. Grace preserves existing access and credits; it does not issue another unpaid monthly credit allowance. After grace, the workspace becomes read-only. Saved content and memberships remain available. The Owner can manage billing and subscribe again to resume updates. A failed renewal also has a 13-day recovery window; repeated updates do not restart that window.
+
+Seat reductions must leave enough seats for current members and pending invitations. Remove members or invitations before applying a smaller seat count. A plan or seat reduction does not delete sources or articles. Sources above the new no-RSS allowance are paused.
+
+## Refresh a stale billing status
+
+After changing or canceling a subscription in Dodo, return to the workspace's billing page and select **Refresh billing status** for Personal+ or **Refresh billing** for Pro.
+
+Signed subscription webhooks are the normal update path. Billing-page reconciliation and the hosted background worker also retrieve current provider status to recover missed updates. If Dodo is unavailable, Sparkfeed keeps the last confirmed billing state and still enforces locally known period and grace deadlines.
+
+An ended subscription can start a fresh checkout. A subscription that Dodo can still retry must be recovered or canceled through its billing portal, preventing duplicate subscriptions.
+
+Dodo distinguishes scheduled cancellation, terminal cancellation, payment recovery, and deliberate pausing. See [Dodo's subscription lifecycle documentation](https://docs.dodopayments.com/features/subscription).

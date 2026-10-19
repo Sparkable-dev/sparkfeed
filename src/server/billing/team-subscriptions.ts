@@ -5,6 +5,7 @@ import {
   isDefinitiveProviderRejection,
 } from "./request-safety"
 import {
+  teamCancellationGraceEnd,
   teamCart,
   teamLifecycle,
   teamPurchaseFromProvider,
@@ -268,8 +269,14 @@ export async function syncTeamSubscription(
           occupied > purchase.seats ? "read_only" : lifecycle.accessState,
         dodoSubscriptionId: remote.subscription_id,
         productKey: `pro-seat-${purchase.interval}`,
-        currentPeriodStart: paid ? remote.previous_billing_date : null,
-        currentPeriodEnd: paid ? remote.next_billing_date : null,
+        currentPeriodStart:
+          remote.status === "active"
+            ? remote.previous_billing_date
+            : local.currentPeriodStart,
+        currentPeriodEnd:
+          remote.status === "active"
+            ? remote.next_billing_date
+            : local.currentPeriodEnd,
         scheduledSeatQuantity: scheduled?.seats ?? null,
         scheduledSeatEffectiveAt: remote.scheduled_change?.effective_at ?? null,
         providerEventAt: observedAt.toISOString(),
@@ -574,12 +581,12 @@ export async function startTeamCheckout(
         throw new Error(
           "Recover this subscription through Manage billing. Do not start another subscription while Dodo is retrying payment."
         )
-      if (remote.status !== "cancelled" && !unpaid)
+      if (!["cancelled", "expired"].includes(remote.status) && !unpaid)
         throw new Error(
           "This team already has a subscription. Use Manage billing or change its seats."
         )
-      // Only failed first-time mandate setup or confirmed cancellation permits a fresh checkout.
-      // Never replace on-hold/expired subscriptions: outstanding renewal invoices may still be retried.
+      // Only terminal subscriptions permit a fresh checkout. Never replace a
+      // recoverable on-hold subscription while Dodo may retry its payment.
       await tx
         .update(teamBillingState)
         .set({
@@ -906,12 +913,26 @@ export async function refreshTeamLifecycle(id: string, now = new Date()) {
     row.subscriptionStatus === "past_due"
       ? row.failedPaymentGraceDeadline
       : row.subscriptionStatus === "canceled"
-        ? row.currentPeriodEnd
+        ? teamCancellationGraceEnd(row.currentPeriodEnd)
         : null
+  if (
+    cutoff &&
+    Date.parse(cutoff) > now.getTime() &&
+    row.accessState === "read_only" &&
+    row.currentPeriodStart &&
+    (await teamOccupiedSeats(db, id)) <= row.paidSeatQuantity
+  ) {
+    await db
+      .update(workspaceSubscriptions)
+      .set({ accessState: "active", updatedAt: now.toISOString() })
+      .where(
+        and(whereTeam(id), eq(workspaceSubscriptions.updatedAt, row.updatedAt))
+      )
+  }
   if (cutoff && Date.parse(cutoff) <= now.getTime()) {
     await db
       .update(workspaceSubscriptions)
-      .set({ accessState: "read_only" })
+      .set({ accessState: "read_only", updatedAt: now.toISOString() })
       .where(
         and(whereTeam(id), eq(workspaceSubscriptions.updatedAt, row.updatedAt))
       )

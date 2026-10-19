@@ -17,6 +17,7 @@ import {
   member,
   organization,
   session,
+  teamBillingState,
   user,
   workspaceSubscriptions,
 } from "@/db/schema"
@@ -856,7 +857,8 @@ export const deleteWorkspace = createServerFn({ method: "POST" })
     ) {
       throw new Error("Cancel the team plan before deleting this workspace.")
     }
-    if (subscription?.customerId && (subscription.status !== "canceled" || subscription.access !== "read_only"))
+    const [provider] = await tx.select({ status: teamBillingState.providerStatus }).from(teamBillingState).where(eq(teamBillingState.workspaceId, data.organizationId)).limit(1)
+    if (subscription?.customerId && (subscription.status !== "canceled" || !["cancelled", "expired"].includes(provider?.status ?? "")))
       throw new Error("Wait until your subscription and checkout have ended before deleting this workspace.")
     await deleteOrganizationWorkspaceData(tx, data.organizationId)
     return { success: true }

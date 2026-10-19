@@ -3,6 +3,9 @@
 import { cleanup, render, screen, waitFor } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
+const queries = vi.hoisted(() => ({ invalidateQueries: vi.fn() }))
+vi.mock("@tanstack/react-query", () => ({ useQueryClient: () => queries }))
+
 const getSummary = vi.fn()
 
 vi.mock("@/lib/demo", () => ({ DEMO_MODE: false }))
@@ -99,5 +102,38 @@ describe("personal billing tab", () => {
     )
     expect(screen.queryByText("Upgrade to Personal+")).toBeNull()
     expect(screen.queryByRole("button", { name: "Choose monthly" })).toBeNull()
+  })
+  it("explains automatic Free fallback and provides a billing refresh", async () => {
+    getSummary.mockResolvedValue({
+      ...base,
+      plan: "personal_plus",
+      billingStatus: "past_due",
+      graceDeadline: "2026-11-01T00:00:00Z",
+    })
+    render(<PersonalBillingTab />)
+    expect(
+      await screen.findByText(/Otherwise, this workspace returns to Free/)
+    ).toBeTruthy()
+    expect(screen.queryByText(/avoid read-only access/)).toBeNull()
+    expect(
+      screen.getByRole("button", { name: "Refresh billing status" })
+    ).toBeTruthy()
+  })
+
+  it("keeps Free usable while explaining outstanding payment recovery without duplicate checkout", async () => {
+    getSummary.mockResolvedValue({
+      ...base,
+      plan: "free",
+      billingStatus: "past_due",
+      portalAvailable: true,
+    })
+    render(<PersonalBillingTab />)
+    expect(
+      await screen.findByText(/Dodo may still retry your previous payment/)
+    ).toBeTruthy()
+    expect(screen.queryByText("Upgrade to Personal+")).toBeNull()
+    expect(
+      screen.getByRole("button", { name: "Open billing portal" })
+    ).toBeTruthy()
   })
 })

@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import type { createClient } from "@libsql/client"
 import type { UnwrapWebhookEvent } from "dodopayments/resources/webhooks/webhooks"
 import type { Subscription } from "dodopayments/resources/subscriptions"
@@ -8,6 +8,7 @@ import { createDb } from "@/db/client"
 let db: Database
 const grant = vi.fn().mockResolvedValue(100)
 const reactivate = vi.fn().mockResolvedValue(undefined)
+const downgrade = vi.fn().mockResolvedValue(undefined)
 
 vi.mock("@/db/index", () => ({
   get db() {
@@ -18,7 +19,7 @@ vi.mock("../personal-credits", () => ({
   grantPersonalMonthlyCredits: grant,
 }))
 vi.mock("../personal-lifecycle", () => ({
-  downgradePersonalWorkspace: vi.fn(),
+  downgradePersonalWorkspace: downgrade,
   reactivatePersonalPlusSources: reactivate,
 }))
 
@@ -57,6 +58,8 @@ function activeEvent(customerId = "cus-1"): UnwrapWebhookEvent {
 }
 
 beforeEach(async () => {
+  vi.useRealTimers()
+  downgrade.mockClear()
   grant.mockClear()
   reactivate.mockClear()
   db = createDb(":memory:", { sqlite: true })
@@ -126,6 +129,8 @@ beforeEach(async () => {
     updatedAt: now.toISOString(),
   })
 })
+
+afterEach(() => vi.useRealTimers())
 
 describe("Personal+ Dodo webhooks", () => {
   it("activates local access once and grants the monthly allowance", async () => {
@@ -224,6 +229,81 @@ describe("Personal+ Dodo webhooks", () => {
         billing_interval: null,
       },
     ])
+    expect(grant).not.toHaveBeenCalled()
+  })
+  it.each([
+    "subscription.updated",
+    "subscription.cancelled",
+    "subscription.expired",
+  ])("returns an ended Personal+ subscription to Free on %s", async (type) => {
+    const { workspaceSubscriptions } = await import("@/db/schema")
+    await db.update(workspaceSubscriptions).set({ planKey: "personal_plus" })
+    const event = {
+      ...activeEvent(),
+      type,
+      data: {
+        ...activeEvent().data,
+        status: type === "subscription.expired" ? "expired" : "cancelled",
+      },
+    } as UnwrapWebhookEvent
+    await ingestVerifiedDodoWebhook({
+      webhookId: "terminal",
+      rawBody: JSON.stringify(event),
+      event,
+      config,
+    })
+    expect(downgrade).toHaveBeenCalledOnce()
+    expect(grant).not.toHaveBeenCalled()
+  })
+  it("honors a scheduled cancellation while its paid period is still active", async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date("2026-09-01T00:00:00Z"))
+    const event = {
+      ...activeEvent(),
+      type: "subscription.updated",
+      data: { ...activeEvent().data, cancel_at_next_billing_date: true },
+    } as UnwrapWebhookEvent
+    await ingestVerifiedDodoWebhook({
+      webhookId: "scheduled",
+      rawBody: JSON.stringify(event),
+      event,
+      config,
+    })
+    const { workspaceSubscriptions } = await import("@/db/schema")
+    const [row] = await db.select().from(workspaceSubscriptions)
+    expect(row.subscriptionStatus).toBe("canceled")
+    expect(row.accessState).toBe("active")
+    expect(downgrade).not.toHaveBeenCalled()
+  })
+  it("keeps a single grace deadline across generic failed-renewal updates", async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date("2026-09-01T00:00:00Z"))
+    const { workspaceSubscriptions } = await import("@/db/schema")
+    await db
+      .update(workspaceSubscriptions)
+      .set({
+        planKey: "personal_plus",
+        currentPeriodStart: "2026-08-01T00:00:00Z",
+        currentPeriodEnd: "2026-09-01T00:00:00Z",
+      })
+    for (let i = 0; i < 2; i++) {
+      const event = {
+        ...activeEvent(),
+        type: "subscription.updated",
+        timestamp: `2026-09-0${i + 1}T00:00:00Z`,
+        data: { ...activeEvent().data, status: "on_hold" },
+      } as UnwrapWebhookEvent
+      await ingestVerifiedDodoWebhook({
+        webhookId: `failure-${i}`,
+        rawBody: JSON.stringify(event),
+        event,
+        config,
+      })
+      const [row] = await db.select().from(workspaceSubscriptions)
+      expect(row.failedPaymentGraceDeadline).toBe("2026-09-14T00:00:00.000Z")
+      expect(row.accessState).toBe("active")
+      expect(row.currentPeriodEnd).toBe("2026-09-01T00:00:00Z")
+    }
     expect(grant).not.toHaveBeenCalled()
   })
 })

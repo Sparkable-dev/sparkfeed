@@ -56,7 +56,8 @@ async function firstPageSourceIds(
 
 export async function downgradePersonalWorkspace(
   userId: string,
-  at: Date = new Date()
+  at: Date = new Date(),
+  { paymentRecoveryPending = false }: { paymentRecoveryPending?: boolean } = {}
 ): Promise<void> {
   const now = at.toISOString()
   const activeIds = await firstPageSourceIds(userId, FREE_NO_RSS_LIMIT)
@@ -66,11 +67,11 @@ export async function downgradePersonalWorkspace(
     .update(workspaceSubscriptions)
     .set({
       planKey: "free",
-      billingSource: "free",
-      subscriptionStatus: "free",
+      billingSource: paymentRecoveryPending ? "dodo" : "free",
+      subscriptionStatus: paymentRecoveryPending ? "past_due" : "free",
       accessState: "active",
       billingInterval: null,
-      failedPaymentGraceDeadline: null,
+      failedPaymentGraceDeadline: paymentRecoveryPending ? now : null,
       paidCreditRetentionEndsAt: plusDays(at, PAID_CREDIT_RETENTION_DAYS),
       updatedAt: now,
     })
@@ -286,20 +287,31 @@ export async function refreshPersonalSubscriptionLifecycle(
   }
 
   if (
+    row.planKey === "personal_plus" &&
     row.subscriptionStatus === "past_due" &&
-    row.failedPaymentGraceDeadline &&
-    new Date(row.failedPaymentGraceDeadline) <= at &&
-    row.accessState !== "read_only"
+    row.failedPaymentGraceDeadline
   ) {
-    await db
-      .update(workspaceSubscriptions)
-      .set({ accessState: "read_only", updatedAt: at.toISOString() })
-      .where(
-        and(
-          eq(workspaceSubscriptions.workspaceType, "personal"),
-          eq(workspaceSubscriptions.workspaceId, userId)
-        )
+    if (new Date(row.failedPaymentGraceDeadline) <= at) {
+      await downgradePersonalWorkspace(
+        userId,
+        new Date(row.failedPaymentGraceDeadline),
+        { paymentRecoveryPending: true }
       )
+      await syncEffectivePersonalSources(userId, at)
+      return
+    }
+    // Repair updates written by the old handler, which froze access during grace.
+    if (row.accessState === "read_only")
+      await db
+        .update(workspaceSubscriptions)
+        .set({ accessState: "active", updatedAt: at.toISOString() })
+        .where(
+          and(
+            eq(workspaceSubscriptions.workspaceType, "personal"),
+            eq(workspaceSubscriptions.workspaceId, userId),
+            eq(workspaceSubscriptions.updatedAt, row.updatedAt)
+          )
+        )
   }
 
   const effective = await readEffectiveSubscription(

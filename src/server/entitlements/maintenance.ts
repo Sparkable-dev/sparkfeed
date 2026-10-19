@@ -24,6 +24,7 @@ export async function refreshWorkspaceAllowances() {
       .select({
         type: workspaceSubscriptions.workspaceType,
         id: workspaceSubscriptions.workspaceId,
+        billingSource: workspaceSubscriptions.billingSource,
       })
       .from(workspaceSubscriptions)
       .where(after)
@@ -35,14 +36,39 @@ export async function refreshWorkspaceAllowances() {
     if (!batch.length) return { processed }
     for (const workspace of batch) {
       if (workspace.type === "personal") {
+        if (
+          workspace.billingSource === "dodo" &&
+          process.env.SPARKFEED_EDITION === "cloud"
+        ) {
+          try {
+            const { reconcilePersonalBilling } =
+              await import("../billing/personal-reconciliation")
+            const { readDodoBillingConfig } =
+              await import("../billing/dodo-config")
+            const { dodoClient } = await import("../billing/dodo-client")
+            const config = readDodoBillingConfig()
+            if (config)
+              await reconcilePersonalBilling(workspace.id, dodoClient(), config)
+          } catch (error) {
+            console.error(
+              "[billing] Scheduled personal reconciliation failed",
+              error instanceof Error ? error.message : "Unknown error"
+            )
+          }
+        }
         await refreshPersonalSubscriptionLifecycle(workspace.id)
         await grantWorkspaceAllowance(workspace, workspace.id)
       } else {
         if (process.env.SPARKFEED_EDITION === "cloud") {
-          const { refreshTeamLifecycle, reconcileTeam, applyQueuedTeamReduction } = await import("../billing/team-subscriptions")
+          const {
+            refreshTeamLifecycle,
+            reconcileTeam,
+            applyQueuedTeamReduction,
+          } = await import("../billing/team-subscriptions")
           await refreshTeamLifecycle(workspace.id)
           try {
-            const { readDodoBillingConfig, readTeamProducts } = await import("../billing/dodo-config")
+            const { readDodoBillingConfig, readTeamProducts } =
+              await import("../billing/dodo-config")
             if (readTeamProducts()) {
               const { dodoClient } = await import("../billing/dodo-client")
               const config = readDodoBillingConfig()!
@@ -50,7 +76,11 @@ export async function refreshWorkspaceAllowances() {
               await reconcileTeam(workspace.id, dodoClient(), config)
             }
           } catch (error) {
-            console.error("[team-billing] Scheduled reconciliation failed", workspace.id, error instanceof Error ? error.message : "Unknown error")
+            console.error(
+              "[team-billing] Scheduled reconciliation failed",
+              workspace.id,
+              error instanceof Error ? error.message : "Unknown error"
+            )
           }
           await refreshTeamLifecycle(workspace.id)
         }

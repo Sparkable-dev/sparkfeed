@@ -242,6 +242,7 @@ export default defineConfig({
 					items: [
 						{ label: 'AI Providers', slug: 'configuration/ai-providers' },
 						{ label: 'Environment Variables', slug: 'configuration/environment-variables' },
+						{ label: 'Hosted billing and cancellation', slug: 'configuration/hosted-billing' },
 					],
 				},
 				{

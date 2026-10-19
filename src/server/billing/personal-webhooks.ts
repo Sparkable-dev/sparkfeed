@@ -4,6 +4,7 @@ import {
   personalIntervalForProduct,
   readDodoBillingConfig,
 } from "./dodo-config"
+import { BILLING_GRACE_DAYS } from "./subscription-policy"
 import { grantPersonalMonthlyCredits } from "./personal-credits"
 import {
   downgradePersonalWorkspace,
@@ -15,8 +16,6 @@ import type { Subscription } from "dodopayments/resources/subscriptions"
 import type { DodoBillingConfig } from "./dodo-config"
 import { db } from "@/db/index"
 import { dodoWebhookInbox, user, workspaceSubscriptions } from "@/db/schema"
-
-const PAYMENT_GRACE_DAYS = 13
 
 const PERSONAL_SUBSCRIPTION_EVENTS = new Set([
   "subscription.active",
@@ -40,7 +39,7 @@ function iso(value: string | Date): string {
 
 function graceDeadline(eventTime: string): string {
   return new Date(
-    new Date(eventTime).getTime() + PAYMENT_GRACE_DAYS * 24 * 60 * 60 * 1000
+    new Date(eventTime).getTime() + BILLING_GRACE_DAYS * 24 * 60 * 60 * 1000
   ).toISOString()
 }
 
@@ -111,6 +110,10 @@ async function applyPersonalSubscriptionEvent(
       providerEventAt: workspaceSubscriptions.providerEventAt,
       dodoSubscriptionId: workspaceSubscriptions.dodoSubscriptionId,
       updatedAt: workspaceSubscriptions.updatedAt,
+      failedPaymentGraceDeadline:
+        workspaceSubscriptions.failedPaymentGraceDeadline,
+      currentPeriodStart: workspaceSubscriptions.currentPeriodStart,
+      currentPeriodEnd: workspaceSubscriptions.currentPeriodEnd,
     })
     .from(workspaceSubscriptions)
     .where(
@@ -156,66 +159,48 @@ async function applyPersonalSubscriptionEvent(
     updatedAt: now,
   }
 
-  if (
-    event.type === "subscription.active" ||
-    event.type === "subscription.renewed"
-  ) {
+  // Payload status is authoritative even for generic subscription.updated events.
+  // Event names describe the notification, not a separate access state machine.
+  const status =
+    subscription.status === "active" &&
+    subscription.cancel_at_next_billing_date &&
+    Date.parse(periodEnd) <= Date.now()
+      ? "cancelled"
+      : (subscription.status as string)
+  const where = and(
+    eq(workspaceSubscriptions.workspaceType, "personal"),
+    eq(workspaceSubscriptions.workspaceId, userId)
+  )
+  if (status === "active") {
     await db
       .update(workspaceSubscriptions)
       .set({
         ...common,
         planKey: "personal_plus",
-        subscriptionStatus: "active",
+        subscriptionStatus: subscription.cancel_at_next_billing_date
+          ? "canceled"
+          : "active",
         accessState: "active",
         failedPaymentGraceDeadline: null,
         paidCreditRetentionEndsAt: null,
       })
-      .where(
-        and(
-          eq(workspaceSubscriptions.workspaceType, "personal"),
-          eq(workspaceSubscriptions.workspaceId, userId)
-        )
-      )
+      .where(where)
     await reactivatePersonalPlusSources(userId)
     await grantPersonalMonthlyCredits(userId, periodStart)
     return
   }
 
-  if (
-    event.type === "subscription.updated" ||
-    event.type === "subscription.plan_changed" ||
-    event.type === "subscription.unpaused"
-  ) {
-    await db
-      .update(workspaceSubscriptions)
-      .set({
-        ...common,
-        planKey: "personal_plus",
-        subscriptionStatus:
-          subscription.status === "active" ? "active" : "past_due",
-        accessState: subscription.status === "active" ? "active" : "read_only",
-        failedPaymentGraceDeadline:
-          subscription.status === "active" ? null : graceDeadline(eventAt),
-        paidCreditRetentionEndsAt: null,
-      })
-      .where(
-        and(
-          eq(workspaceSubscriptions.workspaceType, "personal"),
-          eq(workspaceSubscriptions.workspaceId, userId)
-        )
-      )
-    return
-  }
-
-  if (
-    event.type === "subscription.on_hold" ||
-    (event.type as string) === "subscription.past_due" ||
-    event.type === "subscription.failed"
-  ) {
-    // A declined first payment is not a paid-plan renewal failure. Keep the
-    // Dodo customer for a retry, but remove the failed subscription reference
-    // so a fresh checkout can activate without colliding with it.
-    if (current?.planKey !== "personal_plus") {
+  if (["cancelled", "expired", "paused", "failed"].includes(status)) {
+    // A terminal cancellation/expiry has ended paid access. A paused personal
+    // subscription also falls back to Free, preserving its data and billing link.
+    if (current?.planKey === "personal_plus") {
+      await db
+        .update(workspaceSubscriptions)
+        .set({ ...common })
+        .where(where)
+      await downgradePersonalWorkspace(userId, new Date(eventAt))
+    } else {
+      // Repeated terminal updates must not restart paid-credit retention.
       await db
         .update(workspaceSubscriptions)
         .set({
@@ -224,91 +209,93 @@ async function applyPersonalSubscriptionEvent(
           subscriptionStatus: "free",
           accessState: "active",
           billingInterval: null,
-          currentPeriodStart: null,
-          currentPeriodEnd: null,
           failedPaymentGraceDeadline: null,
-          paidCreditRetentionEndsAt: null,
           providerEventAt: eventAt,
           dodoCustomerId: subscription.customer.customer_id,
-          dodoSubscriptionId: null,
-          productKey: null,
+          updatedAt: now,
+          ...(status === "failed"
+            ? {
+                dodoSubscriptionId: null,
+                productKey: null,
+                currentPeriodStart: null,
+                currentPeriodEnd: null,
+              }
+            : { dodoSubscriptionId: subscription.subscription_id }),
+        })
+        .where(where)
+    }
+    return
+  }
+
+  if (["on_hold", "past_due"].includes(status)) {
+    if (current?.planKey !== "personal_plus") {
+      // Never grant paid access after a failed first checkout or restart grace
+      // after this subscription has already fallen back to Free.
+      const funded = Boolean(
+        current?.currentPeriodStart &&
+        current.currentPeriodStart !== current.currentPeriodEnd
+      )
+      await db
+        .update(workspaceSubscriptions)
+        .set({
+          planKey: "free",
+          billingSource: funded ? "dodo" : "free",
+          subscriptionStatus: funded ? "past_due" : "free",
+          accessState: "active",
+          billingInterval: null,
+          failedPaymentGraceDeadline: funded
+            ? current?.failedPaymentGraceDeadline
+            : null,
+          providerEventAt: eventAt,
+          dodoCustomerId: subscription.customer.customer_id,
+          ...(funded
+            ? {}
+            : {
+                currentPeriodStart: null,
+                currentPeriodEnd: null,
+                dodoSubscriptionId: null,
+                productKey: null,
+              }),
           updatedAt: now,
         })
-        .where(
-          and(
-            eq(workspaceSubscriptions.workspaceType, "personal"),
-            eq(workspaceSubscriptions.workspaceId, userId)
-          )
-        )
+        .where(where)
       return
     }
-
+    const deadline =
+      current.failedPaymentGraceDeadline ?? graceDeadline(eventAt)
     await db
       .update(workspaceSubscriptions)
       .set({
         ...common,
+        // A failed renewal is not a newly funded period.
+        currentPeriodStart: current.currentPeriodStart,
+        currentPeriodEnd: current.currentPeriodEnd,
         planKey: "personal_plus",
         subscriptionStatus: "past_due",
         accessState: "active",
-        failedPaymentGraceDeadline: graceDeadline(eventAt),
+        failedPaymentGraceDeadline: deadline,
       })
-      .where(
-        and(
-          eq(workspaceSubscriptions.workspaceType, "personal"),
-          eq(workspaceSubscriptions.workspaceId, userId)
-        )
-      )
+      .where(where)
+    if (Date.parse(deadline) <= Date.now())
+      await downgradePersonalWorkspace(userId, new Date(deadline), {
+        paymentRecoveryPending: true,
+      })
     return
   }
 
-  if (event.type === "subscription.cancelled") {
-    await db
-      .update(workspaceSubscriptions)
-      .set({
-        ...common,
-        planKey: "personal_plus",
-        subscriptionStatus: "canceled",
-        accessState: "active",
-        failedPaymentGraceDeadline: null,
-      })
-      .where(
-        and(
-          eq(workspaceSubscriptions.workspaceType, "personal"),
-          eq(workspaceSubscriptions.workspaceId, userId)
-        )
-      )
-    return
-  }
-
-  if (event.type === "subscription.paused") {
-    await db
-      .update(workspaceSubscriptions)
-      .set({
-        ...common,
-        planKey: "personal_plus",
-        subscriptionStatus: "past_due",
-        accessState: "read_only",
-        failedPaymentGraceDeadline: eventAt,
-      })
-      .where(
-        and(
-          eq(workspaceSubscriptions.workspaceType, "personal"),
-          eq(workspaceSubscriptions.workspaceId, userId)
-        )
-      )
-    return
-  }
-
+  if (status !== "pending") throw new Error("Unknown Dodo subscription status.")
+  // Pending checkout cannot replace a previously funded subscription.
+  if (current?.planKey === "personal_plus") return
   await db
     .update(workspaceSubscriptions)
-    .set({ ...common, providerEventAt: eventAt })
-    .where(
-      and(
-        eq(workspaceSubscriptions.workspaceType, "personal"),
-        eq(workspaceSubscriptions.workspaceId, userId)
-      )
-    )
-  await downgradePersonalWorkspace(userId, new Date(eventAt))
+    .set({
+      ...common,
+      planKey: "free",
+      subscriptionStatus: "checkout_pending",
+      accessState: "active",
+      failedPaymentGraceDeadline: null,
+    })
+    .where(where)
 }
 
 function reconciliationEventType(
@@ -396,11 +383,15 @@ export async function ingestVerifiedDodoWebhook(input: {
   try {
     if (subject.subjectType === "organization" && subject.dodoSubscriptionId) {
       const { dodoClient } = await import("./dodo-client")
-      const { syncTeamSubscription, completePersonalUpgrade } = await import("./team-subscriptions")
+      const { syncTeamSubscription, completePersonalUpgrade } =
+        await import("./team-subscriptions")
       const observedAt = new Date()
-      const remote = await dodoClient().subscriptions.retrieve(subject.dodoSubscriptionId)
+      const remote = await dodoClient().subscriptions.retrieve(
+        subject.dodoSubscriptionId
+      )
       await syncTeamSubscription(remote, config, observedAt)
-      if (subject.subjectId) await completePersonalUpgrade(subject.subjectId, dodoClient(), config)
+      if (subject.subjectId)
+        await completePersonalUpgrade(subject.subjectId, dodoClient(), config)
     } else {
       await applyPersonalSubscriptionEvent(input.event, config)
     }

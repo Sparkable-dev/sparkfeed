@@ -32,7 +32,8 @@ vi.mock("@/server/billing/personal-webhooks", () => ({
   reconcilePersonalSubscriptionFromDodo: reconcile,
 }))
 
-const { executeOperationalMutation } = await import("../operations")
+const { executeOperationalMutation, getPlatformUser } =
+  await import("../operations")
 
 const actor = { userId: "staff:operator-1", email: "admin@example.com" }
 function raw() {
@@ -56,6 +57,11 @@ beforeEach(async () => {
     created_at TEXT NOT NULL, updated_at TEXT NOT NULL, ip_address TEXT,
     user_agent TEXT, user_id TEXT NOT NULL, active_organization_id TEXT,
     impersonated_by TEXT)`)
+  await sql.execute(`CREATE TABLE account (
+    id TEXT PRIMARY KEY, provider_id TEXT, user_id TEXT, created_at TEXT,
+    access_token TEXT, refresh_token TEXT, password TEXT)`)
+  await sql.execute(`CREATE TABLE customer_auth_events (
+    id TEXT PRIMARY KEY, user_id TEXT, session_id TEXT, action TEXT, method TEXT, created_at TEXT)`)
   await sql.execute(`CREATE TABLE organization (
     id TEXT PRIMARY KEY, name TEXT NOT NULL, slug TEXT NOT NULL, logo TEXT,
     created_at TEXT NOT NULL, metadata TEXT)`)
@@ -386,5 +392,58 @@ describe("signed operator domain operations", () => {
         )
       ).rows
     ).toEqual([{ processing_status: "processed", attempt_count: 2 }])
+  })
+})
+
+describe("customer authentication projection", () => {
+  it("returns connected methods and actual session history without credentials or another user's events", async () => {
+    await raw().execute(
+      `INSERT INTO account VALUES ('google-account', 'google', 'user-1', '2026-10-19', 'private-access-token', 'private-refresh-token', 'private-password-hash')`
+    )
+    await raw().execute(
+      `INSERT INTO account VALUES ('other-account', 'github', 'other-user', '2026-10-19', 'other-token', NULL, NULL)`
+    )
+    await raw().execute(
+      `INSERT INTO customer_auth_events VALUES ('signin', 'user-1', 'session-1', 'sign_in', 'google', '2026-10-19')`
+    )
+    await raw().execute(
+      `INSERT INTO customer_auth_events VALUES ('other-event', 'other-user', 'session-1', 'sign_in', 'github', '2026-10-20')`
+    )
+    const result = await getPlatformUser("user-1")
+    expect(result?.connectedAccounts).toEqual([
+      {
+        id: "google-account",
+        providerId: "google",
+        createdAt: expect.anything(),
+      },
+    ])
+    expect(result?.sessions[0].authMethod).toBe("google")
+    expect(result?.authEvents).toHaveLength(1)
+    const serialized = JSON.stringify(result)
+    for (const secret of [
+      "private-access-token",
+      "private-refresh-token",
+      "private-password-hash",
+      "never-audited-token",
+      "other-account",
+      "other-event",
+    ])
+      expect(serialized).not.toContain(secret)
+    expect(await getPlatformUser("absent")).toBeNull()
+  })
+  it("does not infer a method for legacy sessions and bounds displayed history", async () => {
+    for (let i = 0; i < 53; i++)
+      await raw().execute({
+        sql: `INSERT INTO customer_auth_events VALUES (?, 'user-1', NULL, 'account_linked', 'google', ?)`,
+        args: [
+          `event-${i}`,
+          new Date(Date.UTC(2026, 9, 19, 0, i)).toISOString(),
+        ],
+      })
+    const result = await getPlatformUser("user-1")
+    expect(result?.sessions[0].authMethod).toBeNull()
+    expect(result?.authEvents).toHaveLength(50)
+    expect(result?.authEventsHasMore).toBe(true)
+    expect(result?.authEvents[0].id).toBe("event-52")
   })
 })

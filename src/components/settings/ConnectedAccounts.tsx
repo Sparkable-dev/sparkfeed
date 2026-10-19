@@ -39,7 +39,7 @@ export function ConnectedAccounts({
   const [notice, setNotice] = useState("")
 
   async function connect(provider: SocialProvider) {
-    if (pending || provider === "github") return
+    if (pending) return
     setPending(provider)
     setError("")
     setNotice("")
@@ -93,6 +93,13 @@ export function ConnectedAccounts({
   const methods = accounts.data || []
   const loading = !DEMO_MODE && (accounts.isPending || providers.isPending)
 
+  const visibleProviders = socialProviders.filter(
+    (provider) =>
+      providers.data?.includes(provider) ||
+      methods.some((method) => method.providerId === provider)
+  )
+  if (!loading && !message && !visibleProviders.length) return null
+
   return (
     <section
       className="overflow-hidden rounded-xl border bg-card"
@@ -107,9 +114,8 @@ export function ConnectedAccounts({
             Sign-in methods
           </h2>
           <p className="mt-1 text-xs leading-5 text-muted-foreground">
-            Connect Google or GitHub to sign in to this Sparkfeed account. Your
-            workspace and data stay together, even if the provider uses a
-            different email.
+            Connect an account to sign in to Sparkfeed. Your workspace and data
+            stay together, even if the provider uses a different email.
           </p>
         </div>
       </div>
@@ -136,12 +142,11 @@ export function ConnectedAccounts({
                 Email and password is connected.
               </p>
             )}
-            {socialProviders.map((provider) => {
+            {visibleProviders.map((provider) => {
               const linked = methods.filter(
                 (method) => method.providerId === provider
               )
-              const comingSoon = provider === "github"
-              const available = !comingSoon && providers.data?.includes(provider)
+              const available = providers.data?.includes(provider)
               return (
                 <div
                   key={provider}
@@ -152,13 +157,7 @@ export function ConnectedAccounts({
                       {socialProviderLabels[provider]}
                     </p>
                     <p className="mt-1 text-xs text-muted-foreground">
-                      {linked.length
-                        ? "Connected"
-                        : comingSoon
-                          ? "Coming soon"
-                          : available
-                          ? "Not connected"
-                          : "Not available on this instance"}
+                      {linked.length ? "Connected" : "Not connected"}
                     </p>
                   </div>
                   {linked.length ? (

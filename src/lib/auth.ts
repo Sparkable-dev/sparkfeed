@@ -9,6 +9,7 @@ import { tanstackStartCookies } from "better-auth/tanstack-start"
 import { organization } from "better-auth/plugins/organization"
 import { PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH } from "@/lib/auth-validation"
 import { emailVerificationOptions } from "@/lib/auth-email-verification"
+import { customerAuthenticationHistory } from "@/lib/auth-history"
 import { customerAccountSecurity } from "@/lib/auth-security"
 import { hostedDashboardPlugin } from "@/server/platform/hosted-auth"
 import { db } from "@/db/index"
@@ -189,7 +190,9 @@ export const auth = betterAuth({
   },
   emailVerification: emailVerificationOptions(sendVerificationEmail),
   plugins: [
-    ...(cloudAuth ? [customerAccountSecurity()] : []),
+    ...(cloudAuth
+      ? [customerAccountSecurity(), customerAuthenticationHistory()]
+      : []),
     ...(dodoPlugin ? [dodoPlugin] : []),
     organization({
       creatorRole: "owner",

@@ -84,19 +84,33 @@ describe("auth form interactions", () => {
     )
     expect(mocks.theme).toHaveBeenCalledWith("system")
   })
-  it("keeps GitHub signup visible as coming soon without starting OAuth", () => {
+  it("starts configured GitHub signup and rejects an external destination", async () => {
     render(<SignUpForm search={{ redirect: "https://evil.test" }} />)
-    const github = screen.getByRole("button", { name: "GitHub Coming soon" })
-    expect(github.hasAttribute("disabled")).toBe(true)
-    fireEvent.click(github)
-    expect(mocks.social).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole("button", { name: "GitHub" }))
+    await waitFor(() =>
+      expect(mocks.social).toHaveBeenCalledWith({
+        provider: "github",
+        callbackURL: "/discover",
+        errorCallbackURL: "/sign-up?redirect=%2Fdiscover",
+      })
+    )
   })
-  it("hides unconfigured providers", () => {
-    mocks.providers.mockReturnValue({ data: [] })
+  it.each([SignInForm, SignUpForm])(
+    "hides the whole social block when no providers are configured",
+    (Form) => {
+      mocks.providers.mockReturnValue({ data: [] })
+      render(<Form search={{}} />)
+      expect(screen.queryByRole("button", { name: "Google" })).toBeNull()
+      expect(screen.queryByRole("button", { name: "GitHub" })).toBeNull()
+      expect(screen.queryByText(/or sign (in|up) with email/)).toBeNull()
+      expect(screen.getByLabelText("Email address")).toBeTruthy()
+    }
+  )
+  it("shows only the configured provider", () => {
+    mocks.providers.mockReturnValue({ data: ["google"] })
     render(<SignInForm search={{}} />)
-    expect(screen.queryByRole("button", { name: "Google" })).toBeNull()
-    expect(screen.getByRole("button", { name: "GitHub Coming soon" }).hasAttribute("disabled")).toBe(true)
-    expect(screen.getByLabelText("Email address")).toBeTruthy()
+    expect(screen.getByRole("button", { name: "Google" })).toBeTruthy()
+    expect(screen.queryByRole("button", { name: "GitHub" })).toBeNull()
   })
   it("explains account linking errors and lets the user retry", async () => {
     mocks.social.mockResolvedValue({ error: { code: "OAUTH_LINK_ERROR" } })

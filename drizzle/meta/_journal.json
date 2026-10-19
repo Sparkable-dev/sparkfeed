@@ -211,6 +211,13 @@
       "when": 1789632802494,
       "tag": "0029_chief_cammi",
       "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1792416769779,
+      "tag": "0030_deep_silver_fox",
+      "breakpoints": true
     }
   ]
 }

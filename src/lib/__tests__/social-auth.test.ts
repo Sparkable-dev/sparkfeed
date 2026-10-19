@@ -1,14 +1,26 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { getTestInstance } from "better-auth/test"
+import { customerAuthenticationHistory } from "../auth-history"
 import { resolveSocialProviders, socialAccountOptions } from "../social-auth"
+import type { CustomerAuthEvent } from "../auth-history"
 
 afterEach(() => vi.restoreAllMocks())
 
 describe("social provider configuration", () => {
   it("keeps Google disabled on beta even when credentials are present", () => {
-    const credentials = { GOOGLE_CLIENT_ID: "id", GOOGLE_CLIENT_SECRET: "secret" }
-    expect(resolveSocialProviders({ ...credentials, SPARKFEED_ENVIRONMENT: "beta" })).toEqual({})
-    expect(resolveSocialProviders({ ...credentials, SPARKFEED_ENVIRONMENT: "production" })).toEqual({ google: { clientId: "id", clientSecret: "secret" } })
+    const credentials = {
+      GOOGLE_CLIENT_ID: "id",
+      GOOGLE_CLIENT_SECRET: "secret",
+    }
+    expect(
+      resolveSocialProviders({ ...credentials, SPARKFEED_ENVIRONMENT: "beta" })
+    ).toEqual({})
+    expect(
+      resolveSocialProviders({
+        ...credentials,
+        SPARKFEED_ENVIRONMENT: "production",
+      })
+    ).toEqual({ google: { clientId: "id", clientSecret: "secret" } })
   })
   it("does not enable an unconfigured provider and rejects partial credentials", () => {
     expect(resolveSocialProviders({})).toEqual({})
@@ -25,6 +37,7 @@ describe("social provider configuration", () => {
 })
 
 async function fixture() {
+  const events: Array<CustomerAuthEvent> = []
   let profile = {
     sub: "google-user-1",
     email: "test@test.com",
@@ -43,21 +56,30 @@ async function fixture() {
   const instance = await getTestInstance(
     {
       account: socialAccountOptions,
+      plugins: [
+        customerAuthenticationHistory(async (event) => {
+          events.push(event)
+        }),
+      ],
       socialProviders: {
         google: {
           clientId: "test-client",
           clientSecret: "test-secret",
           verifyIdToken: () => Promise.resolve(true),
-          getUserInfo: () => Promise.resolve({
-            user: {
-              email: profile.email,
-              emailVerified: profile.email_verified,
-              name: profile.name,
-            },
-            data: profile,
-          }),
+          getUserInfo: () =>
+            Promise.resolve({
+              user: {
+                email: profile.email,
+                emailVerified: profile.email_verified,
+                name: profile.name,
+              },
+              data: profile,
+            }),
         },
-        github: { clientId: "github-test-client", clientSecret: "github-test-secret" },
+        github: {
+          clientId: "github-test-client",
+          clientSecret: "github-test-secret",
+        },
       },
     },
     { testUser: { emailVerified: true } }
@@ -71,6 +93,7 @@ async function fixture() {
   })
   return {
     ...instance,
+    events,
     setProfile: (value: Partial<typeof profile>) => {
       profile = { ...profile, ...value }
     },
@@ -80,32 +103,99 @@ const idToken = { token: "mock-verified-provider-token" }
 
 describe("Better Auth social account ownership", () => {
   it("completes the GitHub authorization callback using a verified private email", async () => {
-    const { auth, db, signInWithTestUser } = await fixture()
+    const { auth, db, signInWithTestUser, events } = await fixture()
     const original = await signInWithTestUser()
-    const begin = await auth.api.signInSocial({ body: { provider: "github", callbackURL: "/discover", disableRedirect: true }, asResponse: true })
+    const begin = await auth.api.signInSocial({
+      body: {
+        provider: "github",
+        callbackURL: "/discover",
+        disableRedirect: true,
+      },
+      asResponse: true,
+    })
     const authorization = new URL((await begin.json()).url)
     expect(authorization.searchParams.get("scope")).toContain("user:email")
-    expect(authorization.searchParams.get("redirect_uri")).toBe("http://localhost:3000/api/auth/callback/github")
+    expect(authorization.searchParams.get("redirect_uri")).toBe(
+      "http://localhost:3000/api/auth/callback/github"
+    )
     vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
       const url = String(input)
-      if (url === "https://github.com/login/oauth/access_token") return Promise.resolve(Response.json({ access_token: "github-test-token", token_type: "bearer", scope: "read:user,user:email" }))
-      if (url === "https://api.github.com/user") return Promise.resolve(Response.json({ id: 1234, name: "GitHub Reader", login: "reader", email: null }))
-      if (url === "https://api.github.com/user/emails") return Promise.resolve(Response.json([{ email: "test@test.com", primary: true, verified: true }]))
+      if (url === "https://github.com/login/oauth/access_token")
+        return Promise.resolve(
+          Response.json({
+            access_token: "github-test-token",
+            token_type: "bearer",
+            scope: "read:user,user:email",
+          })
+        )
+      if (url === "https://api.github.com/user")
+        return Promise.resolve(
+          Response.json({
+            id: 1234,
+            name: "GitHub Reader",
+            login: "reader",
+            email: null,
+          })
+        )
+      if (url === "https://api.github.com/user/emails")
+        return Promise.resolve(
+          Response.json([
+            { email: "test@test.com", primary: true, verified: true },
+          ])
+        )
       throw new Error(`Unexpected OAuth test request: ${url}`)
     })
-    const cookie = begin.headers.getSetCookie().map((value) => value.split(";")[0]).join("; ")
-    const callback = await auth.handler(new Request(`http://localhost:3000/api/auth/callback/github?code=test-code&state=${encodeURIComponent(authorization.searchParams.get("state")!)}`, { headers: { cookie } }))
+    const cookie = begin.headers
+      .getSetCookie()
+      .map((value) => value.split(";")[0])
+      .join("; ")
+    const callback = await auth.handler(
+      new Request(
+        `http://localhost:3000/api/auth/callback/github?code=test-code&state=${encodeURIComponent(authorization.searchParams.get("state")!)}`,
+        { headers: { cookie } }
+      )
+    )
     expect(callback.status).toBe(302)
     expect(callback.headers.get("location")).toBe("/discover")
     expect(await db.count({ model: "user" })).toBe(1)
-    const methods = await auth.api.listUserAccounts({ headers: original.headers })
+    const methods = await auth.api.listUserAccounts({
+      headers: original.headers,
+    })
     expect(methods.some((method) => method.providerId === "github")).toBe(true)
+    expect(events).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          action: "sign_in",
+          method: "credential",
+          userId: original.user.id,
+          sessionId: expect.any(String),
+        }),
+        expect.objectContaining({
+          action: "account_linked",
+          method: "github",
+          userId: original.user.id,
+        }),
+        expect.objectContaining({
+          action: "sign_in",
+          method: "github",
+          userId: original.user.id,
+          sessionId: expect.any(String),
+        }),
+      ])
+    )
   })
   it("links a verified same-email identity without creating a second user", async () => {
-    const { auth, client, db, signInWithTestUser } = await fixture()
+    const { auth, client, db, signInWithTestUser, events } = await fixture()
     const original = await signInWithTestUser()
     const signedIn = await client.signIn.social({ provider: "google", idToken })
     expect(signedIn.error).toBeNull()
+    expect(events).toContainEqual(
+      expect.objectContaining({
+        action: "sign_in",
+        method: "google",
+        userId: original.user.id,
+      })
+    )
     expect(
       signedIn.data && "user" in signedIn.data && signedIn.data.user.id
     ).toBe(original.user.id)
@@ -171,7 +261,7 @@ describe("Better Auth social account ownership", () => {
     })
   })
   it("uses local account IDs to unlink and refuses removal of the last method", async () => {
-    const { client, signInWithTestUser } = await fixture()
+    const { client, signInWithTestUser, events } = await fixture()
     const original = await signInWithTestUser()
     await original.runWithUser(async () => {
       await client.linkSocial({ provider: "google", idToken })
@@ -182,6 +272,13 @@ describe("Better Auth social account ownership", () => {
       expect(
         (await client.unlinkAccount({ accountId: google.id })).error
       ).toBeNull()
+      expect(events).toContainEqual(
+        expect.objectContaining({
+          action: "account_unlinked",
+          method: "google",
+          userId: original.user.id,
+        })
+      )
       const remaining = await client.listAccounts()
       expect(remaining.data).toHaveLength(1)
       expect(

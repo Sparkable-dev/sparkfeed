@@ -151,11 +151,24 @@ export const articles = pgTable(
 )
 
 /** Personal saves are independent of the workspace-wide articles.isFavorite flag. */
-export const personalFavorites = pgTable("personal_favorites", {
-  userId: text("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
-  articleId: text("article_id").notNull().references(() => articles.id, { onDelete: "cascade" }),
-  createdAt: text("created_at").notNull().$defaultFn(() => new Date().toISOString()),
-}, (t) => [primaryKey({ columns: [t.userId, t.articleId] }), index("personal_favorites_article_idx").on(t.articleId)])
+export const personalFavorites = pgTable(
+  "personal_favorites",
+  {
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    articleId: text("article_id")
+      .notNull()
+      .references(() => articles.id, { onDelete: "cascade" }),
+    createdAt: text("created_at")
+      .notNull()
+      .$defaultFn(() => new Date().toISOString()),
+  },
+  (t) => [
+    primaryKey({ columns: [t.userId, t.articleId] }),
+    index("personal_favorites_article_idx").on(t.articleId),
+  ]
+)
 
 export const invites = pgTable("invites", {
   id: text("id").primaryKey(),
@@ -528,15 +541,21 @@ export const workspaceSubscriptions = pgTable(
 
 /** Durable checkout attempts; retries always reuse the same provider request. */
 export const personalCheckoutState = pgTable("personal_checkout_state", {
-  userId: text("user_id").primaryKey().references(() => user.id, { onDelete: "cascade" }),
+  userId: text("user_id")
+    .primaryKey()
+    .references(() => user.id, { onDelete: "cascade" }),
   attemptId: text("attempt_id").notNull(),
   checkoutSessionId: text("checkout_session_id"),
   checkoutUrl: text("checkout_url"),
-  createdAt: text("created_at").notNull().$defaultFn(() => new Date().toISOString()),
+  createdAt: text("created_at")
+    .notNull()
+    .$defaultFn(() => new Date().toISOString()),
 })
 
 export const teamBillingState = pgTable("team_billing_state", {
-  workspaceId: text("workspace_id").primaryKey().references(() => organization.id, { onDelete: "cascade" }),
+  workspaceId: text("workspace_id")
+    .primaryKey()
+    .references(() => organization.id, { onDelete: "cascade" }),
   attemptId: text("attempt_id").notNull(),
   checkoutSessionId: text("checkout_session_id"),
   checkoutUrl: text("checkout_url"),
@@ -545,14 +564,18 @@ export const teamBillingState = pgTable("team_billing_state", {
   lastSyncedAt: text("last_synced_at"),
   scheduledInterval: text("scheduled_interval").$type<BillingInterval>(),
   pendingSeatReduction: integer("pending_seat_reduction"),
-  upgradeUserId: text("upgrade_user_id").unique().references(() => user.id),
+  upgradeUserId: text("upgrade_user_id")
+    .unique()
+    .references(() => user.id),
   personalSubscriptionId: text("personal_subscription_id"),
   personalRenewalStoppedAt: text("personal_renewal_stopped_at"),
   contentMovedAt: text("content_moved_at"),
   providerStatus: text("provider_status"),
   checkoutRequestedAt: text("checkout_requested_at"),
   pendingPlanChange: text("pending_plan_change"),
-  createdAt: text("created_at").notNull().$defaultFn(() => new Date().toISOString()),
+  createdAt: text("created_at")
+    .notNull()
+    .$defaultFn(() => new Date().toISOString()),
 })
 
 /** Append-only Spark AI credit history. Balances are derived from these entries. */
@@ -852,5 +875,27 @@ export const platformActivityDays = pgTable(
   (t) => [
     primaryKey({ columns: [t.userId, t.workspaceType, t.workspaceId, t.day] }),
     index("platform_activity_day_idx").on(t.day),
+  ]
+)
+
+/** Successful authentication and connection changes; never credentials or tokens. */
+export const customerAuthEvents = pgTable(
+  "customer_auth_events",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    // Deliberately no session FK: history survives sign-out and session revocation.
+    sessionId: text("session_id"),
+    action: text("action")
+      .$type<"sign_in" | "account_linked" | "account_unlinked">()
+      .notNull(),
+    method: text("method").notNull(),
+    createdAt: text("created_at").notNull(),
+  },
+  (t) => [
+    index("customer_auth_events_user_time_idx").on(t.userId, t.createdAt),
+    index("customer_auth_events_session_idx").on(t.sessionId),
   ]
 )

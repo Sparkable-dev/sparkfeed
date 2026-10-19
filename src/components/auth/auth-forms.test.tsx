@@ -13,6 +13,8 @@ import VerifyEmail from "@/components/shadcn-space/blocks/verify-email-02/verify
 
 const mocks = vi.hoisted(() => ({
   signIn: vi.fn(),
+  social: vi.fn(),
+  providers: vi.fn(),
   signUp: vi.fn(),
   resend: vi.fn(),
   getSession: vi.fn(),
@@ -22,20 +24,27 @@ const mocks = vi.hoisted(() => ({
 }))
 vi.mock("@/lib/auth-client", () => ({
   authClient: {
-    signIn: { email: mocks.signIn },
+    signIn: { email: mocks.signIn, social: mocks.social },
     signUp: { email: mocks.signUp },
     sendVerificationEmail: mocks.resend,
     getSession: mocks.getSession,
     verifyEmail: mocks.verify,
   },
 }))
-vi.mock("sonner", () => ({ toast: { info: mocks.toast } }))
+vi.mock("@/hooks/use-social-providers", () => ({
+  useSocialProviders: mocks.providers,
+}))
 vi.mock("next-themes", () => ({
   useTheme: () => ({ theme: "dark", setTheme: mocks.theme }),
 }))
 afterEach(cleanup)
 beforeEach(() => {
   vi.clearAllMocks()
+  mocks.providers.mockReturnValue({ data: ["google", "github"] })
+  mocks.social.mockResolvedValue({
+    data: { url: "https://accounts.google.com", redirect: true },
+    error: null,
+  })
   mocks.getSession.mockResolvedValue({ data: null, error: null })
 })
 describe("auth form interactions", () => {
@@ -59,23 +68,49 @@ describe("auth form interactions", () => {
     expect(mocks.signUp).not.toHaveBeenCalled()
     expect(document.activeElement).toBe(screen.getByLabelText("Full name"))
   })
-  it("preserves social buttons as toast-only controls and cycles the theme", () => {
-    render(<SignInForm search={{}} />)
+  it("starts Google OAuth and preserves the destination", async () => {
+    render(<SignInForm search={{ redirect: "/invite?id=abc" }} />)
     fireEvent.click(screen.getByRole("button", { name: "Google" }))
-    fireEvent.click(screen.getByRole("button", { name: "GitHub" }))
-    expect(mocks.toast).toHaveBeenNthCalledWith(
-      1,
-      "Google sign-in is coming soon."
-    )
-    expect(mocks.toast).toHaveBeenNthCalledWith(
-      2,
-      "GitHub sign-in is coming soon."
+    await waitFor(() =>
+      expect(mocks.social).toHaveBeenCalledWith({
+        provider: "google",
+        callbackURL: "/invite?id=abc",
+        errorCallbackURL: "/sign-in?redirect=%2Finvite%3Fid%3Dabc",
+      })
     )
     expect(mocks.signIn).not.toHaveBeenCalled()
     fireEvent.click(
       screen.getByRole("button", { name: "Theme: dark. Switch to system." })
     )
     expect(mocks.theme).toHaveBeenCalledWith("system")
+  })
+  it("keeps GitHub signup visible as coming soon without starting OAuth", () => {
+    render(<SignUpForm search={{ redirect: "https://evil.test" }} />)
+    const github = screen.getByRole("button", { name: "GitHub Coming soon" })
+    expect(github.hasAttribute("disabled")).toBe(true)
+    fireEvent.click(github)
+    expect(mocks.social).not.toHaveBeenCalled()
+  })
+  it("hides unconfigured providers", () => {
+    mocks.providers.mockReturnValue({ data: [] })
+    render(<SignInForm search={{}} />)
+    expect(screen.queryByRole("button", { name: "Google" })).toBeNull()
+    expect(screen.getByRole("button", { name: "GitHub Coming soon" }).hasAttribute("disabled")).toBe(true)
+    expect(screen.getByLabelText("Email address")).toBeTruthy()
+  })
+  it("explains account linking errors and lets the user retry", async () => {
+    mocks.social.mockResolvedValue({ error: { code: "OAUTH_LINK_ERROR" } })
+    render(<SignInForm search={{}} />)
+    fireEvent.click(screen.getByRole("button", { name: "Google" }))
+    expect(await screen.findByRole("alert")).toHaveProperty(
+      "textContent",
+      expect.stringContaining("existing method")
+    )
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: "Google" }).hasAttribute("disabled")
+      ).toBe(false)
+    )
   })
   it("submits normalized email and full name and preserves verification destination", async () => {
     mocks.signUp.mockResolvedValue({ error: { message: "Controlled failure" } })

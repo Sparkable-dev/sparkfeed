@@ -4,6 +4,7 @@ import type { AuthSearch } from "@/lib/auth-redirect"
 import { useAuthValidation } from "@/components/auth/use-auth-validation"
 import { authClient } from "@/lib/auth-client"
 import { authHref, safeLoginRedirect } from "@/lib/auth-redirect"
+import { socialAuthError } from "@/lib/social-auth"
 import {
   AuthError,
   AuthLayout,
@@ -65,7 +66,8 @@ export default function SignInForm({ search }: { search: AuthSearch }) {
   }
   return (
     <AuthLayout title="Welcome back">
-      <SocialButtons action="sign-in" />
+      <SocialButtons action="sign-in" redirect={destination} />
+      <AuthError message={socialAuthError(search.error)} />
       {search.info && (
         <p role="status" className="mt-4 text-sm text-muted-foreground">
           {search.info === "password-reset"
@@ -128,7 +130,10 @@ export default function SignInForm({ search }: { search: AuthSearch }) {
               Remember this device
             </Label>
           </div>
-          <a href="/forgot-password" className="text-primary hover:underline dark:text-foreground dark:underline dark:decoration-primary dark:underline-offset-4">
+          <a
+            href="/forgot-password"
+            className="text-primary hover:underline dark:text-foreground dark:underline dark:decoration-primary dark:underline-offset-4"
+          >
             Forgot password?
           </a>
         </div>

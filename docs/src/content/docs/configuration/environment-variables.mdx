@@ -12,7 +12,83 @@ The repository's `.env.example` file is the canonical configuration reference.
 | `DATABASE_URL`       | Outside demo mode   | PostgreSQL connection string.                                  |
 | `BETTER_AUTH_SECRET` | Outside demo mode   | Random secret used by Better Auth. Generate at least 32 bytes. |
 | `APP_URL`            | Yes for email links | Public application origin, including `http://` or `https://`.  |
-| `BETTER_AUTH_URL`    | Deployed auth       | Origin Better Auth uses for verification links.                |
+| `BETTER_AUTH_URL`    | Deployed auth       | Origin Better Auth uses for auth links and OAuth callbacks.     |
+
+## Google and GitHub sign-in
+
+Google is optional. Configure both Google values to enable its sign-in button. GitHub remains visible as **Coming soon** and cannot start a new connection from the UI.
+
+| Variable | Description |
+| --- | --- |
+| `GOOGLE_CLIENT_ID` | Google OAuth Web application client ID. |
+| `GOOGLE_CLIENT_SECRET` | Google OAuth client secret. |
+| `GITHUB_CLIENT_ID` | Reserved GitHub OAuth App client ID. Leave unset for this rollout. |
+| `GITHUB_CLIENT_SECRET` | Reserved GitHub OAuth client secret. Leave unset for this rollout. |
+
+Keep these values in the server environment. Never prefix a client secret with `VITE_` or commit it. Restart the application after changing credentials. A provider with only one value configured causes a startup error.
+
+### Configure Google
+
+1. Open [Google Auth Platform](https://console.cloud.google.com/auth/overview) in your Google Cloud project.
+2. Configure the app name, support email, homepage, privacy-policy URL, and authorized domain under Branding. Select an External audience for public customer access.
+3. Under Clients, create a Web application OAuth client. Register the exact redirect URI `<APP_URL>/api/auth/callback/google`. Leave Authorized JavaScript origins empty for the current server redirect flow. Leave the AI-powered agent option unchecked.
+4. Store the client ID and secret as `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` on the server. Set `APP_URL`, `BETTER_AUTH_URL`, and any `SPARKFEED_APP_ORIGIN` override to the same application origin.
+5. Test with an allowed account. Set the audience to production for public access and complete any requested branding verification.
+
+Google sign-in requests only `openid`, `email`, and `profile`. It does not request Gmail or Drive access. Use a separate Google project for testing and production.
+
+### Enable Google on Railway
+
+For Sparkfeed's hosted release, deploy `dev` to **SparkFeed-Application** at `beta.sparkfeed.dev` first. Leave both Google variables unset on beta. Verify email sign-in, the hidden Google button, and the GitHub **Coming soon** state before merging `dev` into `main`. **SparkFeed-Production** at `app.sparkfeed.dev` tracks `main`. Both services are currently inside the Railway environment named `production`, so check the service name and domain when editing variables.
+
+1. Select the production Railway environment and the customer application service whose custom domain is `app.sparkfeed.dev`.
+2. Confirm that the deployment source includes the Google provider, provider discovery, and connected-account UI. Adding variables does not upload local code changes.
+3. Open **Variables** and add `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` as service variables. Enter both values directly in Railway. Do not paste them into chat, issue trackers, or committed files.
+4. Save a recovery copy of the secret in your password manager. Use the secret variable's three-dot menu to select **Seal**. Railway provides sealed values to builds and deployments but does not reveal them in its UI or API. A sealed variable cannot be unsealed.
+5. Set these non-secret variables for production:
+
+```dotenv
+APP_URL=https://app.sparkfeed.dev
+BETTER_AUTH_URL=https://app.sparkfeed.dev
+SPARKFEED_APP_ORIGIN=https://app.sparkfeed.dev
+SPARKFEED_ENVIRONMENT=production
+VITE_DEMO_MODE=false
+```
+
+6. Leave `VITE_AUTH_URL` unset for the normal same-origin deployment. If an existing deployment sets it, confirm that it equals `https://app.sparkfeed.dev`.
+7. Keep the deployment's existing `BETTER_AUTH_SECRET` and `DATABASE_URL`. The auth secret also encrypts stored OAuth tokens. Do not rotate it while adding Google credentials.
+8. Review Railway's staged changes for the selected service. Deploy the intended code and variable changes together. Railway does not apply staged variables to the running deployment until deployment.
+9. Wait for a successful deployment and the `/api/health` check. The repository's Railway start command runs database migrations before starting the server. Check migration and startup logs if deployment fails.
+10. Open `https://app.sparkfeed.dev/sign-in` in a private browser window. Confirm that Google appears and GitHub remains **Coming soon**. Complete the checks below.
+
+The production Google client must contain `https://app.sparkfeed.dev/api/auth/callback/google` as an authorized redirect URI. The landing-page domain is not a JavaScript origin for this flow. Keep production credentials out of beta, local development, the documentation service, and the private staff dashboard.
+
+Hosted beta disables Google whenever `SPARKFEED_ENVIRONMENT=beta`, even if Google credentials are present. Leave its Google variables unset. For a separate development instance that needs Google testing, use an isolated Google project and client. Sealed Railway variables are not copied when duplicating an environment or service.
+
+See [Railway service and sealed variables](https://docs.railway.com/variables) and [Railway staged deployments](https://docs.railway.com/deployments/staged-changes).
+
+### Diagnose a failed Google sign-in
+
+- **Google button absent:** confirm that both Google variables exist on the running customer service and that its deployed code includes provider discovery. Demo mode hides Google.
+- **`redirect_uri_mismatch`:** compare Google's registered URI with the callback generated from the app origin. Scheme, host, port, and path must match. `SPARKFEED_APP_ORIGIN` takes precedence over `APP_URL` and `BETTER_AUTH_URL`.
+- **Invalid client:** check that the client ID and secret belong to the same Google Web application client. Update the secret directly in Railway and redeploy.
+- **Registration refused:** check the instance's registration policy. Google signup uses the same restrictions as email signup. Do not open registration solely to bypass a test failure.
+- **Account not linked:** verify the existing Sparkfeed email, sign in with the existing method, and connect Google under **Settings → Security**.
+
+To disable Google during incident recovery, remove both Google variables in one staged deployment. Removing only one causes startup validation to fail. Keep email sign-in available for existing password users. Users whose only method is Google need a verified recovery method before Google is disabled. Rolling back application code does not revoke access already granted in Google or remove linked accounts.
+
+### Check sign-in and account linking
+
+- A new provider identity creates a Sparkfeed user through the existing registration and workspace hooks. Instance registration restrictions still apply.
+- A provider-verified email matching an existing, verified Sparkfeed email links to that same user. Existing workspaces and data remain attached to the original user ID.
+- An unverified existing Sparkfeed email must be verified first. If automatic linking is refused, sign in with the existing method and connect the provider under Settings → Security.
+- A signed-in user can explicitly connect a provider with a different verified email. The connection does not change the Sparkfeed email or profile. It does not merge two existing Sparkfeed accounts.
+- A provider identity already linked to another Sparkfeed user cannot be moved through the connect button.
+- Disconnecting the last sign-in method is blocked. Social-only users can add an email password through the password reset flow.
+
+Test a new signup, a returning signup with a matching email, an explicit connection, and a disconnect before releasing. Confirm that the browser returns to Sparkfeed, that the original user's data is still present, and that the last method cannot be disconnected.
+
+See the [Better Auth account-linking documentation](https://better-auth.com/docs/concepts/users-accounts#account-linking) and [Google branding-verification guidance](https://developers.google.com/identity/verification/authentication-verification).
 
 ## Registration and workspaces
 

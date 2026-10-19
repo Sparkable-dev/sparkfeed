@@ -5,9 +5,11 @@ import { Button } from "@/components/ui/button"
 import { authClient } from "@/lib/auth-client"
 import { DEMO_MODE } from "@/lib/demo"
 import { requestPasswordReset } from "@/server/email-actions"
+import { ConnectedAccounts } from "@/components/settings/ConnectedAccounts"
 
 interface SecuritySettingsProps {
   session: any
+  oauthError?: string
 }
 
 interface AccountSession {
@@ -54,7 +56,10 @@ function lastActiveLabel(value: Date | string) {
   }).format(date)}`
 }
 
-export function SecuritySettings({ session }: SecuritySettingsProps) {
+export function SecuritySettings({
+  session,
+  oauthError,
+}: SecuritySettingsProps) {
   const user = session?.user
   const currentSessionToken = session?.session?.token
   const [isRequestingReset, setIsRequestingReset] = useState(false)
@@ -124,6 +129,7 @@ export function SecuritySettings({ session }: SecuritySettingsProps) {
   return (
     <div className="animate-in space-y-7 duration-300 fade-in">
       <h1 className="sr-only">Security</h1>
+      <ConnectedAccounts userId={user?.id} oauthError={oauthError} />
 
       <section className="overflow-hidden rounded-xl border bg-card">
         <div className="flex flex-col gap-4 border-b px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-6">

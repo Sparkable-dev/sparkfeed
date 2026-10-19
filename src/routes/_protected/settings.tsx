@@ -21,7 +21,10 @@ export const Route = createFileRoute("/_protected/settings")({
     ].includes(requested)
       ? (requested as SettingsSection | "billing")
       : "profile"
-    return { tab }
+    return {
+      tab,
+      error: typeof search.error === "string" ? search.error : undefined,
+    }
   },
   beforeLoad: ({ search }) => {
     if (search.tab === "billing") {
@@ -40,7 +43,7 @@ export const Route = createFileRoute("/_protected/settings")({
 function SettingsPage() {
   const data = Route.useLoaderData()
   const { data: session, isPending } = useDemoAwareSession()
-  const { tab } = Route.useSearch()
+  const { tab, error } = Route.useSearch()
   const active = tab === "billing" ? "workspaces" : tab
 
   return (
@@ -75,7 +78,7 @@ function SettingsPage() {
                 <AccountSettings session={session} />
               ) : null}
               {active === "security" ? (
-                <SecuritySettings session={session} />
+                <SecuritySettings session={session} oauthError={error} />
               ) : null}
               {active === "workspaces" ? <WorkspaceHub /> : null}
             </>

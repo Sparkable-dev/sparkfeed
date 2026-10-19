@@ -3,6 +3,7 @@ import type { FormEvent } from "react"
 import type { AuthSearch } from "@/lib/auth-redirect"
 import { useAuthValidation } from "@/components/auth/use-auth-validation"
 import { authClient } from "@/lib/auth-client"
+import { socialAuthError } from "@/lib/social-auth"
 import {
   authHref,
   safeLoginRedirect,
@@ -71,7 +72,8 @@ export default function SignUpForm({ search }: { search: AuthSearch }) {
   }
   return (
     <AuthLayout title="Create your account">
-      <SocialButtons action="sign-up" />
+      <SocialButtons action="sign-up" redirect={destination} />
+      <AuthError message={socialAuthError(search.error)} />
       <form
         noValidate
         onSubmit={submit}

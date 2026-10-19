@@ -51,6 +51,7 @@ For Sparkfeed's hosted release, deploy `dev` to **SparkFeed-Application** at `be
 APP_URL=https://app.sparkfeed.dev
 BETTER_AUTH_URL=https://app.sparkfeed.dev
 SPARKFEED_APP_ORIGIN=https://app.sparkfeed.dev
+SPARKFEED_ENVIRONMENT=production
 VITE_DEMO_MODE=false
 ```
 
@@ -62,7 +63,7 @@ VITE_DEMO_MODE=false
 
 The production Google client must contain `https://app.sparkfeed.dev/api/auth/callback/google` as an authorized redirect URI. The landing-page domain is not a JavaScript origin for this flow. Keep production credentials out of beta, local development, the documentation service, and the private staff dashboard.
 
-Repeat the setup with separate Google projects and clients for beta and development. Match each environment's origin and callback. Sealed Railway variables are not copied when duplicating an environment or service.
+Hosted beta disables Google whenever `SPARKFEED_ENVIRONMENT=beta`, even if Google credentials are present. Leave its Google variables unset. For a separate development instance that needs Google testing, use an isolated Google project and client. Sealed Railway variables are not copied when duplicating an environment or service.
 
 See [Railway service and sealed variables](https://docs.railway.com/variables) and [Railway staged deployments](https://docs.railway.com/deployments/staged-changes).
 

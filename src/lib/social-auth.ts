@@ -26,6 +26,8 @@ export function resolveSocialProviders(
     Record<SocialProvider, { clientId: string; clientSecret: string }>
   > = {}
   for (const provider of socialProviders) {
+    // Hosted beta must never expose Google authentication, even if misconfigured.
+    if (provider === "google" && env.SPARKFEED_ENVIRONMENT === "beta") continue
     const prefix = provider.toUpperCase()
     const clientId = env[`${prefix}_CLIENT_ID`]?.trim()
     const clientSecret = env[`${prefix}_CLIENT_SECRET`]?.trim()

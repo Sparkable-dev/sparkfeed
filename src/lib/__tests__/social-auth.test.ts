@@ -5,6 +5,11 @@ import { resolveSocialProviders, socialAccountOptions } from "../social-auth"
 afterEach(() => vi.restoreAllMocks())
 
 describe("social provider configuration", () => {
+  it("keeps Google disabled on beta even when credentials are present", () => {
+    const credentials = { GOOGLE_CLIENT_ID: "id", GOOGLE_CLIENT_SECRET: "secret" }
+    expect(resolveSocialProviders({ ...credentials, SPARKFEED_ENVIRONMENT: "beta" })).toEqual({})
+    expect(resolveSocialProviders({ ...credentials, SPARKFEED_ENVIRONMENT: "production" })).toEqual({ google: { clientId: "id", clientSecret: "secret" } })
+  })
   it("does not enable an unconfigured provider and rejects partial credentials", () => {
     expect(resolveSocialProviders({})).toEqual({})
     expect(() => resolveSocialProviders({ GOOGLE_CLIENT_ID: "id" })).toThrow(

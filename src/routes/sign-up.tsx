@@ -1,6 +1,7 @@
 import { createFileRoute, redirect } from "@tanstack/react-router"
 import SignUpForm from "@/components/shadcn-space/blocks/register-02/register"
 import { authSearch } from "@/lib/auth-redirect"
+import { socialProvidersQueryOptions } from "@/hooks/use-social-providers"
 
 export const Route = createFileRoute("/sign-up")({
   validateSearch: authSearch,
@@ -20,6 +21,8 @@ export const Route = createFileRoute("/sign-up")({
         },
       })
   },
+  loader: ({ context }) =>
+    context.queryClient.ensureQueryData(socialProvidersQueryOptions),
   component: SignUpPage,
 })
 function SignUpPage() {

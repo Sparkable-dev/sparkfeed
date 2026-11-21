@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react"
 import { toast } from "sonner"
 import { BulkTab } from "./BulkTab"
 import { DestinationField } from "./DestinationField"
+import { OpmlTab } from "./OpmlTab"
 import { SiteTab } from "./SiteTab"
 import type { BulkPhase } from "./BulkTab"
 import type { SitePhase } from "./SiteTab"
@@ -26,9 +27,9 @@ import { feedUrlKey } from "@/lib/validation"
 import { DEMO_MODE } from "@/lib/demo"
 
 /**
- * Add sources: one site, or a pasted list, into one destination.
+ * Add sources from a website, a pasted list, or an OPML file.
  *
- * Selection is shared across both tabs on purpose. It means "paste a site, then
+ * Website and paste-list selections are shared. It means "paste a site, then
  * paste a list, then put all of it in one new folder" works, and it means the
  * footer count is the truth rather than the truth-for-this-tab.
  *
@@ -344,6 +345,9 @@ export function AddFeedDialog({
             <TabsTrigger value="bulk" className="px-1 text-sm">
               Paste a list
             </TabsTrigger>
+            <TabsTrigger value="opml" className="px-1 text-sm">
+              OPML
+            </TabsTrigger>
           </TabsList>
 
           {/*
@@ -387,51 +391,58 @@ export function AddFeedDialog({
                 onCheck={() => void runBulkCheck()}
               />
             </TabsContent>
+            <TabsContent value="opml" keepMounted>
+              <OpmlTab folderId={options.folderId} onAdded={onAdded} />
+            </TabsContent>
           </div>
         </Tabs>
 
-        <div className="shrink-0 border-t border-border dark:border-white/[0.07] px-5 py-3">
-          <DestinationField
-            value={destination}
-            onChange={setDestination}
-            folders={folders}
-            disabled={submitting}
-            suggestion={siteName}
-          />
-        </div>
+        {tab !== "opml" && (
+          <>
+            <div className="shrink-0 border-t border-border dark:border-white/[0.07] px-5 py-3">
+              <DestinationField
+                value={destination}
+                onChange={setDestination}
+                folders={folders}
+                disabled={submitting}
+                suggestion={siteName}
+              />
+            </div>
 
-        <DialogFooter className="shrink-0 border-t border-border dark:border-white/[0.07] px-5 py-3">
-          <Button
-            variant="ghost"
-            onClick={() => onOpenChange(false)}
-            className="text-sm text-muted-foreground dark:text-zinc-400 hover:text-foreground dark:hover:text-white"
-          >
-            Cancel
-          </Button>
-          <Button
-            id="add-feed-save-btn"
-            disabled={busy || picks.length === 0 || !destinationReady || DEMO_MODE}
-            onClick={() => void handleAdd()}
-            className="gap-1.5 bg-primary dark:bg-white text-sm font-semibold text-primary-foreground dark:text-black hover:bg-primary/90 dark:hover:bg-zinc-200"
-          >
-            {submitting && <Spinner className="size-3.5" />}
-            {/*
-              "sources" once a watched page is in the mix, because calling one a
-              feed is the thing this whole flow is careful not to do.
-            */}
-            {picks.length === 0
-              ? "Add"
-              : `Add ${picks.length} ${
-                  picks.some((p) => p.kind === "page")
-                    ? picks.length === 1
-                      ? "source"
-                      : "sources"
-                    : picks.length === 1
-                      ? "feed"
-                      : "feeds"
-                }`}
-          </Button>
-        </DialogFooter>
+            <DialogFooter className="shrink-0 border-t border-border dark:border-white/[0.07] px-5 py-3">
+              <Button
+                variant="ghost"
+                onClick={() => onOpenChange(false)}
+                className="text-sm text-muted-foreground dark:text-zinc-400 hover:text-foreground dark:hover:text-white"
+              >
+                Cancel
+              </Button>
+              <Button
+                id="add-feed-save-btn"
+                disabled={busy || picks.length === 0 || !destinationReady || DEMO_MODE}
+                onClick={() => void handleAdd()}
+                className="gap-1.5 bg-primary dark:bg-white text-sm font-semibold text-primary-foreground dark:text-black hover:bg-primary/90 dark:hover:bg-zinc-200"
+              >
+                {submitting && <Spinner className="size-3.5" />}
+                {/*
+                  "sources" once a watched page is in the mix, because calling one a
+                  feed is the thing this whole flow is careful not to do.
+                */}
+                {picks.length === 0
+                  ? "Add"
+                  : `Add ${picks.length} ${
+                      picks.some((p) => p.kind === "page")
+                        ? picks.length === 1
+                          ? "source"
+                          : "sources"
+                        : picks.length === 1
+                          ? "feed"
+                          : "feeds"
+                    }`}
+              </Button>
+            </DialogFooter>
+          </>
+        )}
       </DialogContent>
     </Dialog>
   )

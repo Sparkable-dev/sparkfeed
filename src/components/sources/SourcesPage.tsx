@@ -34,6 +34,8 @@ export interface SourcesPageProps {
   openFolders: Set<string>
   onToggleFolder: (id: string) => void
   onAddFeed: (folderId: string | null) => void
+  onImportOpml: (folderId: string) => void
+  onExportOpml: (folderId: string) => void
   /**
    * The search box lives in the top bar, so its state belongs to the route that
    * builds that bar rather than to this component.
@@ -226,6 +228,8 @@ export function SourcesPage(props: SourcesPageProps) {
                       <FolderMenu
                         folder={folder}
                         onAddFeed={() => props.onAddFeed(folder.id)}
+                        onImportOpml={() => props.onImportOpml(folder.id)}
+                        onExportOpml={() => props.onExportOpml(folder.id)}
                         onRename={() => props.onRenameFolder(folder)}
                         onShare={() => props.onShareFolder(folder)}
                         onManage={() => props.onManageFolder(folder)}

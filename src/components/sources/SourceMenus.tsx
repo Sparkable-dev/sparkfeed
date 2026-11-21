@@ -1,4 +1,5 @@
 import {
+  Download,
   ExternalLink,
   FolderInput,
   MoreHorizontal,
@@ -9,6 +10,7 @@ import {
   Share2,
   SlidersHorizontal,
   Trash2,
+  Upload,
 } from "lucide-react"
 import type { TreeFeed, TreeFolder } from "./source-tree"
 import {
@@ -51,6 +53,8 @@ function folderFeedUrl(href: string): string {
 export function FolderMenu({
   folder,
   onAddFeed,
+  onImportOpml,
+  onExportOpml,
   onRename,
   onShare,
   onManage,
@@ -59,6 +63,8 @@ export function FolderMenu({
 }: {
   folder: TreeFolder
   onAddFeed: () => void
+  onImportOpml: () => void
+  onExportOpml: () => void
   onRename: () => void
   onShare: () => void
   onManage: () => void
@@ -74,6 +80,14 @@ export function FolderMenu({
         <DropdownMenuItem onClick={onAddFeed} className={ITEM}>
           <Rss className="size-3.5 text-muted-foreground dark:text-zinc-500" />
           Add feed to this folder
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={onImportOpml} className={ITEM}>
+          <Upload className="size-3.5 text-muted-foreground dark:text-zinc-500" />
+          Import OPML into this folder
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={onExportOpml} className={ITEM}>
+          <Download className="size-3.5 text-muted-foreground dark:text-zinc-500" />
+          Export this folder as OPML
         </DropdownMenuItem>
         <DropdownMenuItem onClick={onRefresh} className={ITEM}>
           <RefreshCw className="size-3.5 text-muted-foreground dark:text-zinc-500" />

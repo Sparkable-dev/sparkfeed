@@ -147,6 +147,22 @@ export interface InsertedFeed {
   name: string
 }
 
+export function buildFeedRows(
+  workspaceId: string | null,
+  items: Array<NewFeed & { folderId: string | null }>,
+) {
+  return items.map(({ folderId, ...item }) => ({
+    id: randomUUID(),
+    name: item.name,
+    url: item.url,
+    kind: item.kind ?? "rss",
+    folderId,
+    workspaceId,
+    includeKeywords: JSON.stringify(item.includeKeywords ?? []),
+    excludeKeywords: JSON.stringify(item.excludeKeywords ?? []),
+  }))
+}
+
 /**
  * Writes the rows and hands the fetching to the queue.
  *
@@ -165,16 +181,7 @@ export async function insertFeedRows(
 ): Promise<Array<InsertedFeed>> {
   if (items.length === 0) return []
 
-  const rows = items.map((item) => ({
-    id: randomUUID(),
-    name: item.name,
-    url: item.url,
-    kind: item.kind ?? "rss",
-    folderId,
-    workspaceId,
-    includeKeywords: JSON.stringify(item.includeKeywords ?? []),
-    excludeKeywords: JSON.stringify(item.excludeKeywords ?? []),
-  }))
+  const rows = buildFeedRows(workspaceId, items.map((item) => ({ ...item, folderId })))
 
   await withNoRssSourceCapacity(workspaceId, items.filter((item) => item.kind === "page").length, async (tx) => { await tx.insert(feeds).values(rows) })
   enqueueIngest(rows.map((r) => ({ feedId: r.id, url: r.url, kind: r.kind })))

@@ -134,6 +134,7 @@
     "fast-xml-parser": "^5.11.3",
     "minimatch": "^11.0.1",
     "zod": "4.6.7",
-    "vite": "7.3.8"
+    "vite": "7.3.8",
+    "eslint-plugin-import-x": "4.18.1"
   }
 }

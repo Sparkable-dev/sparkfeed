@@ -2032,15 +2032,11 @@
                 "type": "object",
                 "properties": {
                   "folder_id": {
-                    "anyOf": [
-                      {
-                        "type": "string"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ],
-                    "description": "Destination folder, or null for top level."
+                    "description": "Destination folder, or null for top level.",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
                   }
                 },
                 "required": [

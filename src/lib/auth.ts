@@ -112,7 +112,7 @@ export const auth = betterAuth({
           // Keep the issuer identities used by existing PostgreSQL accounts.
           const issuers: Record<string, string> = {
             credential: "local:credential",
-            github: "oauth:github",
+            github: "local:oauth:github",
             google: "https://accounts.google.com",
           }
           const issuer = issuers[account.providerId]

@@ -58,7 +58,12 @@ export const auth = betterAuth({
   appName: "Sparkfeed",
   baseURL: authConfig.configuredOrigin,
   socialProviders: resolveSocialProviders(),
-  account: socialAccountOptions,
+  account: {
+    ...socialAccountOptions,
+    additionalFields: {
+      issuer: { type: "string", required: true, input: false, returned: false },
+    },
+  },
   trustedOrigins: authConfig.trustedOrigins,
   advanced: {
     cookiePrefix: authConfig.cookiePrefix,
@@ -101,6 +106,22 @@ export const auth = betterAuth({
     },
   },
   databaseHooks: {
+    account: {
+      create: {
+        before: async (account) => {
+          // Keep the issuer identities used by existing PostgreSQL accounts.
+          const issuers: Record<string, string> = {
+            credential: "local:credential",
+            github: "oauth:github",
+            google: "https://accounts.google.com",
+          }
+          const issuer = issuers[account.providerId]
+          if (!Object.hasOwn(issuers, account.providerId))
+            throw new Error("Unsupported account provider.")
+          return { data: { ...account, issuer } }
+        },
+      },
+    },
     user: {
       create: {
         before: async (newUser) => {

@@ -9,8 +9,7 @@ import { feedUrlKey, normalizeFeedUrl } from "./validation"
  * All of those should work, because the alternative is a validation error that
  * blames the user for the shape of their clipboard.
  *
- * Pure and client-safe on purpose: this runs as you type, and it is also the
- * exact substrate an OPML import would sit on later.
+ * Pure and client-safe on purpose: this runs as you type.
  */
 
 /** Bullets, list markers and quotes people paste around a URL. */

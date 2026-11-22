@@ -7,6 +7,15 @@ Use OPML export for a portable list of subscriptions. Use a PostgreSQL backup to
 
 Back up PostgreSQL before every application upgrade and before changing migrations.
 
+## Move subscriptions with OPML
+
+Open **Sources** in the workspace you want to move. Select **Import / export OPML**.
+
+- To import, choose an OPML file up to 5 MB and select **Preview import**. Review the skipped entries and choose a destination. You can keep the folders from the file, create a folder, or choose an existing folder. Select **Confirm import** to add the new subscriptions. Sparkfeed keeps existing subscriptions in place and loads articles in the background.
+- To export, select **Export all subscriptions** to download `sparkfeed-subscriptions.opml`. The file contains RSS subscription URLs, names, and folders. Use the PostgreSQL backup below to preserve website monitors, articles, and reading state.
+
+Sparkfeed shows imported subfolders as flat names such as `News / Local`. Open a folder's menu on **Sources** to import into that folder or export it on its own. Demo mode lets you export sample subscriptions. Import requires permission to edit sources in the active workspace.
+
 ## Compose backup
 
 ```bash

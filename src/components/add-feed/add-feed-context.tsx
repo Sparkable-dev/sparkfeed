@@ -26,7 +26,7 @@ import { listFolderOptions } from "@/server/sources"
  * palette commands, and everything else just calls `openAddFeed`.
  */
 
-export type AddFeedTab = "site" | "bulk"
+export type AddFeedTab = "site" | "bulk" | "opml"
 
 export interface AddFeedOptions {
   /** Pre-fills the address field. Used by the Discover hero and chat cards. */

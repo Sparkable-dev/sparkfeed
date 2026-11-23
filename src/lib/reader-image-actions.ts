@@ -97,7 +97,7 @@ function filenameFor(image: HTMLImageElement, url: string, blob: Blob) {
     // Keep the descriptive fallback below for unusual image URLs.
   }
   base = (base || "article-image")
-    .replace(/[\\/:*?"<>|\u0000-\u001f]/g, "-")
+    .replace(/[\\/:*?"<>|\p{Cc}]/gu, "-")
     .replace(/\s+/g, " ")
     .trim()
     .slice(0, 100)
@@ -108,7 +108,7 @@ function filenameFor(image: HTMLImageElement, url: string, blob: Blob) {
 function announce(
   status: HTMLElement,
   message: string,
-  imageUrl: string,
+  url: string,
   success = false
 ) {
   status.textContent = message
@@ -118,7 +118,7 @@ function announce(
     toast.error(message, {
       action: {
         label: actionLabels.open,
-        onClick: () => window.open(imageUrl, "_blank", "noopener,noreferrer"),
+        onClick: () => window.open(url, "_blank", "noopener,noreferrer"),
       },
     })
   }

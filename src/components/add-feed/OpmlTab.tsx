@@ -1,7 +1,32 @@
-import { useId, useState } from "react"
-import { Download, Upload } from "lucide-react"
+import { useRef, useState } from "react"
+import {
+  ArrowRight,
+  ChevronDown,
+  Download,
+  FileText,
+  Upload,
+} from "lucide-react"
+import { toast } from "sonner"
 import type { OpmlDestination } from "@/lib/opml"
 import type { importOpml, previewOpml } from "@/server/opml"
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { Badge } from "@/components/ui/badge"
 import { useWorkspaceScope } from "@/components/WorkspaceDataProvider"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -21,17 +46,80 @@ type ImportSummary = Extract<
 
 function SkippedEntries({ skipped }: { skipped: Preview["skipped"] }) {
   if (skipped.length === 0) return null
+  const groups = new Map<string, Array<string>>()
+  for (const { name, reason } of skipped) {
+    const names = groups.get(reason)
+    if (names) names.push(name)
+    else groups.set(reason, [name])
+  }
   return (
-    <details>
-      <summary className="cursor-pointer font-medium">Skipped entries</summary>
-      <ul className="mt-2 max-h-36 list-disc space-y-1 overflow-y-auto pl-5 text-muted-foreground">
-        {skipped.map(({ name, reason }, index) => (
-          <li key={index} className="break-words">
-            {name} · {reason}
-          </li>
-        ))}
-      </ul>
-    </details>
+    <Collapsible>
+      <CollapsibleTrigger
+        render={
+          <Button
+            variant="ghost"
+            size="sm"
+            className="group w-full justify-between px-2"
+          />
+        }
+      >
+        Skipped entries{" "}
+        <ChevronDown className="size-4 group-data-[panel-open]:rotate-180" />
+      </CollapsibleTrigger>
+      <CollapsibleContent>
+        <div className="max-h-40 space-y-3 overflow-auto rounded-md bg-muted/50 p-3">
+          {[...groups].map(([reason, names]) => (
+            <section key={reason}>
+              <p className="mb-1 text-xs font-medium text-muted-foreground">
+                {reason}
+              </p>
+              <ul>
+                {names.map((name, i) => (
+                  <li key={i} className="py-0.5 break-words">
+                    {name}
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ))}
+        </div>
+      </CollapsibleContent>
+    </Collapsible>
+  )
+}
+
+export function OpmlExportButton() {
+  const scope = useWorkspaceScope()
+  const [busy, setBusy] = useState(false)
+  async function download() {
+    if (!scope) return
+    setBusy(true)
+    try {
+      const error = await downloadOpml(scope.workspaceId)
+      if (error) toast.error(error)
+    } catch {
+      toast.error("Could not export this workspace's subscriptions. Try again.")
+    } finally {
+      setBusy(false)
+    }
+  }
+  return (
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            aria-label="Export all subscriptions"
+            disabled={!scope || busy}
+            onClick={() => void download()}
+          />
+        }
+      >
+        {busy ? <Spinner /> : <Download />}
+      </TooltipTrigger>
+      <TooltipContent>Export all subscriptions as OPML</TooltipContent>
+    </Tooltip>
   )
 }
 
@@ -43,7 +131,8 @@ export function OpmlTab({
   folderId?: string | null
 }) {
   const scope = useWorkspaceScope()
-  const fileId = useId()
+  const input = useRef<HTMLInputElement>(null)
+  const [dragging, setDragging] = useState(false)
   const [file, setFile] = useState<File | null>(null)
   const [preview, setPreview] = useState<{ xml: string; data: Preview } | null>(
     null
@@ -51,7 +140,7 @@ export function OpmlTab({
   const [mode, setMode] = useState<OpmlDestination["kind"]>("preserve")
   const [folderName, setFolderName] = useState("")
   const [existingId, setExistingId] = useState("")
-  const [busy, setBusy] = useState<"preview" | "import" | "export" | null>(null)
+  const [busy, setBusy] = useState<"preview" | "import" | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [summary, setSummary] = useState<ImportSummary | null>(null)
 
@@ -142,17 +231,19 @@ export function OpmlTab({
     }
   }
 
-  async function download() {
-    if (!scope) return
-    setError(null)
-    setBusy("export")
-    try {
-      setError(await downloadOpml(scope.workspaceId))
-    } catch {
-      setError("Could not export this workspace's subscriptions. Try again.")
-    } finally {
-      setBusy(null)
-    }
+  function pick(files: FileList | null) {
+    if (!files?.length || busy || DEMO_MODE) return
+    setPreview(null)
+    setSummary(null)
+    const next = files[0]
+    const issue =
+      files.length > 1
+        ? "Choose one OPML file at a time."
+        : next.size > MAX_OPML_BYTES
+          ? "Choose an OPML file up to 5 MB."
+          : null
+    setError(issue)
+    setFile(issue ? null : next)
   }
 
   const plan = preview?.data
@@ -164,66 +255,140 @@ export function OpmlTab({
       ? plan.newFeeds > 0 || newFileFolders > 0
       : plan.newFeeds > 0 &&
         (mode === "new" ? !!folderName.trim() : !!existingId))
-  const selectClass =
-    "block h-8 w-full rounded-lg border border-input bg-card px-2 text-sm focus-visible:ring-2 focus-visible:ring-ring"
-
+  const modes = {
+    preserve: "Keep folders from the file",
+    new: "Create a new folder",
+    existing: "Choose an existing folder",
+  }
   return (
-    <div className="space-y-4 pb-3">
-      <div className="space-y-2">
-        <label htmlFor={fileId} className="block font-medium">
-          OPML file
-        </label>
-        <Input
-          id={fileId}
-          type="file"
-          accept=".opml,.xml,text/x-opml,text/xml,application/xml"
-          disabled={busy !== null || DEMO_MODE}
-          onChange={(event) => {
-            setFile(event.currentTarget.files?.[0] ?? null)
-            setPreview(null)
-            setSummary(null)
-            setError(null)
-          }}
-        />
-        {!plan && (
+    <div className="space-y-4 pb-4">
+      <Input
+        ref={input}
+        type="file"
+        className="hidden"
+        aria-label="OPML file"
+        accept=".opml,.xml,text/x-opml,text/xml,application/xml"
+        disabled={!!busy || DEMO_MODE}
+        onChange={(e) => {
+          pick(e.currentTarget.files)
+          e.currentTarget.value = ""
+        }}
+      />
+      <div
+        onDragOver={(e) => {
+          e.preventDefault()
+          setDragging(!busy && !DEMO_MODE)
+        }}
+        onDragLeave={(e) => {
+          if (!e.currentTarget.contains(e.relatedTarget as Node | null))
+            setDragging(false)
+        }}
+        onDrop={(e) => {
+          e.preventDefault()
+          setDragging(false)
+          pick(e.dataTransfer.files)
+        }}
+        className={dragging ? "rounded-lg ring-2 ring-primary" : "rounded-lg"}
+      >
+        {!file ? (
           <Button
             variant="outline"
-            disabled={!scope || !file || busy !== null || DEMO_MODE}
-            onClick={() => void checkFile()}
+            disabled={!!busy || DEMO_MODE}
+            onClick={() => input.current?.click()}
+            className="h-auto w-full flex-col gap-2 border-dashed bg-muted/20 py-6"
           >
-            {busy === "preview" && <Spinner />}
-            {busy === "preview" ? "Checking file…" : "Preview import"}
+            <span className="grid size-10 place-items-center rounded-full border">
+              <Upload className="size-5" />
+            </span>
+            <span>Drop an OPML file here</span>
+            <span className="text-xs font-normal text-muted-foreground">
+              OPML or XML, up to 5 MB
+            </span>
+            <span className="mt-1 underline underline-offset-4">
+              Browse files
+            </span>
           </Button>
+        ) : (
+          <div className="flex min-w-0 flex-wrap items-center gap-2 rounded-lg border p-2">
+            <Button
+              variant="ghost"
+              className="min-w-0 flex-1 justify-start"
+              disabled={!!busy || DEMO_MODE}
+              onClick={() => input.current?.click()}
+              aria-label={"Change file: " + file.name}
+              title={"Change file: " + file.name}
+            >
+              <FileText />
+              <span className="truncate">{file.name}</span>
+            </Button>
+            {!plan && (
+              <Button
+                size="sm"
+                disabled={!scope || !!busy || DEMO_MODE}
+                onClick={() => void checkFile()}
+              >
+                {busy === "preview" ? (
+                  <>
+                    <Spinner />
+                    Checking file…
+                  </>
+                ) : (
+                  <>
+                    Preview import
+                    <ArrowRight />
+                  </>
+                )}
+              </Button>
+            )}
+          </div>
         )}
       </div>
 
       {plan && (
         <div className="space-y-3 rounded-lg border p-3">
-          <p role="status">
-            {plan.newFeeds} new {plan.newFeeds === 1 ? "feed" : "feeds"},{" "}
-            {plan.skipped.length} skipped.
-          </p>
+          <div role="status" className="flex flex-wrap gap-2">
+            <Badge variant="secondary">
+              {plan.newFeeds} new {plan.newFeeds === 1 ? "feed" : "feeds"}
+            </Badge>
+            <Badge variant="outline">{plan.skipped.length} skipped</Badge>
+          </div>
           <SkippedEntries skipped={plan.skipped} />
           {(plan.newFeeds > 0 || newFileFolders > 0) && (
             <fieldset disabled={busy !== null} className="space-y-2">
               <legend className="font-medium">Import destination</legend>
-              <select
-                aria-label="Import destination"
-                className={selectClass}
+              <Select
+                items={modes}
                 value={mode}
-                onChange={(event) => {
-                  setMode(event.target.value as OpmlDestination["kind"])
-                  setError(null)
+                disabled={!!busy}
+                onValueChange={(next) => {
+                  if (next) {
+                    setMode(next)
+                    setError(null)
+                  }
                 }}
               >
-                {plan.hasFolders && (
-                  <option value="preserve">Keep folders from the file</option>
-                )}
-                <option value="new">Create a new folder</option>
-                {plan.workspaceFolders.length > 0 && (
-                  <option value="existing">Choose an existing folder</option>
-                )}
-              </select>
+                <SelectTrigger
+                  aria-label="Import destination"
+                  className="w-full"
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {(Object.keys(modes) as Array<OpmlDestination["kind"]>)
+                    .filter(
+                      (k) =>
+                        k === "new" ||
+                        (k === "preserve"
+                          ? plan.hasFolders
+                          : plan.workspaceFolders.length > 0)
+                    )
+                    .map((k) => (
+                      <SelectItem key={k} value={k}>
+                        {modes[k]}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
               {mode === "new" && (
                 <Input
                   aria-label="New folder name"
@@ -233,21 +398,28 @@ export function OpmlTab({
                 />
               )}
               {mode === "existing" && (
-                <select
-                  aria-label="Existing folder"
-                  className={selectClass}
-                  value={existingId}
-                  onChange={(event) => setExistingId(event.target.value)}
+                <Select
+                  items={Object.fromEntries(
+                    plan.workspaceFolders.map((f) => [f.id, f.name])
+                  )}
+                  value={existingId || null}
+                  disabled={!!busy}
+                  onValueChange={(id) => setExistingId(id ?? "")}
                 >
-                  <option value="" disabled>
-                    Select a folder
-                  </option>
-                  {plan.workspaceFolders.map(({ id, name }) => (
-                    <option key={id} value={id}>
-                      {name}
-                    </option>
-                  ))}
-                </select>
+                  <SelectTrigger
+                    aria-label="Existing folder"
+                    className="w-full"
+                  >
+                    <SelectValue placeholder="Select a folder" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {plan.workspaceFolders.map((f) => (
+                      <SelectItem key={f.id} value={f.id}>
+                        {f.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               )}
               {mode === "preserve" && (
                 <>
@@ -296,16 +468,6 @@ export function OpmlTab({
         </div>
       )}
 
-      <div className="border-t pt-4">
-        <Button
-          variant="outline"
-          disabled={!scope || busy !== null}
-          onClick={() => void download()}
-        >
-          {busy === "export" ? <Spinner /> : <Download aria-hidden="true" />}
-          {busy === "export" ? "Exporting…" : "Export all subscriptions"}
-        </Button>
-      </div>
       {error && (
         <p role="alert" className="text-sm text-destructive">
           {error}

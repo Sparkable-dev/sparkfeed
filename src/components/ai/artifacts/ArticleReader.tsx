@@ -4,6 +4,8 @@ import type { ArticleArtifact } from "./artifact-context"
 import { getArticlePreview } from "@/server/rss"
 import { readExternalUrl } from "@/server/reader"
 import { ReaderControls } from "@/components/ReaderControls"
+import { handleReaderMediaError } from "@/lib/reader-media"
+import { enhanceReaderImages } from "@/lib/reader-image-actions"
 import { useReaderPrefs } from "@/store/readerPrefs"
 import { cn } from "@/lib/utils"
 
@@ -112,9 +114,15 @@ export function ArticleReader({
   loading: boolean
   error: string | null
 }) {
+  const proseRef = React.useRef<HTMLDivElement | null>(null)
   const fontScale = useReaderPrefs((s) => s.fontScale)
   const readerWidth = useReaderPrefs((s) => s.width)
   const readerTheme = useReaderPrefs((s) => s.theme)
+
+  React.useEffect(() => {
+    const element = proseRef.current
+    return element ? enhanceReaderImages(element) : undefined
+  }, [content?.readerHtml, content?.url])
 
   if (loading) {
     return (
@@ -184,8 +192,12 @@ export function ArticleReader({
           is the same sanitizer and the same call site the bottom sheet uses.
         */}
         <div
+          ref={proseRef}
           className="reader-prose max-w-none"
           dangerouslySetInnerHTML={{ __html: content.readerHtml }}
+          onErrorCapture={(event) =>
+            handleReaderMediaError(event.target, content.url)
+          }
         />
       </div>
     </div>

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react"
 import { Link } from "@tanstack/react-router"
-import { ArrowLeft, ExternalLink, Layers } from "lucide-react"
+import { ArrowLeft, Layers } from "lucide-react"
+import { SourceTitle } from "./SourceTitle"
 import { SourceIcon } from "./SourceIcon"
 import { AddCatalogueButton } from "./AddCatalogueButton"
 import { CategoryRow } from "./CategoryRow"
@@ -20,15 +21,6 @@ import { normalizeFeedUrl } from "@/lib/validation"
  * behind a dialog. This page inverts that — every source is expanded, so you can
  * judge a whole category in one scroll without opening anything.
  */
-
-function domainOf(url: string | null): string {
-  if (!url) return ""
-  try {
-    return new URL(url).hostname.replace(/^www\./, "")
-  } catch {
-    return ""
-  }
-}
 
 /**
  * Fetches only once the row has been near the viewport.
@@ -109,7 +101,7 @@ function SourceBlock({
         <div className="flex min-w-0 flex-1 flex-col gap-1">
           <div className="flex min-w-0 flex-wrap items-center gap-2">
             <h3 className="truncate text-base font-bold tracking-tight text-foreground dark:text-zinc-50">
-              {card.name}
+              <SourceTitle name={card.name} url={siteUrl} />
             </h3>
             {isCollection && (
               <span className="inline-flex items-center gap-1 rounded-md border border-border dark:border-white/10 bg-muted dark:bg-white/5 px-1.5 py-0.5 text-[10px] font-semibold tracking-wide text-foreground dark:text-zinc-300 uppercase">
@@ -117,31 +109,17 @@ function SourceBlock({
                 {card.feeds.length} {card.feeds.length === 1 ? "feed" : "feeds"}
               </span>
             )}
-            {siteUrl && (
-              <a
-                href={siteUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 text-[11px] text-muted-foreground dark:text-zinc-500 transition-colors hover:text-foreground dark:hover:text-zinc-200"
-              >
-                <ExternalLink className="size-2.5" />
-                {domainOf(siteUrl)}
-              </a>
-            )}
           </div>
+          {!isCollection && (
+            <span className="text-[11px] text-muted-foreground dark:text-zinc-500">
+              {card.sourceKind === "page" ? "Via website" : "Via RSS"}
+            </span>
+          )}
           <p className="line-clamp-2 text-xs leading-relaxed text-muted-foreground dark:text-zinc-400">
             {card.description}
           </p>
         </div>
 
-        {!isCollection && card.sourceKind === "page" && (
-          <span
-            title="Articles collected from this website. No native feed used."
-            className="self-center rounded border border-border dark:border-white/10 px-2 py-1 text-[11px] text-muted-foreground dark:text-zinc-400"
-          >
-            Website
-          </span>
-        )}
         <AddCatalogueButton
           kind={card.kind}
           slug={card.slug}

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react"
 import { toast } from "sonner"
 import { BulkTab } from "./BulkTab"
 import { DestinationField } from "./DestinationField"
-import { OpmlTab } from "./OpmlTab"
+import { OpmlExportButton, OpmlTab } from "./OpmlTab"
 import { SiteTab } from "./SiteTab"
 import type { BulkPhase } from "./BulkTab"
 import type { SitePhase } from "./SiteTab"
@@ -338,17 +338,20 @@ export function AddFeedDialog({
           onValueChange={(next) => setTab(next as AddFeedTab)}
           className="min-h-0 flex-1 gap-0"
         >
-          <TabsList variant="line" className="mx-5 shrink-0 justify-start">
-            <TabsTrigger value="site" className="px-1 text-sm">
-              Website
-            </TabsTrigger>
-            <TabsTrigger value="bulk" className="px-1 text-sm">
-              Paste a list
-            </TabsTrigger>
-            <TabsTrigger value="opml" className="px-1 text-sm">
-              OPML
-            </TabsTrigger>
-          </TabsList>
+          <div className="mx-5 flex shrink-0 items-center justify-between">
+            <TabsList variant="line" className="justify-start">
+              <TabsTrigger value="site" className="px-1 text-sm">
+                Website
+              </TabsTrigger>
+              <TabsTrigger value="bulk" className="px-1 text-sm">
+                Paste a list
+              </TabsTrigger>
+              <TabsTrigger value="opml" className="px-1 text-sm">
+                OPML
+              </TabsTrigger>
+            </TabsList>
+            {tab === "opml" && <OpmlExportButton />}
+          </div>
 
           {/*
             The scroll container. Without a cap here the bulk tab's results push

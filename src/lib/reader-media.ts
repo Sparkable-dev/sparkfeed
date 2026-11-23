@@ -26,6 +26,16 @@ export function handleReaderMediaError(
   }
   target.dataset.readerMediaFailed = "true"
   target.hidden = true
+  const media = picture ?? target
+  const actionWrapper = media.closest<HTMLElement>("[data-reader-image-actions]")
+  const fallbackAnchor = actionWrapper?.firstElementChild ?? media
+  if (actionWrapper) {
+    if (actionWrapper.firstElementChild) {
+      actionWrapper.replaceWith(actionWrapper.firstElementChild)
+    } else {
+      actionWrapper.remove()
+    }
+  }
   const fallback = document.createElement("p")
   fallback.className = "reader-media-fallback"
   fallback.dataset.readerMediaFallback = "true"
@@ -43,5 +53,5 @@ export function handleReaderMediaError(
   link.rel = "noopener noreferrer"
   link.textContent = "View on original page"
   fallback.append(description, document.createTextNode(" "), link)
-  ;(picture ?? target).after(fallback)
+  fallbackAnchor.after(fallback)
 }

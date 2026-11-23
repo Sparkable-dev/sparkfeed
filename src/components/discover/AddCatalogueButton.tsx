@@ -1,7 +1,31 @@
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useId, useRef, useState } from "react"
 import { useNavigate } from "@tanstack/react-router"
 import { toast } from "sonner"
-import { Check, Loader2, Plus } from "lucide-react"
+import {
+  Check,
+  ChevronDown,
+  Folder,
+  FolderPlus,
+  Loader2,
+  Plus,
+} from "lucide-react"
+import type { Destination } from "@/server/services/feed-write"
+import { useWorkspaceNavigation } from "@/components/WorkspaceDataProvider"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { getImportStatus, importCatalogueItem } from "@/server/catalogue"
@@ -54,9 +78,16 @@ export function AddCatalogueButton({
   tone?: "primary" | "secondary" | "chip"
 }) {
   const navigate = useNavigate()
+  const folderInputId = useId()
+  const navigation = useWorkspaceNavigation()
+  const [createOpen, setCreateOpen] = useState(false)
+  const [folderName, setFolderName] = useState("")
   const [adding, setAdding] = useState(false)
   const [added, setAdded] = useState(false)
-  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null)
+  const [progress, setProgress] = useState<{
+    done: number
+    total: number
+  } | null>(null)
   const timers = useRef<Array<ReturnType<typeof setTimeout>>>([])
 
   useEffect(() => () => timers.current.forEach(clearTimeout), [])
@@ -91,7 +122,8 @@ export function AddCatalogueButton({
     timers.current.push(setTimeout(tick, POLL_MS))
   }
 
-  const handleAdd = async () => {
+  const handleAdd = async (destination: Destination = { kind: "none" }) => {
+    if (adding || alreadyAdded || added) return
     if (DEMO_MODE) {
       // Rendered live rather than disabled: a page of dead buttons is a worse
       // demo than one that explains itself.
@@ -103,7 +135,9 @@ export function AddCatalogueButton({
 
     setAdding(true)
     try {
-      const result = await importCatalogueItem({ data: { kind, slug } })
+      const result = await importCatalogueItem({
+        data: { kind, slug, destination },
+      })
 
       if (result.status === "already_added") {
         setAdded(true)
@@ -116,13 +150,14 @@ export function AddCatalogueButton({
       }
 
       setAdded(true)
+      setCreateOpen(false)
+      setFolderName("")
       onImported()
 
       const skippedNote =
         result.skipped > 0 ? ` ${result.skipped} you already had.` : ""
       toast.success(`${label === "Add" ? "Feed" : "Collection"} added`, {
-        description:
-          `${result.added} ${result.added === 1 ? "feed" : "feeds"} added.${skippedNote} Articles are loading.`,
+        description: `${result.added} ${result.added === 1 ? "feed" : "feeds"} added.${skippedNote} Articles are loading.`,
         ...(result.folderId
           ? {
               action: {
@@ -158,7 +193,7 @@ export function AddCatalogueButton({
       <button
         type="button"
         disabled={adding || isAdded}
-        onClick={handleAdd}
+        onClick={() => void handleAdd()}
         title={isAdded ? "Already in your workspace" : "Add this feed"}
         className={cn(
           /* Same box as the link and RSS tags beside it — see CHIP there. */
@@ -167,7 +202,7 @@ export function AddCatalogueButton({
           isAdded
             ? "text-muted-foreground dark:text-zinc-500"
             : "text-foreground dark:text-zinc-300 hover:bg-accent dark:hover:bg-white/10 hover:text-foreground dark:hover:text-white",
-          className,
+          className
         )}
       >
         <Icon className={cn("size-2.5 shrink-0", adding && "animate-spin")} />
@@ -184,45 +219,148 @@ export function AddCatalogueButton({
 
   return (
     <div className={cn("flex flex-col items-end gap-1", className)}>
-      <Button
-        size="sm"
-        variant={isAdded || tone === "secondary" ? "outline" : "default"}
-        disabled={adding || isAdded}
-        onClick={handleAdd}
-        className={
-          isAdded
-            ? "h-8 border-border dark:border-zinc-700 text-xs text-muted-foreground dark:text-zinc-400"
-            : tone === "secondary"
-              ? /*
+      <div className="inline-flex items-stretch [&>button:first-child]:rounded-r-none">
+        <Button
+          size="sm"
+          variant={isAdded || tone === "secondary" ? "outline" : "default"}
+          disabled={adding || isAdded}
+          onClick={() => void handleAdd()}
+          className={
+            isAdded
+              ? "h-8 border-border dark:border-zinc-700 text-xs text-muted-foreground dark:text-zinc-400"
+              : tone === "secondary"
+                ? /*
                   The `dark:` duplicates are load-bearing. The outline variant
                   ships `dark:border-input dark:bg-input/30`, and tailwind-merge
                   treats a `dark:`-prefixed utility as a different group from its
                   bare form — so `bg-transparent` alone loses to it, leaving a
                   filled button that still read as primary.
                 */
-                "h-8 border-border dark:border-white/30 bg-transparent text-xs font-medium text-foreground dark:text-zinc-100 " +
-                "hover:border-border dark:hover:border-white/50 hover:bg-accent dark:hover:bg-white/10 hover:text-foreground dark:hover:text-white " +
-                "dark:border-white/30 dark:bg-transparent dark:hover:border-white/50 dark:hover:bg-white/10"
-              : "h-8 bg-primary dark:bg-white text-xs font-semibold text-primary-foreground dark:text-black hover:bg-primary/90 dark:hover:bg-zinc-200"
-        }
+                  "h-8 border-border dark:border-white/30 bg-transparent text-xs font-medium text-foreground dark:text-zinc-100 " +
+                  "hover:border-border dark:hover:border-white/50 hover:bg-accent dark:hover:bg-white/10 hover:text-foreground dark:hover:text-white " +
+                  "dark:border-white/30 dark:bg-transparent dark:hover:border-white/50 dark:hover:bg-white/10"
+                : "h-8 bg-primary dark:bg-white text-xs font-semibold text-primary-foreground dark:text-black hover:bg-primary/90 dark:hover:bg-zinc-200"
+          }
+        >
+          {adding ? (
+            <>
+              <Loader2 className="mr-1.5 size-3.5 animate-spin" />
+              Adding…
+            </>
+          ) : isAdded ? (
+            <>
+              <Check className="mr-1.5 size-3.5" />
+              Added
+            </>
+          ) : (
+            <>
+              <Plus className="mr-1.5 size-3.5" />
+              {label}
+            </>
+          )}
+        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            render={
+              <Button
+                size="sm"
+                variant={
+                  isAdded || tone === "secondary" ? "outline" : "default"
+                }
+              />
+            }
+            disabled={adding || isAdded}
+            aria-label="Add to folder"
+            className={cn(
+              "h-8 w-8 rounded-l-none border-l px-0",
+              tone === "primary" && !isAdded
+                ? "border-border dark:border-black/15 bg-primary dark:bg-white text-primary-foreground dark:text-black hover:bg-primary/90 dark:hover:bg-zinc-200"
+                : "border-border dark:border-white/20"
+            )}
+          >
+            <ChevronDown className="size-3.5" />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-56">
+            {navigation.isPending && (
+              <DropdownMenuItem disabled>Loading folders…</DropdownMenuItem>
+            )}
+            {navigation.isError && (
+              <DropdownMenuItem onClick={() => void navigation.refetch()}>
+                Could not load folders. Retry
+              </DropdownMenuItem>
+            )}
+            {navigation.data?.folders.map((folder) => (
+              <DropdownMenuItem
+                key={folder.id}
+                onClick={() =>
+                  void handleAdd({ kind: "existing", folderId: folder.id })
+                }
+              >
+                <Folder className="size-4" />
+                <span className="truncate">{folder.name}</span>
+              </DropdownMenuItem>
+            ))}
+            {navigation.data?.folders.length === 0 && (
+              <DropdownMenuItem disabled>No folders yet</DropdownMenuItem>
+            )}
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              disabled={DEMO_MODE}
+              onClick={() => setCreateOpen(true)}
+            >
+              <FolderPlus className="size-4" />
+              Create folder…
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+      <Dialog
+        open={createOpen}
+        onOpenChange={(open) => {
+          if (!adding) {
+            setCreateOpen(open)
+            if (!open) setFolderName("")
+          }
+        }}
       >
-        {adding ? (
-          <>
-            <Loader2 className="mr-1.5 size-3.5 animate-spin" />
-            Adding…
-          </>
-        ) : isAdded ? (
-          <>
-            <Check className="mr-1.5 size-3.5" />
-            Added
-          </>
-        ) : (
-          <>
-            <Plus className="mr-1.5 size-3.5" />
-            {label}
-          </>
-        )}
-      </Button>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Create folder and add</DialogTitle>
+          </DialogHeader>
+          <form
+            onSubmit={(event) => {
+              event.preventDefault()
+              if (folderName.trim())
+                void handleAdd({ kind: "new", name: folderName.trim() })
+            }}
+          >
+            <label htmlFor={folderInputId} className="mb-2 block text-sm">
+              Folder name
+            </label>
+            <Input
+              id={folderInputId}
+              autoFocus
+              maxLength={60}
+              value={folderName}
+              disabled={adding}
+              onChange={(event) => setFolderName(event.target.value)}
+            />
+            <DialogFooter className="mt-4">
+              <Button
+                type="button"
+                variant="ghost"
+                disabled={adding}
+                onClick={() => setCreateOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" disabled={adding || !folderName.trim()}>
+                {adding ? "Adding…" : "Create and add"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       {progress && (
         <span className="text-[10px] text-muted-foreground dark:text-zinc-500 tabular-nums">

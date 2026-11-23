@@ -258,6 +258,7 @@ export default defineConfig({
 					label: 'Features',
 					items: [
 						{ label: 'Minimal UI & UX', slug: 'features/minimal-ui' },
+						{ label: 'OPML Import & Export', slug: 'features/import-export-opml' },
 						{ label: 'Offline Reading', slug: 'features/offline-reading' },
 						{ label: 'Favorites System', slug: 'features/favorites-system' },
 						{ label: 'Responsive Design', slug: 'features/responsive-design' },

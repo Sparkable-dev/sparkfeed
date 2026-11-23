@@ -1,0 +1,32 @@
+---
+title: Import and export RSS subscriptions with OPML
+description: Preview an OPML file, choose a folder for new feeds, or export subscriptions from one Sparkfeed folder or workspace.
+---
+
+Use OPML to move feed addresses, names, and folders between RSS readers. Start in **Sources** in the workspace you want to import into or export from.
+
+## Import subscriptions
+
+1. Select **Import / export OPML**. Drop one OPML or XML file into the dialog, or select **Browse files**. The file size limit is 5 MB.
+2. Select **Preview import**. Check the number of new feeds. Expand **Skipped entries** to see why Sparkfeed skipped a feed. The preview leaves your workspace unchanged.
+3. Choose where to put the new feeds using the options below.
+4. Select **Confirm import**. Check the summary for the number of feeds added, folders created, and entries skipped. Articles load in the background.
+
+| Destination | Where new feeds go |
+| --- | --- |
+| **Keep folders from the file** | Sparkfeed reuses matching folders. A nested folder becomes a single folder with a name such as `News / Local`. Feeds without a folder appear under **Unfiled**. |
+| **Create a new folder** | Enter a folder name to group the imported feeds together. |
+| **Choose an existing folder** | Select a folder in the current workspace. |
+
+If a feed address appears more than once in the file, Sparkfeed skips the repeated entries. If you already follow the feed anywhere in the workspace, it keeps its current name and folder. You can preview the same file again after importing to check which feeds are already present.
+
+To start with a destination selected, open the folder menu in **Sources** and choose **Import OPML into this folder**. Import requires permission to edit workspace sources. In demo mode, you can export the sample subscriptions.
+
+## Export subscriptions
+
+- **Whole workspace.** In **Sources**, select **Import / export OPML**, then select the download icon beside the tabs. Its tooltip reads **Export all subscriptions as OPML**. Sparkfeed downloads `sparkfeed-subscriptions.opml`.
+- **One folder.** Open the folder menu in **Sources** and select **Export this folder as OPML**.
+
+Open the downloaded file with your destination reader's OPML import command. For screenshots of the controls and a sample file to try, see the [illustrated OPML guide](https://sparkfeed.dev/guides/import-export-opml-rss-reader/).
+
+To preserve articles, reading state, favorites, and website monitors on a self-hosted instance, [back up the PostgreSQL database](/docs/advanced/export-and-backup/#compose-backup).

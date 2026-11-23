@@ -2,6 +2,7 @@ import { useMemo, useState } from "react"
 import { Link } from "@tanstack/react-router"
 import { ArrowRight, Layers } from "lucide-react"
 import { SourceIcon } from "./SourceIcon"
+import { SourceTitle } from "./SourceTitle"
 import { AddCatalogueButton } from "./AddCatalogueButton"
 import { CategoryRow } from "./CategoryRow"
 import { CataloguePreviewDialog } from "./CataloguePreviewDialog"
@@ -23,15 +24,6 @@ import { normalizeFeedUrl } from "@/lib/validation"
  * One component, two placements: the /discover page, and inline on / when the
  * workspace has no articles yet.
  */
-
-function domainOf(url: string | null): string {
-  if (!url) return ""
-  try {
-    return new URL(url).hostname.replace(/^www\./, "")
-  } catch {
-    return ""
-  }
-}
 
 /**
  * Card widths are fixed so the next card is always partly visible.
@@ -60,24 +52,20 @@ function FeedCard({
   onOpen: () => void
 }) {
   return (
-    <div
-      role="button"
-      tabIndex={0}
-      onClick={onOpen}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault()
-          onOpen()
-        }
-      }}
-      className={`${CARD_BASE} ${FEED_WIDTH} cursor-pointer gap-3 p-4 focus-visible:ring-2 focus-visible:ring-ring dark:focus-visible:ring-white/30 focus-visible:outline-none`}
-    >
+    <div className={`${CARD_BASE} ${FEED_WIDTH} gap-3 p-4`}>
       <div className="flex min-w-0 items-center gap-3">
-        <SourceIcon name={feed.name} slug={feed.slug} file={feed.iconFile} accent={feed.accent} />
+        <SourceIcon
+          name={feed.name}
+          slug={feed.slug}
+          file={feed.iconFile}
+          accent={feed.accent}
+        />
         <div className="flex min-w-0 flex-col">
-          <span className="truncate text-sm font-semibold text-foreground dark:text-zinc-100">{feed.name}</span>
+          <span className="truncate text-sm font-semibold text-foreground dark:text-zinc-100">
+            <SourceTitle name={feed.name} url={feed.siteUrl ?? feed.feedUrl} />
+          </span>
           <span className="truncate text-[11px] text-muted-foreground dark:text-zinc-500">
-            {domainOf(feed.siteUrl ?? feed.feedUrl)}
+            {feed.sourceKind === "page" ? "Via website" : "Via RSS"}
           </span>
         </div>
       </div>
@@ -86,12 +74,18 @@ function FeedCard({
         {feed.description}
       </p>
 
-      {/* Stops the Add button from also opening the dialog behind it. */}
       <div
-        className="mt-auto flex items-end justify-end pt-1"
+        className="mt-auto flex items-end justify-between gap-2 pt-1"
         onClick={(e) => e.stopPropagation()}
         onKeyDown={(e) => e.stopPropagation()}
       >
+        <button
+          type="button"
+          onClick={onOpen}
+          className="h-8 rounded px-1 text-xs text-muted-foreground dark:text-zinc-400 underline-offset-4 hover:text-foreground dark:hover:text-white hover:underline focus-visible:outline-2"
+        >
+          Preview
+        </button>
         <AddCatalogueButton
           kind="feed"
           slug={feed.slug}
@@ -116,7 +110,7 @@ function CollectionCard({
   onOpen: () => void
 }) {
   const missing = card.feeds.filter(
-    (f) => !ownedUrls.has(normalizeFeedUrl(f.feedUrl) ?? f.feedUrl),
+    (f) => !ownedUrls.has(normalizeFeedUrl(f.feedUrl) ?? f.feedUrl)
   )
   const allOwned = missing.length === 0
   const label = allOwned
@@ -128,18 +122,7 @@ function CollectionCard({
   const accent = card.accent ?? "#6366f1"
 
   return (
-    <div
-      role="button"
-      tabIndex={0}
-      onClick={onOpen}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault()
-          onOpen()
-        }
-      }}
-      className={`${CARD_BASE} ${COLLECTION_WIDTH} cursor-pointer focus-visible:ring-2 focus-visible:ring-ring dark:focus-visible:ring-white/30 focus-visible:outline-none`}
-    >
+    <div className={`${CARD_BASE} ${COLLECTION_WIDTH}`}>
       {/*
         The wash is what makes a collection read as the anchor of the row. Kept
         low-opacity and behind the header only — a full-bleed colour panel would
@@ -160,7 +143,7 @@ function CollectionCard({
         />
         <div className="flex min-w-0 flex-col gap-0.5">
           <span className="truncate text-base font-bold tracking-tight text-foreground dark:text-zinc-50">
-            {card.name}
+            <SourceTitle name={card.name} url={card.siteUrl} />
           </span>
           <span className="inline-flex w-fit items-center gap-1 rounded-md border border-border dark:border-white/10 bg-muted dark:bg-white/5 px-1.5 py-0.5 text-[10px] font-semibold tracking-wide text-foreground dark:text-zinc-300 uppercase">
             <Layers className="size-2.5" />
@@ -195,10 +178,17 @@ function CollectionCard({
         </div>
 
         <div
-          className="mt-auto flex items-end justify-end pt-1"
+          className="mt-auto flex items-end justify-between gap-2 pt-1"
           onClick={(e) => e.stopPropagation()}
           onKeyDown={(e) => e.stopPropagation()}
         >
+          <button
+            type="button"
+            onClick={onOpen}
+            className="h-8 rounded px-1 text-xs text-muted-foreground dark:text-zinc-400 underline-offset-4 hover:text-foreground dark:hover:text-white hover:underline focus-visible:outline-2"
+          >
+            Preview
+          </button>
           <AddCatalogueButton
             kind="collection"
             slug={card.slug}
@@ -235,7 +225,11 @@ export function DiscoverCatalogue({
     <div className="flex flex-col">
       <div className="flex flex-col gap-10">
         {catalogue.map((category) => (
-          <section key={category.slug} id={`category-${category.slug}`} className="scroll-mt-16">
+          <section
+            key={category.slug}
+            id={`category-${category.slug}`}
+            className="scroll-mt-16"
+          >
             <div className="mb-3 flex items-end justify-between gap-4">
               <div className="min-w-0">
                 <h2 className="text-lg font-bold tracking-tight text-foreground dark:text-zinc-100">
@@ -282,11 +276,13 @@ export function DiscoverCatalogue({
                   <FeedCard
                     key={card.slug}
                     feed={card}
-                    owned={ownedUrls.has(normalizeFeedUrl(card.feedUrl) ?? card.feedUrl)}
+                    owned={ownedUrls.has(
+                      normalizeFeedUrl(card.feedUrl) ?? card.feedUrl
+                    )}
                     onImported={onImported}
                     onOpen={() => setOpened(card)}
                   />
-                ),
+                )
               )}
             </CategoryRow>
           </section>
@@ -314,6 +310,6 @@ export function DiscoverCatalogue({
 export function useOwnedFeedUrls(feeds: Array<{ url: string }>): Set<string> {
   return useMemo(
     () => new Set(feeds.map((f) => normalizeFeedUrl(f.url) ?? f.url)),
-    [feeds],
+    [feeds]
   )
 }

@@ -1,5 +1,6 @@
 import { ExternalLink, Layers, Rss } from "lucide-react"
 import { SourceIcon } from "./SourceIcon"
+import { SourceTitle } from "./SourceTitle"
 import { AddCatalogueButton } from "./AddCatalogueButton"
 import { CatalogueArticleRow } from "./CatalogueArticleCard"
 import { useCataloguePreview } from "./use-catalogue-preview"
@@ -269,7 +270,7 @@ export function CataloguePreviewDialog({
                 />
                 <div className="flex min-w-0 flex-1 flex-col gap-1 pr-6">
                   <DialogTitle className="truncate text-base font-bold tracking-tight text-foreground dark:text-zinc-50">
-                    {card.name}
+                    <SourceTitle name={card.name} url={primaryUrl} />
                   </DialogTitle>
                   <DialogDescription className="line-clamp-2 text-xs leading-relaxed text-muted-foreground dark:text-zinc-400">
                     {card.description}
@@ -284,17 +285,6 @@ export function CataloguePreviewDialog({
                     {card.feeds.length}{" "}
                     {card.feeds.length === 1 ? "feed" : "feeds"}
                   </span>
-                )}
-                {primaryUrl && (
-                  <a
-                    href={primaryUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className={CHIP}
-                  >
-                    <ExternalLink className="size-2.5" />
-                    {domainOf(primaryUrl)}
-                  </a>
                 )}
                 {!isCollection && (
                   /*

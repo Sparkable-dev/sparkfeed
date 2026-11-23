@@ -1,0 +1,17 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "side-tab",
+        "value": "*",
+        "files": [
+          "src/styles.css"
+        ],
+        "createdAt": "2026-10-19T12:39:00.676Z",
+        "reason": "Codex triage: the flagged border belongs to .reader-prose blockquote and identifies quoted article text, rather than a card accent."
+      }
+    ]
+  }
+}

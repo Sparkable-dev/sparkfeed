@@ -588,6 +588,57 @@
   border-radius: 0.5rem;
   margin: 1.5em auto;
 }
+.reader-image-action-wrap {
+  position: relative;
+  display: block;
+  width: fit-content;
+  max-width: 100%;
+  margin: 1.5em auto;
+}
+.reader-image-action-wrap img {
+  display: block;
+  margin: 0;
+}
+.reader-prose figure .reader-image-action-wrap { margin-block: 0; }
+.reader-image-action-controls {
+  position: absolute;
+  z-index: 2;
+  top: 0.5rem;
+  right: 0.5rem;
+  display: flex;
+  gap: 0.375rem;
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+.reader-image-action-wrap:hover .reader-image-action-controls,
+.reader-image-action-wrap:focus-within .reader-image-action-controls {
+  opacity: 1;
+}
+.reader-image-action-button {
+  display: grid;
+  width: 2.25rem;
+  height: 2.25rem;
+  place-items: center;
+  border: 1px solid rgb(255 255 255 / 22%);
+  border-radius: 0.625rem;
+  background: rgb(24 24 27 / 82%);
+  color: white;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 24%);
+  backdrop-filter: blur(8px);
+}
+.reader-image-action-button:hover { background: rgb(24 24 27 / 96%); }
+.reader-image-action-button:focus-visible {
+  outline: 2px solid var(--reader-link);
+  outline-offset: 2px;
+}
+.reader-image-action-button:disabled { cursor: wait; opacity: 0.65; }
+@media (hover: none) {
+  .reader-image-action-controls { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .reader-image-action-controls { transition: none; }
+}
 .reader-prose figure { margin: 1.5em 0; }
 .reader-prose figcaption {
   font-size: 0.875em;

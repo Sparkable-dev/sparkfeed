@@ -6,6 +6,7 @@ import { readCatalogue } from "./services/catalogue"
 import { getCataloguePreview as readCataloguePreview } from "./services/catalogue-preview"
 import { enqueueIngest } from "./services/ingest-queue"
 import { freeFolderName } from "./services/feed-write"
+import { assertOwnsFolder } from "./services/ownership"
 import { resolveWorkspaceId } from "./services/context"
 import { feedInWorkspace } from "./services/tenancy"
 import type { PreviewFeed } from "./services/catalogue-preview"
@@ -98,6 +99,19 @@ export const importCatalogueItem = createServerFn({ method: "POST" })
     z.object({
       kind: z.enum(["collection", "feed"]),
       slug: z.string().min(1),
+      destination: z
+        .discriminatedUnion("kind", [
+          z.object({ kind: z.literal("none") }),
+          z.object({
+            kind: z.literal("existing"),
+            folderId: z.string().min(1),
+          }),
+          z.object({
+            kind: z.literal("new"),
+            name: z.string().trim().min(1).max(60),
+          }),
+        ])
+        .optional(),
     })
   )
   .handler(async ({ data }): Promise<ImportResult> => {
@@ -105,6 +119,9 @@ export const importCatalogueItem = createServerFn({ method: "POST" })
 
     const workspaceId = await resolveWorkspaceId()
     if (!workspaceId) return { status: "error", message: "Not signed in" }
+    if (data.destination?.kind === "existing") {
+      await assertOwnsFolder(data.destination.folderId, workspaceId)
+    }
 
     // Read the entry from the database, never from the request. A client that
     // could name its own feed URLs would turn this into an open write endpoint.
@@ -140,12 +157,21 @@ export const importCatalogueItem = createServerFn({ method: "POST" })
 
     if (fresh.length === 0) return { status: "already_added" }
     const pageCount = fresh.filter((e) => e.sourceKind === "page").length
-    let folderId: string | null = null
+    let folderId: string | null =
+      data.destination?.kind === "existing" ? data.destination.folderId : null
     const rows = await withNoRssSourceCapacity(
       workspaceId,
       pageCount,
       async (tx) => {
-        if (data.kind === "collection") {
+        if (data.destination?.kind === "new") {
+          folderId = randomUUID()
+          await tx.insert(folders).values({
+            id: folderId,
+            name: await freeFolderName(workspaceId, data.destination.name),
+            workspaceId,
+            createdAt: new Date().toISOString(),
+          })
+        } else if (!data.destination && data.kind === "collection") {
           const [collection] = await tx
             .select()
             .from(catalogueCollections)

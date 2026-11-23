@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState } from "react"
 import { createFileRoute, useRouter } from "@tanstack/react-router"
 import { toast } from "sonner"
-import { ChevronsDownUp, ChevronsUpDown, FolderPlus, Plus } from "lucide-react"
+import { ArrowDownUp, ChevronsDownUp, ChevronsUpDown, FolderPlus, Plus } from "lucide-react"
 import type { HeaderAction } from "@/components/layout/header-actions"
 import type { FeedRow, FolderRow } from "@/lib/rss-types"
 import type { TreeFolder } from "@/components/sources/source-tree"
@@ -37,6 +37,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { DEMO_MODE } from "@/lib/demo"
+import { downloadOpml } from "@/lib/download-opml"
 import {
   deleteFeed,
   deleteFolder,
@@ -70,6 +71,7 @@ type DeleteTarget = { kind: "folder" | "feed"; id: string; name: string }
 
 function SourcesRoute() {
   const { data, health } = Route.useLoaderData()
+  const { workspaceScope } = Route.useRouteContext()
   const router = useRouter()
 
   const folders = data.folders as Array<FolderRow>
@@ -145,6 +147,15 @@ function SourcesRoute() {
     openAddFeed({ folderId })
   }
 
+  const handleFolderExport = async (folderId: string) => {
+    try {
+      const error = await downloadOpml(workspaceScope.workspaceId, folderId)
+      if (error) toast.error(error)
+    } catch {
+      toast.error("Could not export this folder. Try again.")
+    }
+  }
+
   /*
     Everything this page can do to the collection as a whole, in the bar every
     other page keeps its controls in. They were a row of buttons under a
@@ -182,6 +193,14 @@ function SourcesRoute() {
         if (guardDemo()) return
         setAddFolderOpen(true)
       },
+      variant: "ghost",
+    },
+    {
+      kind: "button",
+      id: "opml-btn",
+      icon: ArrowDownUp,
+      label: "Import / export OPML",
+      onClick: () => openAddFeed({ tab: "opml" }),
       variant: "ghost",
     },
     {
@@ -300,6 +319,10 @@ function SourcesRoute() {
         onToggleFolder={toggleFolder}
         filter={filter}
         onAddFeed={handleAddFeed}
+        onImportOpml={(folderId) => {
+          if (!guardDemo()) openAddFeed({ tab: "opml", folderId })
+        }}
+        onExportOpml={(folderId) => void handleFolderExport(folderId)}
         onRenameFolder={(folder) => {
           if (guardDemo()) return
           setRenameTarget({ kind: "folder", id: folder.id, name: folder.name })

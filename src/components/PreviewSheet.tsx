@@ -5,6 +5,7 @@ import { BookOpen, ExternalLink, Globe, Loader2, X } from "lucide-react"
 import type { ArticleRow } from "@/components/ArticleGrid"
 import { previewQuery } from "@/lib/preview-query"
 import { handleReaderMediaError } from "@/lib/reader-media"
+import { enhanceReaderImages } from "@/lib/reader-image-actions"
 import { useWorkspaceScope } from "@/components/WorkspaceDataProvider"
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet"
 import { Button } from "@/components/ui/button"
@@ -36,9 +37,18 @@ const ReaderProse = memo(function ReaderProseContent({
   html: string
   proseRef: (element: HTMLDivElement | null) => void
 }) {
+  const elementRef = useRef<HTMLDivElement | null>(null)
+  useEffect(() => {
+    const element = elementRef.current
+    return element ? enhanceReaderImages(element) : undefined
+  }, [html])
+
   return (
     <div
-      ref={proseRef}
+      ref={(element) => {
+        elementRef.current = element
+        proseRef(element)
+      }}
       className="reader-prose max-w-none"
       dangerouslySetInnerHTML={{ __html: html }}
     />
